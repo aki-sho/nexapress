@@ -11,7 +11,7 @@ class HomeController extends Controller
     public function index(): void
     {
         if (!Installer::isInstalled()) {
-            $this->redirect('/nexapress/public/install');
+            $this->redirect('/install');
         }
 
         $posts = Post::published();

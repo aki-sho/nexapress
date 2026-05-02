@@ -1,52 +1,26 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>ログイン | NexaPress</title>
-    <link rel="stylesheet" href="/NexaPress/public/assets/css/style.css">
-</head>
-<body class="admin-login-page">
+<?php require BASE_PATH . '/app/Views/layout.php'; ?>
 
-<div class="login-container">
-    <div class="login-card">
-        <h1>NexaPress</h1>
-        <p class="login-subtitle">管理画面ログイン</p>
+<div class="container">
+    <div class="card">
+        <h1>ログイン</h1>
 
         <?php if (!empty($error)): ?>
-            <div class="error-message">
-                <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
-            </div>
+            <p style="color: red;"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
         <?php endif; ?>
 
         <form method="post" action="<?php echo BASE_URL; ?>/admin/login">
             <div class="form-group">
-                <label for="email">メールアドレス</label>
-                <input
-                    type="text"
-                    id="email"
-                    name="email"
-                    value=""
-                    required
-                    autofocus
-                >
+                <label>メールアドレス</label>
+                <input type="email" name="email">
             </div>
 
             <div class="form-group">
-                <label for="password">パスワード</label>
-                <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    required
-                >
+                <label>パスワード</label>
+                <input type="password" name="password">
             </div>
 
-            <button type="submit" class="login-button">ログイン</button>
+            <button type="submit">ログイン</button>
         </form>
-
-        <div class="login-footer">
-            <a href="/NexaPress/public/">サイトを見る</a>
-        </div>
     </div>
 </div>
 

@@ -4,7 +4,9 @@
 
 <div class="card">
     <p>管理画面にログインしました。</p>
-    <p><a href="/NexaPress/public/admin/posts" class="btn">投稿一覧へ</a></p>
+    <p>
+        <a href="<?php echo BASE_URL; ?>/admin/posts" class="btn">投稿一覧へ</a>
+    </p>
 </div>
 
 </main>

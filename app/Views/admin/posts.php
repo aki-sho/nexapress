@@ -3,7 +3,7 @@
 <h1>投稿一覧</h1>
 
 <p>
-    <a href="/NexaPress/public/admin/posts/create" class="btn">新規追加</a>
+    <a href="<?php echo BASE_URL; ?>/admin/posts/create" class="btn">新規追加</a>
 </p>
 
 <table class="table">
@@ -26,15 +26,15 @@
                 <td><?php echo htmlspecialchars($post['author_name'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
                 <td><?php echo htmlspecialchars($post['created_at'], ENT_QUOTES, 'UTF-8'); ?></td>
                 <td>
-                    <a href="/NexaPress/public/admin/posts/edit/<?php echo htmlspecialchars($post['id'], ENT_QUOTES, 'UTF-8'); ?>">編集</a>
+                    <a href="<?php echo BASE_URL; ?>/admin/posts/edit/<?php echo htmlspecialchars($post['id'], ENT_QUOTES, 'UTF-8'); ?>">編集</a>
 
-                    <form method="post" action="/NexaPress/public/admin/posts/status/<?php echo htmlspecialchars($post['id'], ENT_QUOTES, 'UTF-8'); ?>" style="display:inline;">
+                    <form method="post" action="<?php echo BASE_URL; ?>/admin/posts/status/<?php echo htmlspecialchars($post['id'], ENT_QUOTES, 'UTF-8'); ?>" style="display:inline;">
                         <button type="submit">
                             <?php echo $post['status'] === 'published' ? '下書きにする' : '公開する'; ?>
                         </button>
                     </form>
 
-                    <form method="post" action="/NexaPress/public/admin/posts/delete/<?php echo htmlspecialchars($post['id'], ENT_QUOTES, 'UTF-8'); ?>" style="display:inline;">
+                    <form method="post" action="<?php echo BASE_URL; ?>/admin/posts/delete/<?php echo htmlspecialchars($post['id'], ENT_QUOTES, 'UTF-8'); ?>" style="display:inline;">
                         <button type="submit" class="btn-danger" onclick="return confirm('削除しますか？');">削除</button>
                     </form>
                 </td>

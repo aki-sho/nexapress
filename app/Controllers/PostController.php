@@ -11,7 +11,7 @@ class PostController extends Controller
     public function show(string $slug): void
     {
         if (!Installer::isInstalled()) {
-            $this->redirect('/NexaPress/public/install');
+            $this->redirect('/install');
         }
 
         $post = Post::findBySlug($slug);
