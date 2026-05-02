@@ -10,7 +10,7 @@ class InstallController extends Controller
     public function index(): void
     {
         if (Installer::isInstalled()) {
-            $this->redirect('/nexapress/public/admin/login');
+            $this->redirect('/admin/login');
         }
 
         $this->view('install');
@@ -19,7 +19,7 @@ class InstallController extends Controller
     public function store(): void
     {
         if (Installer::isInstalled()) {
-            $this->redirect('/nexapress/public/admin/login');
+            $this->redirect('/admin/login');
         }
 
         $data = [
@@ -47,7 +47,7 @@ class InstallController extends Controller
         }
 
         if (Installer::install($data)) {
-            $this->redirect('/nexapress/public/admin/login');
+            $this->redirect('/admin/login');
         }
 
         $this->view('install', [

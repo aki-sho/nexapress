@@ -12,7 +12,7 @@
             <p style="color: red;"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
         <?php endif; ?>
 
-        <form method="post" action="/NexaPress/public/install">
+        <form method="post" action="<?php echo BASE_URL; ?>/install">
             <h2>データベース設定</h2>
 
             <p>

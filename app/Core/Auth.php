@@ -32,7 +32,7 @@ class Auth
     public static function requireLogin(): void
     {
         if (!self::check()) {
-            header('Location: /NexaPress/public/admin/login');
+            header('Location: ' . BASE_URL . '/admin/login');
             exit;
         }
     }

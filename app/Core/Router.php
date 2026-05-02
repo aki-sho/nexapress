@@ -21,10 +21,8 @@ class Router
         $method = $_SERVER['REQUEST_METHOD'];
         $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-        $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
-
-        if ($scriptDir !== '/' && str_starts_with($uri, $scriptDir)) {
-            $uri = substr($uri, strlen($scriptDir));
+        if (BASE_URL !== '' && str_starts_with($uri, BASE_URL)) {
+            $uri = substr($uri, strlen(BASE_URL));
         }
 
         $uri = rtrim($uri, '/');
@@ -52,7 +50,6 @@ class Router
     private function convertToPattern(string $path): string
     {
         $pattern = preg_replace('/\{[a-zA-Z_]+\}/', '([^/]+)', $path);
-
         return '#^' . $pattern . '$#';
     }
 

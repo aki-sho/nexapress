@@ -4,6 +4,9 @@ session_start();
 
 define('BASE_PATH', dirname(__DIR__));
 
+$baseUrl = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+define('BASE_URL', rtrim($baseUrl, '/'));
+
 spl_autoload_register(function ($class) {
     $class = str_replace('\\', '/', $class);
     $file = BASE_PATH . '/' . $class . '.php';

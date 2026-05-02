@@ -25,7 +25,7 @@ class PostController extends Controller
 
         $this->view('admin/post-form', [
             'post' => null,
-            'action' => '/NexaPress/public/admin/posts/store',
+            'action' => BASE_URL . '/admin/posts/store',
         ]);
     }
 
@@ -43,7 +43,7 @@ class PostController extends Controller
         if ($title === '' || $slug === '' || $content === '') {
             $this->view('admin/post-form', [
                 'post' => $_POST,
-                'action' => '/NexaPress/public/admin/posts/store',
+                'action' => BASE_URL . '/admin/posts/store',
                 'error' => '未入力の項目があります。',
             ]);
             return;
@@ -57,7 +57,7 @@ class PostController extends Controller
             'user_id' => $user['id'],
         ]);
 
-        $this->redirect('/NexaPress/public/admin/posts');
+        $this->redirect('/admin/posts');
     }
 
     public function edit(int $id): void
@@ -73,7 +73,7 @@ class PostController extends Controller
 
         $this->view('admin/post-form', [
             'post' => $post,
-            'action' => '/NexaPress/public/admin/posts/update/' . $id,
+            'action' => BASE_URL . '/admin/posts/update/' . $id,
         ]);
     }
 
@@ -89,7 +89,7 @@ class PostController extends Controller
         if ($title === '' || $slug === '' || $content === '') {
             $this->view('admin/post-form', [
                 'post' => array_merge($_POST, ['id' => $id]),
-                'action' => '/NexaPress/public/admin/posts/update/' . $id,
+                'action' => BASE_URL . '/admin/posts/update/' . $id,
                 'error' => '未入力の項目があります。',
             ]);
             return;
@@ -102,7 +102,7 @@ class PostController extends Controller
             'status' => $status,
         ]);
 
-        $this->redirect('/NexaPress/public/admin/posts');
+        $this->redirect('/admin/posts');
     }
 
     public function delete(int $id): void
@@ -111,7 +111,7 @@ class PostController extends Controller
 
         Post::delete($id);
 
-        $this->redirect('/NexaPress/public/admin/posts');
+        $this->redirect('/admin/posts');
     }
 
     public function status(int $id): void
@@ -120,6 +120,6 @@ class PostController extends Controller
 
         Post::toggleStatus($id);
 
-        $this->redirect('/NexaPress/public/admin/posts');
+        $this->redirect('/admin/posts');
     }
 }

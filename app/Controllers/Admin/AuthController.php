@@ -11,7 +11,7 @@ class AuthController extends Controller
     public function login(): void
     {
         if (Auth::check()) {
-            $this->redirect('/NexaPress/public/admin');
+            $this->redirect('/admin');
         }
 
         $this->view('admin/login');
@@ -40,13 +40,13 @@ class AuthController extends Controller
 
         Auth::login($user);
 
-        $this->redirect('/NexaPress/public/admin');
+        $this->redirect('/admin');
     }
 
     public function logout(): void
     {
         Auth::logout();
 
-        $this->redirect('/NexaPress/public/admin/login');
+        $this->redirect('/admin/login');
     }
 }

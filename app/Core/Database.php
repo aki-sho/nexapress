@@ -18,14 +18,14 @@ class Database
         $configPath = BASE_PATH . '/config/config.php';
 
         if (!file_exists($configPath)) {
-            header('Location: /NexaPress/public/install');
+            header('Location: ' . BASE_URL . '/install');
             exit;
         }
 
         $config = require $configPath;
 
         if (!is_array($config)) {
-            header('Location: /NexaPress/public/install');
+            header('Location: ' . BASE_URL . '/install');
             exit;
         }
 
@@ -34,7 +34,7 @@ class Database
             empty($config['db_name']) ||
             empty($config['db_user'])
         ) {
-            header('Location: /NexaPress/public/install');
+            header('Location: ' . BASE_URL . '/install');
             exit;
         }
 

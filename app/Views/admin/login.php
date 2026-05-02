@@ -18,7 +18,7 @@
             </div>
         <?php endif; ?>
 
-        <form action="/NexaPress/public/admin/login" method="post">
+        <form method="post" action="<?php echo BASE_URL; ?>/admin/login">
             <div class="form-group">
                 <label for="email">メールアドレス</label>
                 <input
