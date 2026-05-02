@@ -19,7 +19,7 @@ class AuthController extends Controller
 
     public function authenticate(): void
     {
-        $email = $_POST['email'] ?? '';
+        $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
 
         if ($email === '' || $password === '') {
@@ -31,7 +31,14 @@ class AuthController extends Controller
 
         $user = User::findByEmail($email);
 
-        if (!$user || !password_verify($password, $user['password_hash'])) {
+        if (!$user) {
+            $this->view('admin/login', [
+                'error' => 'ログイン情報が正しくありません。'
+            ]);
+            return;
+        }
+
+        if (!password_verify($password, $user['password_hash'])) {
             $this->view('admin/login', [
                 'error' => 'ログイン情報が正しくありません。'
             ]);
