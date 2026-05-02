@@ -1,7 +1,7 @@
 <?php require BASE_PATH . '/app/Views/layout.php'; ?>
 
-<div class="container">
-    <div class="card">
+<div class="login-wrapper">
+    <div class="card login-card">
         <h1>ログイン</h1>
 
         <?php if (!empty($error)): ?>
