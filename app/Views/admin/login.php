@@ -1,35 +1,29 @@
-<?php require BASE_PATH . '/app/Views/layout.php'; ?>
+<?php $title = 'ログイン'; ?>
 
-<div class="login-container">
+<div class="login-page">
     <div class="login-card">
-        <h1>ログイン</h1>
-        <p class="login-subtitle">NexaPress 管理画面</p>
+        <h1>管理画面ログイン</h1>
 
         <?php if (!empty($error)): ?>
-            <p class="error-message">
-                <?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?>
-            </p>
+            <p class="error-message"><?= e($error) ?></p>
         <?php endif; ?>
 
-        <form method="post" action="<?php echo BASE_URL; ?>/admin/login">
+        <form action="<?= url('admin/login') ?>" method="post">
             <div class="form-group">
-                <label>メールアドレス</label>
-                <input type="email" name="email" required>
+                <label for="email">メールアドレス</label>
+                <input type="email" id="email" name="email" required>
             </div>
 
             <div class="form-group">
-                <label>パスワード</label>
-                <input type="password" name="password" required>
+                <label for="password">パスワード</label>
+                <input type="password" id="password" name="password" required>
             </div>
 
-            <button type="submit" class="login-button">ログイン</button>
+            <button type="submit" class="button full">ログイン</button>
         </form>
 
-        <div class="login-footer">
-            <a href="<?php echo BASE_URL; ?>/">サイトを見る</a>
-        </div>
+        <p class="login-back">
+            <a href="<?= url('') ?>">サイトへ戻る</a>
+        </p>
     </div>
 </div>
-
-</body>
-</html>

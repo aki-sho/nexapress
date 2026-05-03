@@ -4,6 +4,8 @@ session_start();
 
 define('BASE_PATH', dirname(__DIR__));
 
+require_once BASE_PATH . '/app/Core/helpers.php';
+
 $baseUrl = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 define('BASE_URL', rtrim($baseUrl, '/'));
 
@@ -40,4 +42,6 @@ $router->post('/admin/posts/update/{id}', 'app\Controllers\Admin\PostController@
 $router->post('/admin/posts/delete/{id}', 'app\Controllers\Admin\PostController@delete');
 $router->post('/admin/posts/status/{id}', 'app\Controllers\Admin\PostController@status');
 
+$router->get('/admin/themes', 'app\Controllers\Admin\ThemeController@index');
+$router->post('/admin/themes/update', 'app\Controllers\Admin\ThemeController@update');
 $router->dispatch();

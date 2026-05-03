@@ -1,0 +1,63 @@
+.page-title {
+    margin: 0 0 24px;
+    font-size: 28px;
+}
+
+.post-list {
+    display: grid;
+    gap: 20px;
+}
+
+.post-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.post-card h2 {
+    margin: 0 0 8px;
+    font-size: 22px;
+}
+
+.post-card h2 a {
+    color: #111827;
+}
+
+.post-date,
+.post-meta {
+    margin: 0 0 12px;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.post-excerpt {
+    margin: 0;
+    color: #374151;
+}
+
+.post-detail {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.post-detail h1 {
+    margin: 0 0 8px;
+    font-size: 30px;
+}
+
+.post-content {
+    margin-top: 24px;
+}
+
+.empty-message {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    color: #6b7280;
+}

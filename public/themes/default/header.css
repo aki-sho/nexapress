@@ -1,0 +1,41 @@
+.site-header {
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.site-header-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.site-title {
+    margin: 0;
+    font-size: 28px;
+    line-height: 1.2;
+}
+
+.site-title a {
+    color: #111827;
+    text-decoration: none;
+}
+
+.site-description {
+    margin: 6px 0 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.site-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.site-nav a {
+    font-size: 14px;
+}

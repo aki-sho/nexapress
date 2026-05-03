@@ -1,0 +1,16 @@
+body {
+    margin: 0;
+    background: #f5f6f8;
+    color: #222;
+    font-family: Arial, "Yu Gothic", "Meiryo", sans-serif;
+    line-height: 1.7;
+}
+
+a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}

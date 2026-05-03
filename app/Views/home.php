@@ -1,40 +1,31 @@
-<?php require BASE_PATH . '/app/Views/layout.php'; ?>
+<?php $title = 'トップページ'; ?>
 
-<div class="header">
-    <h1>
-        <a href="<?php echo BASE_URL; ?>/">NexaPress</a>
-    </h1>
-</div>
+<h1 class="page-title">記事一覧</h1>
 
-<div class="container">
-    <h2>記事一覧</h2>
+<?php if (empty($posts)): ?>
+    <div class="empty-message">
+        <p>公開中の記事はありません。</p>
+    </div>
+<?php else: ?>
+    <div class="post-list">
+        <?php foreach ($posts as $post): ?>
+            <article class="post-card">
+                <h2>
+                    <a href="<?= url('post/' . ($post['slug'] ?? '')) ?>">
+                        <?= e($post['title'] ?? '') ?>
+                    </a>
+                </h2>
 
-    <?php if (empty($posts)): ?>
-        <div class="card">
-            <p>公開中の記事はありません。</p>
-        </div>
-    <?php endif; ?>
+                <?php if (!empty($post['created_at'])): ?>
+                    <p class="post-date"><?= e($post['created_at']) ?></p>
+                <?php endif; ?>
 
-    <?php foreach ($posts as $post): ?>
-        <div class="card">
-            <h2>
-                <a href="<?php echo BASE_URL; ?>/post/<?php echo htmlspecialchars($post['slug'], ENT_QUOTES, 'UTF-8'); ?>">
-                    <?php echo htmlspecialchars($post['title'], ENT_QUOTES, 'UTF-8'); ?>
-                </a>
-            </h2>
-
-            <p>
-                <?php echo nl2br(htmlspecialchars(mb_substr($post['content'], 0, 120), ENT_QUOTES, 'UTF-8')); ?>
-            </p>
-
-            <p>
-                <a href="<?php echo BASE_URL; ?>/post/<?php echo htmlspecialchars($post['slug'], ENT_QUOTES, 'UTF-8'); ?>">
-                    続きを読む
-                </a>
-            </p>
-        </div>
-    <?php endforeach; ?>
-</div>
-
-</body>
-</html>
+                <?php if (!empty($post['content'])): ?>
+                    <p class="post-excerpt">
+                        <?= e(mb_substr(strip_tags($post['content']), 0, 120)) ?>...
+                    </p>
+                <?php endif; ?>
+            </article>
+        <?php endforeach; ?>
+    </div>
+<?php endif; ?>

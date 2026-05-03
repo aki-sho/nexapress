@@ -1,4 +1,7 @@
-<?php require BASE_PATH . '/app/Views/layout.php'; ?>
+<?php
+$title = 'CMS インストール';
+$hideHeader = true;
+?>
 
 <div class="container">
     <div class="card">
@@ -9,10 +12,10 @@
         </p>
 
         <?php if (!empty($error)): ?>
-            <p style="color: red;"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
+            <p style="color: red;"><?= e($error) ?></p>
         <?php endif; ?>
 
-        <form method="post" action="<?php echo BASE_URL; ?>/install">
+        <form method="post" action="<?= url('install') ?>">
             <h2>データベース設定</h2>
 
             <p>
@@ -72,6 +75,3 @@
         </form>
     </div>
 </div>
-
-</body>
-</html>

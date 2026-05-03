@@ -18,14 +18,14 @@ class Database
         $configPath = BASE_PATH . '/config/config.php';
 
         if (!file_exists($configPath)) {
-            header('Location: ' . BASE_URL . '/install');
+            redirect_to('install');
             exit;
         }
 
         $config = require $configPath;
 
         if (!is_array($config)) {
-            header('Location: ' . BASE_URL . '/install');
+            redirect_to('install');
             exit;
         }
 
@@ -34,7 +34,7 @@ class Database
             empty($config['db_name']) ||
             empty($config['db_user'])
         ) {
-            header('Location: ' . BASE_URL . '/install');
+            redirect_to('install');
             exit;
         }
 

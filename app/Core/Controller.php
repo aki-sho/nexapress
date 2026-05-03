@@ -11,7 +11,7 @@ class Controller
 
     protected function redirect(string $path): void
     {
-        header('Location: ' . BASE_URL . $path);
+        header('Location: ' . url($path));
         exit;
     }
 }

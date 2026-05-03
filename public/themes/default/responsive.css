@@ -1,0 +1,29 @@
+@media (max-width: 600px) {
+    .site-header-inner {
+        display: block;
+        padding: 20px 16px;
+    }
+
+    .site-nav {
+        margin-top: 16px;
+        flex-wrap: wrap;
+    }
+
+    .site-main {
+        margin: 24px auto;
+        padding: 0 16px;
+    }
+
+    .post-card,
+    .post-detail {
+        padding: 20px;
+    }
+
+    .site-title {
+        font-size: 24px;
+    }
+
+    .post-detail h1 {
+        font-size: 24px;
+    }
+}

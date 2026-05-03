@@ -32,7 +32,7 @@ class Auth
     public static function requireLogin(): void
     {
         if (!self::check()) {
-            header('Location: ' . BASE_URL . '/admin/login');
+            redirect_to('admin/login');
             exit;
         }
     }

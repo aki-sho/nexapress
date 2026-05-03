@@ -1,39 +1,46 @@
-<?php require BASE_PATH . '/app/Views/admin/layout.php'; ?>
+<?php
+$title = empty($post['id']) ? '新規投稿' : '投稿編集';
 
-<h1><?php echo empty($post['id']) ? '投稿作成' : '投稿編集'; ?></h1>
+$postTitle = $post['title'] ?? '';
+$slug = $post['slug'] ?? '';
+$content = $post['content'] ?? '';
+$status = $post['status'] ?? 'draft';
+?>
 
-<?php if (!empty($error)): ?>
-    <p style="color: red;"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></p>
-<?php endif; ?>
-
-<form method="post" action="<?php echo htmlspecialchars($action, ENT_QUOTES, 'UTF-8'); ?>">
-    <div class="form-group">
-        <label>タイトル</label>
-        <input type="text" name="title" value="<?php echo htmlspecialchars($post['title'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+<section class="admin-page">
+    <div class="admin-page-header">
+        <h2><?= e($title) ?></h2>
+        <a class="button secondary" href="<?= url('admin/posts') ?>">投稿一覧へ戻る</a>
     </div>
 
-    <div class="form-group">
-        <label>スラッグ</label>
-        <input type="text" name="slug" value="<?php echo htmlspecialchars($post['slug'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-    </div>
+    <?php if (!empty($error)): ?>
+        <p class="error-message"><?= e($error) ?></p>
+    <?php endif; ?>
 
-    <div class="form-group">
-        <label>本文</label>
-        <textarea name="content"><?php echo htmlspecialchars($post['content'] ?? '', ENT_QUOTES, 'UTF-8'); ?></textarea>
-    </div>
+    <form action="<?= e($action) ?>" method="post" class="post-form">
+        <div class="form-group">
+            <label for="title">タイトル</label>
+            <input type="text" id="title" name="title" value="<?= e($postTitle) ?>" required>
+        </div>
 
-    <div class="form-group">
-        <label>状態</label>
-        <select name="status">
-            <option value="draft" <?php echo (($post['status'] ?? '') === 'draft') ? 'selected' : ''; ?>>下書き</option>
-            <option value="published" <?php echo (($post['status'] ?? '') === 'published') ? 'selected' : ''; ?>>公開</option>
-        </select>
-    </div>
+        <div class="form-group">
+            <label for="slug">スラッグ</label>
+            <input type="text" id="slug" name="slug" value="<?= e($slug) ?>" required>
+        </div>
 
-    <button type="submit">保存</button>
-</form>
+        <div class="form-group">
+            <label for="content">本文</label>
+            <textarea id="content" name="content" rows="12" required><?= e($content) ?></textarea>
+        </div>
 
-</main>
-</div>
-</body>
-</html>
+        <div class="form-group">
+            <label for="status">公開状態</label>
+            <select id="status" name="status">
+                <option value="draft" <?= $status === 'draft' ? 'selected' : '' ?>>下書き</option>
+                <option value="published" <?= $status === 'published' ? 'selected' : '' ?>>公開</option>
+            </select>
+        </div>
+
+        <button type="submit">保存</button>
+    </form>
+</section>

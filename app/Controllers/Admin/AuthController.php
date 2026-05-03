@@ -11,7 +11,7 @@ class AuthController extends Controller
     public function login(): void
     {
         if (Auth::check()) {
-            $this->redirect('/admin');
+            redirect_to('admin');
         }
 
         $this->view('admin/login');
@@ -47,13 +47,13 @@ class AuthController extends Controller
 
         Auth::login($user);
 
-        $this->redirect('/admin');
+        redirect_to('admin');
     }
 
     public function logout(): void
     {
         Auth::logout();
 
-        $this->redirect('/admin/login');
+        redirect_to('admin/login');
     }
 }
