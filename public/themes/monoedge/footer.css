@@ -1,0 +1,20 @@
+/* MonoEdge Theme - フッター */
+
+.site-footer {
+    margin-top: 64px;
+    background: #0f172a;
+    border-top: 1px solid #1f2937;
+}
+
+.site-footer-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 24px;
+    color: #cbd5e1;
+    font-size: 13px;
+    text-align: center;
+}
+
+.site-footer p {
+    margin: 0;
+}

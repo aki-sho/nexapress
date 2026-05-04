@@ -1,0 +1,1 @@
+console.log('NexaPress v1.0.0');

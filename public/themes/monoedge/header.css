@@ -1,0 +1,47 @@
+/* MonoEdge Theme - ヘッダー */
+
+.site-header {
+    background: #0f172a;
+    color: #ffffff;
+    border-bottom: 1px solid #1f2937;
+}
+
+.site-header-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 34px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+}
+
+.site-title {
+    margin: 0;
+    font-size: 32px;
+    letter-spacing: 0.03em;
+}
+
+.site-title a {
+    color: #ffffff;
+}
+
+.site-description {
+    margin: 8px 0 0;
+    color: #cbd5e1;
+    font-size: 14px;
+}
+
+.site-nav {
+    display: flex;
+    gap: 18px;
+}
+
+.site-nav a {
+    color: #e5e7eb;
+    font-size: 14px;
+}
+
+.site-nav a:hover {
+    color: #ffffff;
+}

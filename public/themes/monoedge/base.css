@@ -1,0 +1,18 @@
+/* MonoEdge Theme - 基本設定 */
+
+body {
+    margin: 0;
+    background: #f4f4f5;
+    color: #111827;
+    font-family: Arial, "Yu Gothic", "Meiryo", sans-serif;
+    line-height: 1.8;
+}
+
+a {
+    color: #111827;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #2563eb;
+}

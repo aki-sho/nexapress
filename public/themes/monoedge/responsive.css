@@ -1,0 +1,31 @@
+/* MonoEdge Theme - レスポンシブ対応 */
+
+@media (max-width: 700px) {
+    .site-header-inner {
+        display: block;
+        padding: 28px 18px;
+    }
+
+    .site-nav {
+        margin-top: 18px;
+        flex-wrap: wrap;
+    }
+
+    .site-main {
+        margin: 32px auto;
+        padding: 0 18px;
+    }
+
+    .post-card,
+    .post-detail {
+        padding: 24px;
+    }
+
+    .site-title {
+        font-size: 26px;
+    }
+
+    .post-detail h1 {
+        font-size: 26px;
+    }
+}

@@ -1,0 +1,22 @@
+/* default テーマの本文レイアウト */
+.site-main {
+    padding: 40px 16px;
+}
+
+.container {
+    max-width: 960px;
+    margin: 32px auto;
+    padding: 0 16px;
+}
+
+.card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.site-main .container {
+    margin-top: 0;
+}

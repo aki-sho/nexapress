@@ -1,0 +1,22 @@
+/* MonoEdge Theme - 本文レイアウト */
+
+.site-main {
+    max-width: 1080px;
+    min-height: 64vh;
+    margin: 48px auto;
+    padding: 0 24px;
+}
+
+.page-title {
+    margin: 0 0 28px;
+    font-size: 30px;
+    letter-spacing: 0.04em;
+}
+
+.empty-message {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 30px;
+    color: #6b7280;
+}

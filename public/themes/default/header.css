@@ -1,0 +1,27 @@
+/* default テーマの公開サイト用ヘッダー */
+.site-header {
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+}
+
+.site-header-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.site-logo {
+    margin: 0;
+    font-size: 24px;
+}
+
+.site-logo a {
+    color: #111827;
+}
+
+.site-nav a {
+    margin-left: 16px;
+}

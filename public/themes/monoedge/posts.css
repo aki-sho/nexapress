@@ -1,0 +1,60 @@
+/* MonoEdge Theme - 投稿一覧・投稿詳細 */
+
+.post-list {
+    display: grid;
+    gap: 24px;
+}
+
+.post-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-left: 6px solid #111827;
+    border-radius: 14px;
+    padding: 30px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.post-card h2 {
+    margin: 0 0 10px;
+    font-size: 25px;
+}
+
+.post-card h2 a {
+    color: #111827;
+}
+
+.post-card h2 a:hover {
+    color: #2563eb;
+}
+
+.post-date,
+.post-meta {
+    margin: 0 0 14px;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.post-excerpt {
+    margin: 0;
+    color: #374151;
+}
+
+.post-detail {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-top: 8px solid #111827;
+    border-radius: 14px;
+    padding: 40px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.post-detail h1 {
+    margin: 0 0 10px;
+    font-size: 34px;
+    letter-spacing: 0.03em;
+}
+
+.post-content {
+    margin-top: 28px;
+    color: #1f2937;
+}

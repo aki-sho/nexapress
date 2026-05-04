@@ -1,0 +1,93 @@
+/* 全体共通の基本設定 */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    color: #222;
+    background: #f5f5f5;
+}
+
+/* 共通リンク */
+a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* フォーム部品 */
+.form-group {
+    margin-bottom: 16px;
+}
+
+label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: bold;
+}
+
+input,
+textarea,
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 15px;
+}
+
+textarea {
+    min-height: 220px;
+}
+
+/* 共通ボタン */
+button,
+.btn,
+.button {
+    display: inline-block;
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 6px;
+    background: #2563eb;
+    color: #fff;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+button:hover,
+.btn:hover,
+.button:hover {
+    background: #1d4ed8;
+    text-decoration: none;
+}
+
+.btn-danger,
+.button.danger {
+    background: #dc2626;
+    color: #fff;
+}
+
+.btn-danger:hover,
+.button.danger:hover {
+    background: #b91c1c;
+}
+
+.button.small {
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+/* エラーメッセージ */
+.error-message {
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #fee2e2;
+    color: #991b1b;
+    font-size: 14px;
+}
