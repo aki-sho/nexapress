@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title><?= e($title ?? '管理画面') ?></title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>">
+    <link rel="stylesheet" href="<?= public_url('assets/css/style.css') ?>">
     
 </head>
 <body>
@@ -17,6 +17,11 @@
             <a href="<?= url('admin/posts') ?>">投稿一覧</a>
             <a href="<?= url('admin/posts/create') ?>">新規追加</a>
             <a href="<?= url('admin/themes') ?>">テーマ設定</a>
+            <div class="sidebar-group">
+                <div class="sidebar-group-title">設定</div>
+                <a href="<?= url('admin/settings/url') ?>">URL設定</a>
+                <a href="<?= url('admin/settings/debug') ?>">デバッグ設定</a>
+            </div>
             <a href="<?= url('') ?>" target="_blank">サイトを見る</a>
             <a href="<?= url('admin/logout') ?>">ログアウト</a>
         </nav>

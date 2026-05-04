@@ -2,7 +2,7 @@
 
 function url(string $path = ''): string
 {
-    $base = defined('BASE_URL') ? BASE_URL : '';
+    $base = base_url();
 
     $path = trim($path, '/');
 
@@ -11,6 +11,65 @@ function url(string $path = ''): string
     }
 
     return $base . '/' . $path;
+}
+
+function public_url(string $path = ''): string
+{
+    $base = base_url();
+
+    if (!str_ends_with($base, '/public')) {
+        $base .= '/public';
+    }
+
+    $path = trim($path, '/');
+
+    if ($path === '') {
+        return $base . '/';
+    }
+
+    return $base . '/' . $path;
+}
+
+function base_url(): string
+{
+    $base = defined('BASE_URL') ? BASE_URL : '';
+
+    $configPath = defined('BASE_PATH') ? BASE_PATH . '/config/url.php' : '';
+
+    if ($configPath && file_exists($configPath)) {
+        $config = require $configPath;
+        $mode = $config['site_url_mode'] ?? 'public';
+
+        if ($mode === 'root') {
+            return preg_replace('#/public$#', '', $base);
+        }
+    }
+
+    return rtrim($base, '/');
+}
+
+function post_url(array $post): string
+{
+    $configPath = defined('BASE_PATH') ? BASE_PATH . '/config/url.php' : '';
+    $type = 'post_slug';
+
+    if ($configPath && file_exists($configPath)) {
+        $config = require $configPath;
+        $type = $config['post_url_type'] ?? 'post_slug';
+    }
+
+    $slug = $post['slug'] ?? '';
+
+    if ($type === 'slug') {
+        return url($slug);
+    }
+
+    if ($type === 'category_slug') {
+        $category = $post['category_slug'] ?? 'post';
+        return url($category . '/' . $slug);
+    }
+
+    return url('post/' . $slug);
 }
 
 function redirect_to(string $path): void
@@ -26,7 +85,7 @@ function e(?string $value): string
 
 function nexapress_admin_header(): void
 {
-    // 未ログインなら、管理者用ヘッダーは出さない
+    // ログイン中の管理者だけに、本体側の管理者用ヘッダーを表示する
     if (empty($_SESSION['user'])) {
         return;
     }

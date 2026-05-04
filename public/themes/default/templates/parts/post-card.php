@@ -1,6 +1,6 @@
 <article class="post-card">
     <h2>
-        <a href="<?= url('post/' . ($post['slug'] ?? '')) ?>">
+        <a href="<?= post_url($post) ?>">
             <?= e($post['title'] ?? '') ?>
         </a>
     </h2>

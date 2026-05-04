@@ -38,10 +38,24 @@ class Router
 
             if (preg_match($pattern, $uri, $matches)) {
                 array_shift($matches);
+
+                Debug::log('Route matched', [
+                    'method' => $method,
+                    'uri' => $uri,
+                    'route' => $path,
+                    'action' => $action,
+                    'params' => $matches,
+                ]);
+
                 $this->runAction($action, $matches);
                 return;
             }
         }
+
+        Debug::log('Route not found', [
+            'method' => $method,
+            'uri' => $uri,
+        ]);
 
         http_response_code(404);
         echo '404 Not Found';

@@ -10,6 +10,21 @@ class PostController extends Controller
 {
     public function show(string $slug): void
     {
+        $this->showPost($slug);
+    }
+
+    public function showPlain(string $slug): void
+    {
+        $this->showPost($slug);
+    }
+
+    public function showByCategory(string $category, string $slug): void
+    {
+        $this->showPost($slug);
+    }
+
+    private function showPost(string $slug): void
+    {
         if (!Installer::isInstalled()) {
             $this->redirect('/install');
         }

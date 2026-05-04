@@ -29,6 +29,23 @@
     text-decoration: none;
 }
 
+.sidebar-group {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.sidebar-group-title {
+    margin-bottom: 6px;
+    color: #9ca3af;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.sidebar-group a {
+    padding-left: 10px;
+}
+
 .main {
     flex: 1;
     padding: 32px;

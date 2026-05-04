@@ -1,5 +1,5 @@
 <?php
 
 return [
-    'active_theme' => 'default',
+    'active_theme' => 'monoedge',
 ];

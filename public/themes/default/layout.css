@@ -1,22 +1,22 @@
 /* default テーマの本文レイアウト */
+
 .site-main {
-    padding: 40px 16px;
+    max-width: 1080px;
+    min-height: 64vh;
+    margin: 48px auto;
+    padding: 0 24px;
 }
 
-.container {
-    max-width: 960px;
-    margin: 32px auto;
-    padding: 0 16px;
+.page-title {
+    margin: 0 0 28px;
+    font-size: 30px;
+    letter-spacing: 0.04em;
 }
 
-.card {
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 16px;
-}
-
-.site-main .container {
-    margin-top: 0;
+.empty-message {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 30px;
+    color: #6b7280;
 }

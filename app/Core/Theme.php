@@ -137,12 +137,6 @@ class Theme
         // 余計な / を削る
         $name = trim($name, '/');
 
-        // header パーツは、NexaPress 本体側で出力可否を制御する
-        // テーマ側にログイン判定を書かせないため、ここで header の読み込みを止める
-        if ($name === 'header' && !self::isLoggedIn()) {
-            return null;
-        }
-
         // 現在有効なテーマを取得する
         $theme = self::active();
 
@@ -156,18 +150,6 @@ class Theme
 
         // 見つからない場合は null を返す
         return null;
-    }
-
-    private static function isLoggedIn(): bool
-    {
-        // Auth クラスに check() がある場合は、それを使ってログイン状態を判定する
-        if (class_exists(Auth::class) && method_exists(Auth::class, 'check')) {
-            return Auth::check();
-        }
-
-        // Auth::check() がない場合の保険
-        // セッションに user_id があればログイン中と判断する
-        return !empty($_SESSION['user_id']);
     }
 
     private static function sanitize(string $theme): string
