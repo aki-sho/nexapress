@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title><?= e($title ?? 'NexaPress') ?></title>
-    <link rel="stylesheet" href="<?= url('assets/css/style.css') ?>">
-    <link rel="stylesheet" href="<?= url('themes/' . \app\Core\Theme::active() . '/style.css') ?>">
+    <link rel="stylesheet" href="<?= public_url('assets/css/style.css') ?>">
+    <link rel="stylesheet" href="<?= public_url('themes/' . \app\Core\Theme::active() . '/style.css') ?>">
 </head>
 <body>
 
@@ -29,8 +29,10 @@
 </header>
 <?php endif; ?>
 
-<main class="site-main">
-    <?= $content ?? '' ?>
+<main class="install-layout">
+    <div class="install-container">
+        <?= $content ?? '' ?>
+    </div>
 </main>
 
 <?php if (empty($hideFooter)): ?>

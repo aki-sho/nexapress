@@ -1,6 +1,5 @@
 <?php
 $title = 'CMS インストール';
-$hideHeader = true;
 ?>
 
 <div class="container">

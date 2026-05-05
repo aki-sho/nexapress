@@ -62,3 +62,37 @@
     color: #2563eb;
     font-size: 14px;
 }
+
+/* インストール画面 */
+.install-layout {
+    padding: 48px 16px;
+}
+
+.install-layout .container {
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+.install-layout .card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 32px;
+}
+
+.install-layout h1 {
+    margin-top: 0;
+    margin-bottom: 24px;
+}
+
+.install-layout h2 {
+    margin-top: 32px;
+    margin-bottom: 16px;
+}
+
+.install-layout small {
+    display: block;
+    margin-top: 6px;
+    color: #666;
+    font-size: 13px;
+}
