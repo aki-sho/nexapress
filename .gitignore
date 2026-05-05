@@ -30,3 +30,5 @@ public/uploads/*
 # Dependencies
 vendor/
 node_modules/
+
+storage/logs/debug.log
