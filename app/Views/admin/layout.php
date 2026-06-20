@@ -16,6 +16,7 @@
             <a href="<?= url('admin') ?>">ダッシュボード</a>
             <a href="<?= url('admin/posts') ?>">投稿一覧</a>
             <a href="<?= url('admin/posts/create') ?>">新規追加</a>
+            <a href="<?= url('admin/categories') ?>">カテゴリ</a>
             <a href="<?= url('admin/themes') ?>">テーマ設定</a>
             <div class="sidebar-group">
                 <div class="sidebar-group-title">設定</div>

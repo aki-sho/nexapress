@@ -40,6 +40,16 @@ class Installer
             ");
 
             $pdo->exec("
+                CREATE TABLE IF NOT EXISTS categories (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    slug VARCHAR(255) NOT NULL UNIQUE,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NULL
+                )
+            ");
+
+            $pdo->exec("
                 CREATE TABLE IF NOT EXISTS posts (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     title VARCHAR(255) NOT NULL,
@@ -47,6 +57,7 @@ class Installer
                     content TEXT NOT NULL,
                     status VARCHAR(20) NOT NULL DEFAULT 'draft',
                     user_id INT NOT NULL,
+                    category_id INT NULL,
                     published_at DATETIME NULL,
                     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME NULL,

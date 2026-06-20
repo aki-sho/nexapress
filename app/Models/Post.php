@@ -11,9 +11,10 @@ class Post
         $pdo = Database::connect();
 
         $stmt = $pdo->query("
-            SELECT posts.*, users.name AS author_name
+            SELECT posts.*, users.name AS author_name, categories.name AS category_name
             FROM posts
             LEFT JOIN users ON posts.user_id = users.id
+            LEFT JOIN categories ON posts.category_id = categories.id
             ORDER BY posts.created_at DESC
         ");
 
@@ -25,10 +26,11 @@ class Post
         $pdo = Database::connect();
 
         $stmt = $pdo->query("
-            SELECT *
+            SELECT posts.*, categories.name AS category_name, categories.slug AS category_slug
             FROM posts
-            WHERE status = 'published'
-            ORDER BY published_at DESC
+            LEFT JOIN categories ON posts.category_id = categories.id
+            WHERE posts.status = 'published'
+            ORDER BY posts.published_at DESC
         ");
 
         return $stmt->fetchAll();
@@ -53,10 +55,11 @@ class Post
         $pdo = Database::connect();
 
         $stmt = $pdo->prepare("
-            SELECT *
+            SELECT posts.*, categories.name AS category_name, categories.slug AS category_slug
             FROM posts
-            WHERE slug = :slug
-            AND status = 'published'
+            LEFT JOIN categories ON posts.category_id = categories.id
+            WHERE posts.slug = :slug
+            AND posts.status = 'published'
             LIMIT 1
         ");
 
@@ -76,8 +79,8 @@ class Post
         $publishedAt = $data['status'] === 'published' ? date('Y-m-d H:i:s') : null;
 
         $stmt = $pdo->prepare("
-            INSERT INTO posts (title, slug, content, status, user_id, published_at)
-            VALUES (:title, :slug, :content, :status, :user_id, :published_at)
+            INSERT INTO posts (title, slug, content, status, user_id, category_id, published_at)
+            VALUES (:title, :slug, :content, :status, :user_id, :category_id, :published_at)
         ");
 
         $stmt->execute([
@@ -86,6 +89,7 @@ class Post
             ':content' => $data['content'],
             ':status' => $data['status'],
             ':user_id' => $data['user_id'],
+            ':category_id' => $data['category_id'],
             ':published_at' => $publishedAt,
         ]);
     }
@@ -112,6 +116,7 @@ class Post
                 slug = :slug,
                 content = :content,
                 status = :status,
+                category_id = :category_id,
                 published_at = :published_at,
                 updated_at = NOW()
             WHERE id = :id
@@ -122,6 +127,7 @@ class Post
             ':slug' => $data['slug'],
             ':content' => $data['content'],
             ':status' => $data['status'],
+            ':category_id' => $data['category_id'],
             ':published_at' => $publishedAt,
             ':id' => $id,
         ]);

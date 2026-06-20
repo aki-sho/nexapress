@@ -5,6 +5,7 @@ namespace app\Controllers\Admin;
 use app\Core\Auth;
 use app\Core\Controller;
 use app\Models\Post;
+use app\Models\Category;
 
 class PostController extends Controller
 {
@@ -23,8 +24,11 @@ class PostController extends Controller
     {
         Auth::requireLogin();
 
+        $categories = Category::all();
+
         $this->view('admin/post-form', [
             'post' => null,
+            'categories' => $categories,
             'action' => url('admin/posts/store'),
         ]);
     }
@@ -39,10 +43,14 @@ class PostController extends Controller
         $slug = trim($_POST['slug'] ?? '');
         $content = trim($_POST['content'] ?? '');
         $status = $_POST['status'] ?? 'draft';
+        $categoryId = $_POST['category_id'] ?? null;
+        $categoryId = $categoryId !== '' ? (int)$categoryId : null;
 
         if ($title === '' || $slug === '' || $content === '') {
+            $categories = Category::all();
             $this->view('admin/post-form', [
                 'post' => $_POST,
+                'categories' => $categories,
                 'action' => url('admin/posts/store'),
                 'error' => '未入力の項目があります。',
             ]);
@@ -55,6 +63,7 @@ class PostController extends Controller
             'content' => $content,
             'status' => $status,
             'user_id' => $user['id'],
+            'category_id' => $categoryId,
         ]);
 
         redirect_to('admin/posts');
@@ -71,8 +80,11 @@ class PostController extends Controller
             return;
         }
 
+        $categories = Category::all();
+
         $this->view('admin/post-form', [
             'post' => $post,
+            'categories' => $categories,
             'action' => url('admin/posts/update/' . $id),
         ]);
     }
@@ -85,10 +97,15 @@ class PostController extends Controller
         $slug = trim($_POST['slug'] ?? '');
         $content = trim($_POST['content'] ?? '');
         $status = $_POST['status'] ?? 'draft';
+        $categoryId = $_POST['category_id'] ?? null;
+        $categoryId = $categoryId !== '' ? (int)$categoryId : null;
 
         if ($title === '' || $slug === '' || $content === '') {
+            $categories = Category::all();
+
             $this->view('admin/post-form', [
                 'post' => array_merge($_POST, ['id' => $id]),
+                'categories' => $categories,
                 'action' => url('admin/posts/update/' . $id),
                 'error' => '未入力の項目があります。',
             ]);
@@ -100,6 +117,7 @@ class PostController extends Controller
             'slug' => $slug,
             'content' => $content,
             'status' => $status,
+            'category_id' => $categoryId,
         ]);
 
         redirect_to('admin/posts');

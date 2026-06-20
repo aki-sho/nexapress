@@ -85,6 +85,13 @@ $router->post('/admin/posts/update/{id}', 'app\Controllers\Admin\PostController@
 $router->post('/admin/posts/delete/{id}', 'app\Controllers\Admin\PostController@delete');
 $router->post('/admin/posts/status/{id}', 'app\Controllers\Admin\PostController@status');
 
+// カテゴリ管理
+$router->get('/admin/categories', 'app\Controllers\Admin\CategoryController@index');
+$router->post('/admin/categories/store', 'app\Controllers\Admin\CategoryController@store');
+$router->get('/admin/categories/edit/{id}', 'app\Controllers\Admin\CategoryController@edit');
+$router->post('/admin/categories/update/{id}', 'app\Controllers\Admin\CategoryController@update');
+$router->post('/admin/categories/delete/{id}', 'app\Controllers\Admin\CategoryController@delete');
+
 // テーマ管理
 $router->get('/admin/themes', 'app\Controllers\Admin\ThemeController@index');
 $router->post('/admin/themes/update', 'app\Controllers\Admin\ThemeController@update');

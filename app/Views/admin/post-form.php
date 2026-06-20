@@ -3,6 +3,7 @@ $title = empty($post['id']) ? '新規投稿' : '投稿編集';
 
 $postTitle = $post['title'] ?? '';
 $slug = $post['slug'] ?? '';
+$categoryId = $post['category_id'] ?? '';
 $content = $post['content'] ?? '';
 $status = $post['status'] ?? 'draft';
 ?>
@@ -26,6 +27,20 @@ $status = $post['status'] ?? 'draft';
         <div class="form-group">
             <label for="slug">スラッグ</label>
             <input type="text" id="slug" name="slug" value="<?= e($slug) ?>" required>
+        </div>
+
+
+        <div class="form-group">
+            <label for="category_id">カテゴリ</label>
+            <select id="category_id" name="category_id">
+                <option value="">未分類</option>
+
+                <?php foreach ($categories ?? [] as $category): ?>
+                    <option value="<?= e($category['id']) ?>" <?= (string)$categoryId === (string)$category['id'] ? 'selected' : '' ?>>
+                        <?= e($category['name']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
         </div>
 
         <div class="form-group">
