@@ -31,4 +31,5 @@ public/uploads/*
 vendor/
 node_modules/
 
-storage/logs/debug.log
+*.zip
+release-*
