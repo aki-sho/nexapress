@@ -77,55 +77,6 @@
     font-weight: bold;
 }
 
-/* ログイン中の管理者だけに表示する公開サイト上部の管理バー */
-.admin-preview-header {
-    background: #0f172a;
-    color: #ffffff;
-    border-bottom: 1px solid #1f2937;
-}
-
-.admin-preview-header-inner {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 12px 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 24px;
-}
-
-.admin-preview-brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.admin-preview-brand a {
-    color: #ffffff;
-    font-weight: bold;
-    text-decoration: none;
-}
-
-.admin-preview-brand span {
-    color: #cbd5e1;
-    font-size: 13px;
-}
-
-.admin-preview-nav {
-    display: flex;
-    gap: 16px;
-}
-
-.admin-preview-nav a {
-    color: #e5e7eb;
-    font-size: 14px;
-    text-decoration: none;
-}
-
-.admin-preview-nav a:hover {
-    color: #ffffff;
-}
-
 /* 投稿一覧などの操作ボタン配置 */
 .table-actions {
     display: flex;

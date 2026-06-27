@@ -80,6 +80,24 @@ class Installer
                 )
             ");
 
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS media (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    title VARCHAR(255) NOT NULL,
+                    description TEXT NULL,
+                    original_name VARCHAR(255) NOT NULL,
+                    file_name VARCHAR(255) NOT NULL,
+                    file_path VARCHAR(500) NOT NULL,
+                    mime_type VARCHAR(100) NOT NULL,
+                    file_size BIGINT NOT NULL,
+                    file_type VARCHAR(50) NOT NULL,
+                    user_id INT NOT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            ");
+
             $passwordHash = password_hash($data['admin_password'], PASSWORD_DEFAULT);
 
             $stmt = $pdo->prepare("

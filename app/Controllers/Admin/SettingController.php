@@ -7,6 +7,62 @@ use app\Core\Controller;
 
 class SettingController extends Controller
 {
+
+    public function general(): void
+    {
+        Auth::requireLogin();
+
+        $config = $this->loadGeneralConfig();
+
+        $this->view('admin/settings-general', [
+            'config' => $config,
+        ]);
+    }
+
+    public function updateGeneral(): void
+    {
+        Auth::requireLogin();
+
+        $siteTitle = trim($_POST['site_title'] ?? 'My CMS');
+        $timezone = trim($_POST['timezone'] ?? 'Asia/Tokyo');
+        $siteIcon = trim($_POST['site_icon'] ?? '');
+
+        if ($siteTitle === '') {
+            $siteTitle = 'My CMS';
+        }
+
+        if ($timezone === '') {
+            $timezone = 'Asia/Tokyo';
+        }
+
+        $configPath = BASE_PATH . '/config/general.php';
+
+        $content = "<?php\n\nreturn [\n";
+        $content .= "    'site_title' => '" . addslashes($siteTitle) . "',\n";
+        $content .= "    'timezone' => '" . addslashes($timezone) . "',\n";
+        $content .= "    'site_icon' => '" . addslashes($siteIcon) . "',\n";
+        $content .= "];\n";
+
+        file_put_contents($configPath, $content);
+
+        redirect_to('admin/settings/general');
+    }
+
+    private function loadGeneralConfig(): array
+    {
+        $configPath = BASE_PATH . '/config/general.php';
+
+        if (!file_exists($configPath)) {
+            return [
+                'site_title' => 'My CMS',
+                'timezone' => 'Asia/Tokyo',
+                'site_icon' => '',
+            ];
+        }
+
+        return require $configPath;
+    }
+
     public function url(): void
     {
         Auth::requireLogin();

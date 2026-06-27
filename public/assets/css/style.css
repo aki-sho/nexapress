@@ -1,3 +1,14 @@
+/* 全体共通CSS */
 @import url("./base.css");
+
+/* 管理画面共通CSS */
 @import url("./admin.css");
+
+/* 管理画面：メディア管理専用CSS */
+@import url("./admin-media.css");
+
+/* 公開サイト上部の管理者プレビュー用CSS */
+@import url("./admin-preview.css");
+
+/* ログイン画面・インストール画面用CSS */
 @import url("./login.css");

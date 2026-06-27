@@ -7,6 +7,15 @@ define('BASE_PATH', dirname(__DIR__));
 
 require_once BASE_PATH . '/app/Core/helpers.php';
 
+$generalConfigPath = BASE_PATH . '/config/general.php';
+
+if (file_exists($generalConfigPath)) {
+    $generalConfig = require $generalConfigPath;
+    date_default_timezone_set($generalConfig['timezone'] ?? 'Asia/Tokyo');
+} else {
+    date_default_timezone_set('Asia/Tokyo');
+}
+
 // 現在の入口URLを取得
 // /public ありの場合は /nexapress-1.1.0/public
 // /public なしの場合は /nexapress-1.1.0
@@ -105,9 +114,19 @@ $router->post('/admin/pages/status/{id}', 'app\Controllers\Admin\PageController@
 $router->get('/admin/themes', 'app\Controllers\Admin\ThemeController@index');
 $router->post('/admin/themes/update', 'app\Controllers\Admin\ThemeController@update');
 
+// メディア管理
+$router->get('/admin/media', 'app\Controllers\Admin\MediaController@index');
+$router->post('/admin/media/upload', 'app\Controllers\Admin\MediaController@upload');
+$router->post('/admin/media/update/{id}', 'app\Controllers\Admin\MediaController@update');
+$router->post('/admin/media/delete/{id}', 'app\Controllers\Admin\MediaController@delete');
+
 // 設定
+$router->get('/admin/settings/general', 'app\Controllers\Admin\SettingController@general');
+$router->post('/admin/settings/general/update', 'app\Controllers\Admin\SettingController@updateGeneral');
+
 $router->get('/admin/settings/url', 'app\Controllers\Admin\SettingController@url');
 $router->post('/admin/settings/url/update', 'app\Controllers\Admin\SettingController@updateUrl');
+
 $router->get('/admin/settings/debug', 'app\Controllers\Admin\SettingController@debug');
 $router->post('/admin/settings/debug/update', 'app\Controllers\Admin\SettingController@updateDebug');
 

@@ -91,6 +91,34 @@ function page_url(array $page): string
     return url('page/' . $slug);
 }
 
+function general_config(): array
+{
+    $configPath = defined('BASE_PATH') ? BASE_PATH . '/config/general.php' : '';
+
+    if ($configPath && file_exists($configPath)) {
+        return require $configPath;
+    }
+
+    return [
+        'site_title' => 'My CMS',
+        'timezone' => 'Asia/Tokyo',
+        'site_icon' => '',
+    ];
+}
+
+function site_title(): string
+{
+    $config = general_config();
+
+    return $config['site_title'] ?? 'My CMS';
+}
+
+function site_icon(): string
+{
+    $config = general_config();
+
+    return $config['site_icon'] ?? '';
+}
 
 function redirect_to(string $path): void
 {

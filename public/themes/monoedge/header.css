@@ -45,3 +45,25 @@
 .site-nav a:hover {
     color: #ffffff;
 }
+
+.site-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.site-title {
+    margin: 0;
+    font-size: 24px;
+}
+
+.site-title a {
+    color: #111827;
+}
+
+.site-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    display: block;
+}

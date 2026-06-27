@@ -1,4 +1,4 @@
-<?php $title = 'トップページ'; ?>
+<?php $title = site_title(); ?>
 
 <h1 class="page-title">記事一覧</h1>
 

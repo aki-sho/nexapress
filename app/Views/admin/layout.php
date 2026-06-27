@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title><?= e($title ?? '管理画面') ?></title>
+    <title><?= e(($title ?? '管理画面') . ' - ' . site_title()) ?></title>
     <link rel="stylesheet" href="<?= public_url('assets/css/style.css') ?>">
     
 </head>
@@ -10,17 +10,19 @@
 
 <div class="admin-layout">
     <aside class="sidebar">
-        <h2>My CMS</h2>
+        <h2><?= e(site_title()) ?></h2>
 
         <nav>
             <a href="<?= url('admin') ?>">ダッシュボード</a>
             <a href="<?= url('admin/posts') ?>">投稿一覧</a>
             <a href="<?= url('admin/posts/create') ?>">新規追加</a>
             <a href="<?= url('admin/categories') ?>">カテゴリ</a>
+            <a href="<?= url('admin/media') ?>">メディア</a>
             <a href="<?= url('admin/themes') ?>">テーマ設定</a>
             <a href="<?= url('admin/pages') ?>">固定ページ</a>
             <div class="sidebar-group">
                 <div class="sidebar-group-title">設定</div>
+                <a href="<?= url('admin/settings/general') ?>">一般設定</a>
                 <a href="<?= url('admin/settings/url') ?>">URL設定</a>
                 <a href="<?= url('admin/settings/debug') ?>">デバッグ設定</a>
             </div>
