@@ -92,6 +92,15 @@ $router->get('/admin/categories/edit/{id}', 'app\Controllers\Admin\CategoryContr
 $router->post('/admin/categories/update/{id}', 'app\Controllers\Admin\CategoryController@update');
 $router->post('/admin/categories/delete/{id}', 'app\Controllers\Admin\CategoryController@delete');
 
+// 固定ページ管理
+$router->get('/admin/pages', 'app\Controllers\Admin\PageController@index');
+$router->get('/admin/pages/create', 'app\Controllers\Admin\PageController@create');
+$router->post('/admin/pages/store', 'app\Controllers\Admin\PageController@store');
+$router->get('/admin/pages/edit/{id}', 'app\Controllers\Admin\PageController@edit');
+$router->post('/admin/pages/update/{id}', 'app\Controllers\Admin\PageController@update');
+$router->post('/admin/pages/delete/{id}', 'app\Controllers\Admin\PageController@delete');
+$router->post('/admin/pages/status/{id}', 'app\Controllers\Admin\PageController@status');
+
 // テーマ管理
 $router->get('/admin/themes', 'app\Controllers\Admin\ThemeController@index');
 $router->post('/admin/themes/update', 'app\Controllers\Admin\ThemeController@update');
@@ -101,6 +110,9 @@ $router->get('/admin/settings/url', 'app\Controllers\Admin\SettingController@url
 $router->post('/admin/settings/url/update', 'app\Controllers\Admin\SettingController@updateUrl');
 $router->get('/admin/settings/debug', 'app\Controllers\Admin\SettingController@debug');
 $router->post('/admin/settings/debug/update', 'app\Controllers\Admin\SettingController@updateDebug');
+
+// 固定ページ表示
+$router->get('/page/{slug}', 'app\Controllers\PageController@show');
 
 // 投稿URL設定用
 // 固定URLとぶつからないように、必ず最後に置く

@@ -24,6 +24,7 @@ class SettingController extends Controller
 
         $siteUrlMode = $_POST['site_url_mode'] ?? 'public';
         $postUrlType = $_POST['post_url_type'] ?? 'post_slug';
+        $pageUrlType = $_POST['page_url_type'] ?? 'page_slug';
 
         if (!in_array($siteUrlMode, ['public', 'root'], true)) {
             $siteUrlMode = 'public';
@@ -33,11 +34,16 @@ class SettingController extends Controller
             $postUrlType = 'post_slug';
         }
 
+        if (!in_array($pageUrlType, ['page_slug', 'slug'], true)) {
+            $pageUrlType = 'page_slug';
+        }
+
         $configPath = BASE_PATH . '/config/url.php';
 
         $content = "<?php\n\nreturn [\n";
         $content .= "    'site_url_mode' => '" . $siteUrlMode . "',\n";
         $content .= "    'post_url_type' => '" . $postUrlType . "',\n";
+        $content .= "    'page_url_type' => '" . $pageUrlType . "',\n";
         $content .= "];\n";
 
         file_put_contents($configPath, $content);
@@ -53,6 +59,7 @@ class SettingController extends Controller
             return [
                 'site_url_mode' => 'public',
                 'post_url_type' => 'post_slug',
+                'page_url_type' => 'page_slug',
             ];
         }
 

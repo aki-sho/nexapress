@@ -72,6 +72,26 @@ function post_url(array $post): string
     return url('post/' . $slug);
 }
 
+function page_url(array $page): string
+{
+    $configPath = defined('BASE_PATH') ? BASE_PATH . '/config/url.php' : '';
+    $type = 'page_slug';
+
+    if ($configPath && file_exists($configPath)) {
+        $config = require $configPath;
+        $type = $config['page_url_type'] ?? 'page_slug';
+    }
+
+    $slug = $page['slug'] ?? '';
+
+    if ($type === 'slug') {
+        return url($slug);
+    }
+
+    return url('page/' . $slug);
+}
+
+
 function redirect_to(string $path): void
 {
     header('Location: ' . url($path));

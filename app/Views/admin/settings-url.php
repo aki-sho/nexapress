@@ -3,6 +3,7 @@ $title = 'URL設定';
 
 $siteUrlMode = $config['site_url_mode'] ?? 'public';
 $postUrlType = $config['post_url_type'] ?? 'post_slug';
+$pageUrlType = $config['page_url_type'] ?? 'page_slug';
 ?>
 
 <h1>URL設定</h1>
@@ -31,6 +32,18 @@ $postUrlType = $config['post_url_type'] ?? 'post_slug';
             </option>
             <option value="category_slug" <?= $postUrlType === 'category_slug' ? 'selected' : '' ?>>
                 /{category}/{slug}
+            </option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="page_url_type">固定ページURL形式</label>
+        <select id="page_url_type" name="page_url_type">
+            <option value="page_slug" <?= $pageUrlType === 'page_slug' ? 'selected' : '' ?>>
+                /page/{slug}
+            </option>
+            <option value="slug" <?= $pageUrlType === 'slug' ? 'selected' : '' ?>>
+                /{slug}
             </option>
         </select>
     </div>

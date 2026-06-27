@@ -5,6 +5,7 @@ namespace app\Controllers;
 use app\Core\Controller;
 use app\Core\Installer;
 use app\Models\Post;
+use app\Models\Page;
 
 class PostController extends Controller
 {
@@ -31,14 +32,34 @@ class PostController extends Controller
 
         $post = Post::findBySlug($slug);
 
-        if (!$post) {
-            http_response_code(404);
-            echo '記事が見つかりません。';
+        if ($post) {
+            $this->view('post-detail', [
+                'post' => $post,
+            ]);
             return;
         }
 
-        $this->view('post-detail', [
-            'post' => $post,
-        ]);
+        $configPath = BASE_PATH . '/config/url.php';
+        $pageUrlType = 'page_slug';
+
+        if (file_exists($configPath)) {
+            $config = require $configPath;
+            $pageUrlType = $config['page_url_type'] ?? 'page_slug';
+        }
+
+        if ($pageUrlType === 'slug') {
+            $page = Page::findBySlug($slug);
+
+            if ($page) {
+                $this->view('page-detail', [
+                    'page' => $page,
+                ]);
+                return;
+            }
+        }
+
+        http_response_code(404);
+        echo '記事が見つかりません。';
+        return;
     }
 }

@@ -65,6 +65,21 @@ class Installer
                 )
             ");
 
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS pages (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    title VARCHAR(255) NOT NULL,
+                    slug VARCHAR(255) NOT NULL UNIQUE,
+                    content TEXT NOT NULL,
+                    status VARCHAR(20) NOT NULL DEFAULT 'draft',
+                    user_id INT NOT NULL,
+                    published_at DATETIME NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            ");
+
             $passwordHash = password_hash($data['admin_password'], PASSWORD_DEFAULT);
 
             $stmt = $pdo->prepare("

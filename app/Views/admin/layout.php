@@ -18,6 +18,7 @@
             <a href="<?= url('admin/posts/create') ?>">新規追加</a>
             <a href="<?= url('admin/categories') ?>">カテゴリ</a>
             <a href="<?= url('admin/themes') ?>">テーマ設定</a>
+            <a href="<?= url('admin/pages') ?>">固定ページ</a>
             <div class="sidebar-group">
                 <div class="sidebar-group-title">設定</div>
                 <a href="<?= url('admin/settings/url') ?>">URL設定</a>
