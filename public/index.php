@@ -85,6 +85,37 @@ $router->get('/admin/logout', 'app\Controllers\Admin\AuthController@logout');
 // 管理画面トップ
 $router->get('/admin', 'app\Controllers\Admin\DashboardController@index');
 
+// 拡張機能
+$router->get(
+    '/admin/extensions',
+    'app\Controllers\Admin\ExtensionController@index'
+);
+
+$router->post(
+    '/admin/extensions/upload',
+    'app\Controllers\Admin\ExtensionController@upload'
+);
+
+$router->post(
+    '/admin/extensions/enable/{extensionKey}',
+    'app\Controllers\Admin\ExtensionController@enable'
+);
+
+$router->post(
+    '/admin/extensions/disable/{extensionKey}',
+    'app\Controllers\Admin\ExtensionController@disable'
+);
+
+$router->post(
+    '/admin/extensions/delete/{extensionKey}',
+    'app\Controllers\Admin\ExtensionController@delete'
+);
+
+$router->get(
+    '/admin/extensions/{extensionKey}/dashboard',
+    'app\Controllers\Admin\ExtensionController@dashboard'
+);
+
 // 投稿管理
 $router->get('/admin/posts', 'app\Controllers\Admin\PostController@index');
 $router->get('/admin/posts/create', 'app\Controllers\Admin\PostController@create');
@@ -132,6 +163,9 @@ $router->post('/admin/settings/debug/update', 'app\Controllers\Admin\SettingCont
 
 // 固定ページ表示
 $router->get('/page/{slug}', 'app\Controllers\PageController@show');
+
+// 有効な拡張機能を読み込む
+\app\Core\Extension::bootEnabled($router);
 
 // 投稿URL設定用
 // 固定URLとぶつからないように、必ず最後に置く

@@ -18,6 +18,33 @@
             <a href="<?= url('admin/posts/create') ?>">新規追加</a>
             <a href="<?= url('admin/categories') ?>">カテゴリ</a>
             <a href="<?= url('admin/media') ?>">メディア</a>
+
+            <?php $enabledExtensions = \app\Core\Extension::enabled(); ?>
+
+            <div class="sidebar-menu-item sidebar-menu-item-has-submenu">
+                <a href="<?= url('admin/extensions') ?>" class="sidebar-menu-link">
+                    拡張機能
+                </a>
+
+                <div class="sidebar-submenu">
+                    <a href="<?= url('admin/extensions') ?>">
+                        拡張機能一覧
+                    </a>
+
+                    <?php foreach ($enabledExtensions as $extension): ?>
+                        <?php if ($extension['has_dashboard']): ?>
+                            <a href="<?= url(
+                                'admin/extensions/' .
+                                rawurlencode($extension['key']) .
+                                '/dashboard'
+                            ) ?>">
+                                <?= e($extension['admin_menu_label']) ?>
+                            </a>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
             <a href="<?= url('admin/themes') ?>">テーマ設定</a>
             <a href="<?= url('admin/pages') ?>">固定ページ</a>
             <div class="sidebar-group">

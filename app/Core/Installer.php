@@ -98,6 +98,16 @@ class Installer
                 )
             ");
 
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS extension_settings (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    extension_key VARCHAR(100) NOT NULL UNIQUE,
+                    is_enabled TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NULL
+                )
+            ");
+
             $passwordHash = password_hash($data['admin_password'], PASSWORD_DEFAULT);
 
             $stmt = $pdo->prepare("

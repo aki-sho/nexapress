@@ -1,16 +1,39 @@
-/* 管理画面全体の2カラムレイアウト */
+/* ========================================
+   1. 管理画面の全体レイアウト
+======================================== */
+
 .admin-layout {
     display: flex;
     min-height: 100vh;
 }
 
 .sidebar {
+    position: relative;
+    flex-shrink: 0;
     width: 220px;
     min-height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow: visible;
     background: #111827;
     color: #fff;
-    padding: 20px;
 }
+
+.main {
+    flex: 1;
+    padding: 32px;
+    background: #f5f5f5;
+}
+
+.main h1 {
+    margin-top: 0;
+    margin-bottom: 24px;
+}
+
+
+/* ========================================
+   2. サイドバー・拡張機能サブメニュー
+======================================== */
 
 .sidebar h2 {
     margin: 0 0 28px;
@@ -20,8 +43,8 @@
 
 .sidebar a {
     display: block;
-    color: #fff;
     padding: 8px 0;
+    color: #fff;
 }
 
 .sidebar a:hover {
@@ -46,16 +69,51 @@
     padding-left: 10px;
 }
 
-.main {
-    flex: 1;
-    padding: 32px;
-    background: #f5f5f5;
+/* 拡張機能メニュー */
+.sidebar-menu-item {
+    position: relative;
 }
 
-.main h1 {
-    margin-top: 0;
-    margin-bottom: 24px;
+.sidebar-menu-link {
+    display: block;
 }
+
+/* 拡張機能の子メニュー */
+.sidebar-submenu {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 100%;
+    z-index: 1000;
+    min-width: 220px;
+    padding: 8px;
+    box-sizing: border-box;
+    background: #1f2937;
+    border-radius: 0 6px 6px 0;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar-menu-item-has-submenu:hover > .sidebar-submenu,
+.sidebar-menu-item-has-submenu:focus-within > .sidebar-submenu {
+    display: block;
+}
+
+.sidebar-submenu a {
+    padding: 10px 12px;
+    color: #fff;
+    white-space: nowrap;
+    border-radius: 4px;
+}
+
+.sidebar-submenu a:hover {
+    color: #fff;
+    background: #374151;
+}
+
+
+/* ========================================
+   3. メイン領域・管理テーブル
+======================================== */
 
 .admin-table {
     width: 100%;
@@ -66,10 +124,10 @@
 
 .admin-table th,
 .admin-table td {
-    border: 1px solid #ddd;
     padding: 12px 10px;
     text-align: left;
     vertical-align: middle;
+    border: 1px solid #ddd;
 }
 
 .admin-table th {
@@ -133,4 +191,9 @@
         margin-top: 10px;
         flex-wrap: wrap;
     }
+}
+/* 拡張機能一覧の操作ボタン */
+.admin-table td form {
+    display: inline-block;
+    margin: 0 6px 0 0;
 }

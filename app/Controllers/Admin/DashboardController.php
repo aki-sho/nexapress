@@ -1,5 +1,4 @@
 <?php
-
 namespace app\Controllers\Admin;
 
 use app\Core\Auth;
@@ -11,6 +10,17 @@ class DashboardController extends Controller
     {
         Auth::requireLogin();
 
-        $this->view('admin/dashboard');
+        $version = 'unknown';
+
+        $versionConfigPath = BASE_PATH . '/config/version.php';
+
+        if (file_exists($versionConfigPath)) {
+            $versionConfig = require $versionConfigPath;
+            $version = $versionConfig['version'] ?? 'unknown';
+        }
+
+        $this->view('admin/dashboard', [
+            'version' => $version,
+        ]);
     }
 }
