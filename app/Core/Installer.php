@@ -108,6 +108,15 @@ class Installer
                 )
             ");
 
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS nexapress_migrations (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    migration VARCHAR(255) NOT NULL UNIQUE,
+                    executed_at DATETIME NOT NULL
+                        DEFAULT CURRENT_TIMESTAMP
+                )
+            ");
+
             $passwordHash = password_hash($data['admin_password'], PASSWORD_DEFAULT);
 
             $stmt = $pdo->prepare("

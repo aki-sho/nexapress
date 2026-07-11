@@ -14,6 +14,7 @@
 
         <nav>
             <a href="<?= url('admin') ?>">ダッシュボード</a>
+            <a href="<?= url('admin/updates') ?>">更新</a>
             <a href="<?= url('admin/posts') ?>">投稿一覧</a>
             <a href="<?= url('admin/posts/create') ?>">新規追加</a>
             <a href="<?= url('admin/categories') ?>">カテゴリ</a>

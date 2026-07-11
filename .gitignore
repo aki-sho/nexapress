@@ -19,6 +19,16 @@ storage/logs/*
 # Cache
 storage/cache/*
 !storage/cache/.gitkeep
+!storage/cache/updates/
+storage/cache/updates/*
+!storage/cache/updates/.gitkeep
+
+# CMS update backups
+storage/backups/*
+!storage/backups/.gitkeep
+
+# CMS maintenance
+storage/maintenance.lock
 
 # Uploads
 public/uploads/*
@@ -31,5 +41,9 @@ public/uploads/*
 vendor/
 node_modules/
 
+# Archive files
 *.zip
 release-*
+
+# Update package build directory
+/update-package/build/

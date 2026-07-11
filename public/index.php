@@ -5,6 +5,22 @@ session_start();
 // プロジェクト直下のパスを定義
 define('BASE_PATH', dirname(__DIR__));
 
+// CMS更新中はメンテナンス画面を表示する
+$maintenanceLock = BASE_PATH
+    . '/storage/maintenance.lock';
+
+if (file_exists($maintenanceLock)) {
+    http_response_code(503);
+
+    header('Retry-After: 60');
+    header('Cache-Control: no-store, no-cache');
+
+    require BASE_PATH
+        . '/app/Views/maintenance.php';
+
+    exit;
+}
+
 require_once BASE_PATH . '/app/Core/helpers.php';
 
 $generalConfigPath = BASE_PATH . '/config/general.php';
@@ -84,6 +100,22 @@ $router->get('/admin/logout', 'app\Controllers\Admin\AuthController@logout');
 
 // 管理画面トップ
 $router->get('/admin', 'app\Controllers\Admin\DashboardController@index');
+
+// CMS更新
+$router->get(
+    '/admin/updates',
+    'app\Controllers\Admin\UpdateController@index'
+);
+
+$router->post(
+    '/admin/updates/check',
+    'app\Controllers\Admin\UpdateController@check'
+);
+
+$router->post(
+    '/admin/updates/install',
+    'app\Controllers\Admin\UpdateController@install'
+);
 
 // 拡張機能
 $router->get(
