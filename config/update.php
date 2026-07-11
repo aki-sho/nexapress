@@ -36,6 +36,7 @@ return [
     // 更新ZIPから上書きできる場所
     'allowed_update_paths' => [
         'app',
+        'config/update.php',
         'config/version.php',
         'database/migrations',
         'public/index.php',
