@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title><?= e(($title ?? '管理画面') . ' - ' . site_title()) ?></title>
     <link rel="stylesheet" href="<?= public_url('assets/css/style.css') ?>">
-    
+    <?php do_action('admin_head'); ?>
 </head>
 <body>
 
@@ -63,6 +63,6 @@
         <?= $content ?? '' ?>
     </main>
 </div>
-
+<?php do_action('admin_footer'); ?>
 </body>
 </html>

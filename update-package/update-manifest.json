@@ -1,6 +1,6 @@
 {
   "name": "NexaPress",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "minimum_nexapress": "1.6.1",
   "minimum_php": "8.0.0",
   "package_directory": "package"

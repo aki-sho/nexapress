@@ -131,6 +131,34 @@ function e(?string $value): string
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
 }
 
+/*
+ * 拡張機能の処理をフックへ登録
+ */
+function add_action(
+    string $hookName,
+    callable $callback,
+    int $priority = 10
+): void {
+    \app\Core\Hook::addAction(
+        $hookName,
+        $callback,
+        $priority
+    );
+}
+
+/*
+ * フックへ登録された処理を実行
+ */
+function do_action(
+    string $hookName,
+    mixed ...$arguments
+): void {
+    \app\Core\Hook::doAction(
+        $hookName,
+        ...$arguments
+    );
+}
+
 function nexapress_admin_header(): void
 {
     // ログイン中の管理者だけに、本体側の管理者用ヘッダーを表示する
