@@ -11,7 +11,7 @@ class Post
         $pdo = Database::connect();
 
         $stmt = $pdo->query("
-            SELECT posts.*, users.name AS author_name, categories.name AS category_name
+            SELECT posts.*, users.name AS author_name, categories.name AS category_name, categories.slug AS category_slug
             FROM posts
             LEFT JOIN users ON posts.user_id = users.id
             LEFT JOIN categories ON posts.category_id = categories.id

@@ -16,6 +16,8 @@
             <tr>
                 <th>ID</th>
                 <th>タイトル</th>
+                <th>スラッグ</th>
+                <th>記事URL</th>
                 <th>状態</th>
                 <th>投稿者</th>
                 <th>作成日</th>
@@ -25,26 +27,83 @@
         <tbody>
             <?php foreach ($pages as $page): ?>
                 <tr>
-                    <td><?= e($page['id'] ?? '') ?></td>
                     <td>
-                        <a href="<?= page_url($page) ?>" target="_blank">
-                            <?= e($page['title'] ?? '') ?>
-                        </a>
+                        <?= e($page['id'] ?? '') ?>
                     </td>
-                    <td><?= e($page['status'] ?? '') ?></td>
-                    <td><?= e($page['author_name'] ?? '-') ?></td>
-                    <td><?= e($page['created_at'] ?? '') ?></td>
-                    <td class="table-actions">
-                        <a href="<?= url('admin/pages/edit/' . ($page['id'] ?? '')) ?>">編集</a>
 
-                        <form action="<?= url('admin/pages/status/' . ($page['id'] ?? '')) ?>" method="post">
-                            <button type="submit" class="button small">
-                                <?= ($page['status'] ?? '') === 'published' ? '下書きにする' : '公開する' ?>
+                    <td>
+                        <?= e($page['title'] ?? '') ?>
+                    </td>
+
+                    <td>
+                        <?= e($page['slug'] ?? '') ?>
+                    </td>
+
+                    <td>
+                        <?php if (($page['status'] ?? '') === 'published'): ?>
+                            <a
+                                href="<?= e(page_url($page)) ?>"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                ページを開く
+                            </a>
+                        <?php else: ?>
+                            未公開
+                        <?php endif; ?>
+                    </td>
+
+                    <td>
+                        <?= e($page['status'] ?? '') ?>
+                    </td>
+
+                    <td>
+                        <?= e($page['author_name'] ?? '-') ?>
+                    </td>
+
+                    <td>
+                        <?= e($page['created_at'] ?? '') ?>
+                    </td>
+
+                    <td class="table-actions">
+                        <a href="<?= url(
+                            'admin/pages/edit/' .
+                            ($page['id'] ?? '')
+                        ) ?>">
+                            編集
+                        </a>
+
+                        <form
+                            action="<?= url(
+                                'admin/pages/status/' .
+                                ($page['id'] ?? '')
+                            ) ?>"
+                            method="post"
+                        >
+                            <button
+                                type="submit"
+                                class="button small"
+                            >
+                                <?= ($page['status'] ?? '') === 'published'
+                                    ? '下書きにする'
+                                    : '公開する' ?>
                             </button>
                         </form>
 
-                        <form action="<?= url('admin/pages/delete/' . ($page['id'] ?? '')) ?>" method="post">
-                            <button type="submit" class="button danger small" onclick="return confirm('削除しますか？')">削除</button>
+                        <form
+                            action="<?= url(
+                                'admin/pages/delete/' .
+                                ($page['id'] ?? '')
+                            ) ?>"
+                            method="post"
+                        >
+                            <button
+                                type="submit"
+                                class="button danger small"
+                                onclick="return confirm('削除しますか？')"
+                            >
+                                削除
+                            </button>
                         </form>
                     </td>
                 </tr>
