@@ -38,6 +38,13 @@ class Router
 
             if (preg_match($pattern, $uri, $matches)) {
                 array_shift($matches);
+                /*
+                * 日本語を含むURLパラメータを元の文字へ戻す
+                */
+                $matches = array_map(
+                    'rawurldecode',
+                    $matches
+                );
 
                 Debug::log('Route matched', [
                     'method' => $method,
