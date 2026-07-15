@@ -13,7 +13,7 @@
         <?php endif; ?>
 
         <div class="post-content">
-            <?= nl2br(e($post['content'] ?? '')) ?>
+            <?= $post['content'] ?? '' ?>
         </div>
 
         <p>

@@ -15,7 +15,7 @@
         <?php endif; ?>
 
         <div class="post-content">
-            <?= nl2br(e($page['content'] ?? '')) ?>
+            <?= $page['content'] ?? '' ?>
         </div>
 
         <p>
