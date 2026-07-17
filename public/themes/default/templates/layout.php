@@ -1,13 +1,8 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <title><?= e($title ?? site_title()) ?></title>
+    <?php nx_head($title ?? site_title()); ?>
 
-    <?php if (site_icon() !== ''): ?>
-        <link rel="icon" href="<?= e(site_icon()) ?>">
-    <?php endif; ?>
-    
     <link rel="stylesheet" href="<?= public_url('assets/css/style.css') ?>">
     <link rel="stylesheet" href="<?= public_url('themes/' . \app\Core\Theme::active() . '/style.css') ?>">
 </head>

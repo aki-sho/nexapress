@@ -159,6 +159,27 @@ function do_action(
     );
 }
 
+/*
+ * 公開ページのhead共通情報を出力
+ */
+function nx_head(?string $title = null): void
+{
+    $title = $title ?? site_title();
+    $icon = site_icon();
+
+    ?>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= e($title) ?></title>
+
+    <?php if ($icon !== ''): ?>
+        <link rel="icon" href="<?= e($icon) ?>">
+    <?php endif; ?>
+
+    <?php do_action('nx_head'); ?>
+    <?php
+}
+
 function nexapress_admin_header(): void
 {
     // ログイン中の管理者だけに、本体側の管理者用ヘッダーを表示する
