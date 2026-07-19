@@ -5,6 +5,10 @@ namespace app\Controllers\Admin;
 use app\Core\Auth;
 use app\Core\Controller;
 use app\Core\Extension;
+use app\Core\ExtensionCatalog;
+use app\Core\ExtensionInstaller;
+use RuntimeException;
+use Throwable;
 use app\Models\ExtensionSetting;
 use ZipArchive;
 
@@ -16,10 +20,73 @@ class ExtensionController extends Controller
     {
         Auth::requireLogin();
 
+        $installedExtensions = Extension::all();
+        $catalogExtensions = [];
+        $catalogError = null;
+
+        try {
+            $catalogExtensions = ExtensionCatalog::all();
+
+            foreach ($catalogExtensions as $extensionId => &$extension) {
+                $extension['is_installed'] = isset(
+                    $installedExtensions[$extensionId]
+                );
+
+                $extension['installed_version'] =
+                    $installedExtensions[$extensionId]['version']
+                    ?? null;
+            }
+
+            unset($extension);
+        } catch (Throwable $exception) {
+            $catalogError = $exception->getMessage();
+        }
+
+        $notice = $_SESSION['extension_notice'] ?? null;
+        $error = $_SESSION['extension_error'] ?? null;
+
+        unset(
+            $_SESSION['extension_notice'],
+            $_SESSION['extension_error']
+        );
+
         $this->view('admin/extensions', [
-            'extensions' => Extension::all(),
+            'extensions' => $installedExtensions,
+            'catalogExtensions' => $catalogExtensions,
+            'catalogError' => $catalogError,
+            'notice' => $notice,
+            'error' => $error,
             'maxUploadSize' => $this->maxUploadSize,
         ]);
+    }
+
+    public function install(string $extensionKey): void
+    {
+        Auth::requireLogin();
+
+        try {
+            $extension = ExtensionCatalog::find(
+                $extensionKey,
+                true
+            );
+
+            if ($extension === null) {
+                throw new RuntimeException(
+                    '拡張機能が見つかりません。'
+                );
+            }
+
+            ExtensionInstaller::install($extension);
+
+            $_SESSION['extension_notice'] =
+                $extension['name']
+                . 'をインストールしました。';
+        } catch (Throwable $exception) {
+            $_SESSION['extension_error'] =
+                $exception->getMessage();
+        }
+
+        redirect_to('admin/extensions');
     }
 
     public function upload(): void

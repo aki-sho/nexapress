@@ -246,3 +246,144 @@
     display: inline-block;
     margin: 0 6px 0 0;
 }
+/* 拡張機能カタログ */
+.extension-section {
+    margin: 0 0 32px;
+    padding: 24px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.extension-section h2 {
+    margin-top: 0;
+}
+
+.extension-section__heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.extension-section__heading p {
+    margin: 6px 0 0;
+    color: #64748b;
+}
+
+.extension-notice {
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    border: 1px solid;
+    border-radius: 8px;
+}
+
+.extension-notice--success {
+    border-color: #86efac;
+    background: #f0fdf4;
+}
+
+.extension-notice--error {
+    border-color: #fca5a5;
+    background: #fef2f2;
+}
+
+.extension-card-grid {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fill,
+        minmax(280px, 1fr)
+    );
+    gap: 20px;
+}
+
+.extension-card {
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.extension-card__image {
+    aspect-ratio: 5 / 3;
+    overflow: hidden;
+    background: #f1f5f9;
+}
+
+.extension-card__image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.extension-card__body {
+    padding: 18px;
+}
+
+.extension-card__body h3 {
+    margin: 0 0 10px;
+    font-size: 18px;
+}
+
+.extension-card__description {
+    min-height: 48px;
+    margin: 0 0 18px;
+    color: #475569;
+    line-height: 1.7;
+}
+
+.extension-card__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    color: #64748b;
+}
+
+.extension-card__footer form {
+    margin: 0;
+}
+
+.extension-button {
+    padding: 9px 14px;
+    border: 0;
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+.extension-button--disabled {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.extension-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.extension-actions form {
+    margin: 0;
+}
+
+.admin-table-wrap {
+    overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+    .extension-section {
+        padding: 18px;
+    }
+
+    .extension-card-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .extension-card__footer {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

@@ -1,0 +1,20 @@
+{
+  "extensions": [
+    {
+      "manifest_url": "https://raw.githubusercontent.com/aki-sho/nexapress-classic-editor/main/manifest.json",
+      "download_url": "https://github.com/aki-sho/nexapress-classic-editor/archive/refs/heads/main.zip"
+    },
+    {
+      "manifest_url": "https://raw.githubusercontent.com/aki-sho/nexapress-access-guard/main/manifest.json",
+      "download_url": "https://github.com/aki-sho/nexapress-access-guard/archive/refs/heads/main.zip"
+    },
+    {
+      "manifest_url": "https://raw.githubusercontent.com/aki-sho/nx-head-settings/main/manifest.json",
+      "download_url": "https://github.com/aki-sho/nx-head-settings/archive/refs/heads/main.zip"
+    },
+    {
+      "manifest_url": "https://raw.githubusercontent.com/aki-sho/nx_XML_HTML_sitemap/main/manifest.json",
+      "download_url": "https://github.com/aki-sho/nx_XML_HTML_sitemap/archive/refs/heads/main.zip"
+    }
+  ]
+}

@@ -151,6 +151,11 @@ $router->post(
 );
 
 $router->post(
+    '/admin/extensions/install/{extensionKey}',
+    'app\Controllers\Admin\ExtensionController@install'
+);
+
+$router->post(
     '/admin/extensions/enable/{extensionKey}',
     'app\Controllers\Admin\ExtensionController@enable'
 );

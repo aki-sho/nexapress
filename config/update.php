@@ -37,6 +37,7 @@ return [
     'allowed_update_paths' => [
         'app',
         'config/update.php',
+        'config/extensions.php',
         'config/version.php',
         'database/migrations',
         'public/index.php',
@@ -46,6 +47,7 @@ return [
         'public/themes/monoedge',
         'index.php',
         '.htaccess',
+        'extension-catalog.json',
         'README.md',
     ],
 ];
