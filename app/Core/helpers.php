@@ -93,31 +93,80 @@ function page_url(array $page): string
 
 function general_config(): array
 {
-    $configPath = defined('BASE_PATH') ? BASE_PATH . '/config/general.php' : '';
+    $configPath = defined('BASE_PATH')
+        ? BASE_PATH . '/config/general.php'
+        : '';
 
-    if ($configPath && file_exists($configPath)) {
-        return require $configPath;
-    }
-
-    return [
+    $defaults = [
         'site_title' => 'My CMS',
         'timezone' => 'Asia/Tokyo',
         'site_icon' => '',
+        'discourage_search_engines' => false,
     ];
+
+    if (
+        $configPath === '' ||
+        !file_exists($configPath)
+    ) {
+        return $defaults;
+    }
+
+    $config = require $configPath;
+
+    if (!is_array($config)) {
+        return $defaults;
+    }
+
+    return array_merge(
+        $defaults,
+        $config
+    );
 }
 
 function site_title(): string
 {
     $config = general_config();
 
-    return $config['site_title'] ?? 'My CMS';
+    return $config['site_title']
+        ?? 'My CMS';
 }
 
 function site_icon(): string
 {
     $config = general_config();
 
-    return $config['site_icon'] ?? '';
+    return $config['site_icon']
+        ?? '';
+}
+
+/*
+ * 検索エンジン表示設定を取得
+ */
+function discourage_search_engines(): bool
+{
+    $config = general_config();
+
+    return (bool) (
+        $config['discourage_search_engines']
+        ?? false
+    );
+}
+
+/*
+ * noindex設定を出力
+ */
+function nx_search_engine_meta(): void
+{
+    if (!discourage_search_engines()) {
+        return;
+    }
+
+    ?>
+    <meta
+        name="robots"
+        content="noindex, nofollow"
+    >
+    <?php
 }
 
 function redirect_to(string $path): void

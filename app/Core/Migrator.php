@@ -8,6 +8,9 @@ use Throwable;
 
 class Migrator
 {
+    /*
+     * 未実行のマイグレーションを実行
+     */
     public static function run(
         string $migrationDirectory
     ): array {
@@ -19,9 +22,14 @@ class Migrator
 
         self::createMigrationTable($pdo);
 
-        $appliedMigrations = self::applied($pdo);
+        $appliedMigrations =
+            self::applied($pdo);
+
         $migrationFiles = glob(
-            rtrim($migrationDirectory, '/\\') . '/*.php'
+            rtrim(
+                $migrationDirectory,
+                '/\\'
+            ) . '/*.php'
         );
 
         if (!$migrationFiles) {
@@ -38,11 +46,13 @@ class Migrator
                 '.php'
             );
 
-            if (in_array(
-                $migrationName,
-                $appliedMigrations,
-                true
-            )) {
+            if (
+                in_array(
+                    $migrationName,
+                    $appliedMigrations,
+                    true
+                )
+            ) {
                 continue;
             }
 
@@ -58,24 +68,42 @@ class Migrator
         return $executed;
     }
 
+    /*
+     * マイグレーション管理テーブルを作成
+     */
     private static function createMigrationTable(
         PDO $pdo
     ): void {
+        $table = Database::table(
+            'nexapress_migrations'
+        );
+
         $pdo->exec("
-            CREATE TABLE IF NOT EXISTS nexapress_migrations (
+            CREATE TABLE IF NOT EXISTS {$table} (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                migration VARCHAR(255) NOT NULL UNIQUE,
+                migration VARCHAR(255)
+                    NOT NULL UNIQUE,
                 executed_at DATETIME NOT NULL
                     DEFAULT CURRENT_TIMESTAMP
-            )
+            ) ENGINE=InnoDB
+              DEFAULT CHARSET=utf8mb4
+              COLLATE=utf8mb4_unicode_ci
         ");
     }
 
-    private static function applied(PDO $pdo): array
-    {
+    /*
+     * 実行済みマイグレーションを取得
+     */
+    private static function applied(
+        PDO $pdo
+    ): array {
+        $table = Database::table(
+            'nexapress_migrations'
+        );
+
         $stmt = $pdo->query("
             SELECT migration
-            FROM nexapress_migrations
+            FROM {$table}
             ORDER BY id ASC
         ");
 
@@ -84,6 +112,9 @@ class Migrator
         );
     }
 
+    /*
+     * マイグレーションを実行
+     */
     private static function execute(
         PDO $pdo,
         string $migrationFile,
@@ -93,7 +124,8 @@ class Migrator
 
         if (!is_callable($migration)) {
             throw new RuntimeException(
-                'マイグレーションの形式が正しくありません：'
+                'マイグレーションの形式が'
+                . '正しくありません：'
                 . $migrationName
             );
         }
@@ -103,8 +135,12 @@ class Migrator
 
             $migration($pdo);
 
+            $table = Database::table(
+                'nexapress_migrations'
+            );
+
             $stmt = $pdo->prepare("
-                INSERT INTO nexapress_migrations (
+                INSERT INTO {$table} (
                     migration
                 )
                 VALUES (

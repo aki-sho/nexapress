@@ -10,11 +10,17 @@ class Media
     {
         $pdo = Database::connect();
 
+        $media = Database::table('media');
+        $users = Database::table('users');
+
         $stmt = $pdo->query("
-            SELECT media.*, users.name AS author_name
-            FROM media
-            LEFT JOIN users ON media.user_id = users.id
-            ORDER BY media.created_at DESC
+            SELECT
+                m.*,
+                u.name AS author_name
+            FROM {$media} AS m
+            LEFT JOIN {$users} AS u
+                ON m.user_id = u.id
+            ORDER BY m.created_at DESC
         ");
 
         return $stmt->fetchAll();
@@ -24,22 +30,33 @@ class Media
     {
         $pdo = Database::connect();
 
-        $stmt = $pdo->prepare("SELECT * FROM media WHERE id = :id LIMIT 1");
+        $media = Database::table('media');
+
+        $stmt = $pdo->prepare("
+            SELECT *
+            FROM {$media}
+            WHERE id = :id
+            LIMIT 1
+        ");
+
         $stmt->execute([
             ':id' => $id,
         ]);
 
-        $media = $stmt->fetch();
+        $mediaItem = $stmt->fetch();
 
-        return $media ?: null;
+        return $mediaItem ?: null;
     }
 
-    public static function create(array $data): void
-    {
+    public static function create(
+        array $data
+    ): void {
         $pdo = Database::connect();
 
+        $media = Database::table('media');
+
         $stmt = $pdo->prepare("
-            INSERT INTO media (
+            INSERT INTO {$media} (
                 title,
                 description,
                 original_name,
@@ -65,23 +82,35 @@ class Media
 
         $stmt->execute([
             ':title' => $data['title'],
-            ':description' => $data['description'] ?? '',
-            ':original_name' => $data['original_name'],
-            ':file_name' => $data['file_name'],
-            ':file_path' => $data['file_path'],
-            ':mime_type' => $data['mime_type'],
-            ':file_size' => $data['file_size'],
-            ':file_type' => $data['file_type'],
-            ':user_id' => $data['user_id'],
+            ':description' =>
+                $data['description'] ?? '',
+            ':original_name' =>
+                $data['original_name'],
+            ':file_name' =>
+                $data['file_name'],
+            ':file_path' =>
+                $data['file_path'],
+            ':mime_type' =>
+                $data['mime_type'],
+            ':file_size' =>
+                $data['file_size'],
+            ':file_type' =>
+                $data['file_type'],
+            ':user_id' =>
+                $data['user_id'],
         ]);
     }
 
-    public static function updateMeta(int $id, array $data): void
-    {
+    public static function updateMeta(
+        int $id,
+        array $data
+    ): void {
         $pdo = Database::connect();
 
+        $media = Database::table('media');
+
         $stmt = $pdo->prepare("
-            UPDATE media
+            UPDATE {$media}
             SET title = :title,
                 description = :description,
                 updated_at = NOW()
@@ -90,20 +119,27 @@ class Media
 
         $stmt->execute([
             ':title' => $data['title'],
-            ':description' => $data['description'] ?? '',
+            ':description' =>
+                $data['description'] ?? '',
             ':id' => $id,
         ]);
     }
 
-    public static function delete(int $id): void
-    {
-        $media = self::find($id);
+    public static function delete(
+        int $id
+    ): void {
+        $mediaItem = self::find($id);
 
-        if (!$media) {
+        if (!$mediaItem) {
             return;
         }
 
-        $file = BASE_PATH . '/public/' . ltrim($media['file_path'], '/');
+        $file = BASE_PATH
+            . '/public/'
+            . ltrim(
+                $mediaItem['file_path'],
+                '/'
+            );
 
         if (file_exists($file)) {
             unlink($file);
@@ -111,7 +147,13 @@ class Media
 
         $pdo = Database::connect();
 
-        $stmt = $pdo->prepare("DELETE FROM media WHERE id = :id");
+        $media = Database::table('media');
+
+        $stmt = $pdo->prepare("
+            DELETE FROM {$media}
+            WHERE id = :id
+        ");
+
         $stmt->execute([
             ':id' => $id,
         ]);

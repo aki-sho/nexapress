@@ -19,29 +19,40 @@ class AuthController extends Controller
 
     public function authenticate(): void
     {
-        $email = trim($_POST['email'] ?? '');
-        $password = $_POST['password'] ?? '';
+        $login = trim(
+            $_POST['login'] ?? ''
+        );
 
-        if ($email === '' || $password === '') {
-            $this->view('admin/login', [
-                'error' => 'メールアドレスとパスワードを入力してください。'
-            ]);
+        $password =
+            $_POST['password'] ?? '';
+
+        if (
+            $login === '' ||
+            $password === ''
+        ) {
+            $this->showLoginError(
+                'ユーザー名またはメールアドレスと'
+                . 'パスワードを入力してください。',
+                $login
+            );
+
             return;
         }
 
-        $user = User::findByEmail($email);
+        $user = User::findForLogin($login);
 
-        if (!$user) {
-            $this->view('admin/login', [
-                'error' => 'ログイン情報が正しくありません。'
-            ]);
-            return;
-        }
+        if (
+            !$user ||
+            !password_verify(
+                $password,
+                $user['password_hash']
+            )
+        ) {
+            $this->showLoginError(
+                'ログイン情報が正しくありません。',
+                $login
+            );
 
-        if (!password_verify($password, $user['password_hash'])) {
-            $this->view('admin/login', [
-                'error' => 'ログイン情報が正しくありません。'
-            ]);
             return;
         }
 
@@ -55,5 +66,15 @@ class AuthController extends Controller
         Auth::logout();
 
         redirect_to('admin/login');
+    }
+
+    private function showLoginError(
+        string $error,
+        string $login
+    ): void {
+        $this->view('admin/login', [
+            'error' => $error,
+            'login' => $login,
+        ]);
     }
 }

@@ -10,11 +10,17 @@ class Page
     {
         $pdo = Database::connect();
 
+        $pages = Database::table('pages');
+        $users = Database::table('users');
+
         $stmt = $pdo->query("
-            SELECT pages.*, users.name AS author_name
-            FROM pages
-            LEFT JOIN users ON pages.user_id = users.id
-            ORDER BY pages.created_at DESC
+            SELECT
+                p.*,
+                u.name AS author_name
+            FROM {$pages} AS p
+            LEFT JOIN {$users} AS u
+                ON p.user_id = u.id
+            ORDER BY p.created_at DESC
         ");
 
         return $stmt->fetchAll();
@@ -24,7 +30,15 @@ class Page
     {
         $pdo = Database::connect();
 
-        $stmt = $pdo->prepare("SELECT * FROM pages WHERE id = :id LIMIT 1");
+        $pages = Database::table('pages');
+
+        $stmt = $pdo->prepare("
+            SELECT *
+            FROM {$pages}
+            WHERE id = :id
+            LIMIT 1
+        ");
+
         $stmt->execute([
             ':id' => $id,
         ]);
@@ -34,15 +48,18 @@ class Page
         return $page ?: null;
     }
 
-    public static function findBySlug(string $slug): ?array
-    {
+    public static function findBySlug(
+        string $slug
+    ): ?array {
         $pdo = Database::connect();
+
+        $pages = Database::table('pages');
 
         $stmt = $pdo->prepare("
             SELECT *
-            FROM pages
+            FROM {$pages}
             WHERE slug = :slug
-            AND status = 'published'
+              AND status = 'published'
             LIMIT 1
         ");
 
@@ -55,15 +72,35 @@ class Page
         return $page ?: null;
     }
 
-    public static function create(array $data): void
-    {
+    public static function create(
+        array $data
+    ): void {
         $pdo = Database::connect();
 
-        $publishedAt = $data['status'] === 'published' ? date('Y-m-d H:i:s') : null;
+        $pages = Database::table('pages');
+
+        $publishedAt =
+            $data['status'] === 'published'
+                ? date('Y-m-d H:i:s')
+                : null;
 
         $stmt = $pdo->prepare("
-            INSERT INTO pages (title, slug, content, status, user_id, published_at)
-            VALUES (:title, :slug, :content, :status, :user_id, :published_at)
+            INSERT INTO {$pages} (
+                title,
+                slug,
+                content,
+                status,
+                user_id,
+                published_at
+            )
+            VALUES (
+                :title,
+                :slug,
+                :content,
+                :status,
+                :user_id,
+                :published_at
+            )
         ");
 
         $stmt->execute([
@@ -76,16 +113,29 @@ class Page
         ]);
     }
 
-    public static function update(int $id, array $data): void
-    {
+    public static function update(
+        int $id,
+        array $data
+    ): void {
         $pdo = Database::connect();
+
+        $pages = Database::table('pages');
 
         $page = self::find($id);
 
-        $publishedAt = $page['published_at'] ?? null;
+        if (!$page) {
+            return;
+        }
 
-        if ($data['status'] === 'published' && empty($publishedAt)) {
-            $publishedAt = date('Y-m-d H:i:s');
+        $publishedAt =
+            $page['published_at'] ?? null;
+
+        if (
+            $data['status'] === 'published' &&
+            empty($publishedAt)
+        ) {
+            $publishedAt =
+                date('Y-m-d H:i:s');
         }
 
         if ($data['status'] === 'draft') {
@@ -93,7 +143,7 @@ class Page
         }
 
         $stmt = $pdo->prepare("
-            UPDATE pages
+            UPDATE {$pages}
             SET title = :title,
                 slug = :slug,
                 content = :content,
@@ -113,31 +163,48 @@ class Page
         ]);
     }
 
-    public static function delete(int $id): void
-    {
+    public static function delete(
+        int $id
+    ): void {
         $pdo = Database::connect();
 
-        $stmt = $pdo->prepare("DELETE FROM pages WHERE id = :id");
+        $pages = Database::table('pages');
+
+        $stmt = $pdo->prepare("
+            DELETE FROM {$pages}
+            WHERE id = :id
+        ");
+
         $stmt->execute([
             ':id' => $id,
         ]);
     }
 
-    public static function toggleStatus(int $id): void
-    {
+    public static function toggleStatus(
+        int $id
+    ): void {
         $page = self::find($id);
 
         if (!$page) {
             return;
         }
 
-        $newStatus = $page['status'] === 'published' ? 'draft' : 'published';
-        $publishedAt = $newStatus === 'published' ? date('Y-m-d H:i:s') : null;
+        $newStatus =
+            $page['status'] === 'published'
+                ? 'draft'
+                : 'published';
+
+        $publishedAt =
+            $newStatus === 'published'
+                ? date('Y-m-d H:i:s')
+                : null;
 
         $pdo = Database::connect();
 
+        $pages = Database::table('pages');
+
         $stmt = $pdo->prepare("
-            UPDATE pages
+            UPDATE {$pages}
             SET status = :status,
                 published_at = :published_at,
                 updated_at = NOW()

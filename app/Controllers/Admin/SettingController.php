@@ -7,7 +7,9 @@ use app\Core\Controller;
 
 class SettingController extends Controller
 {
-
+    /*
+     * 一般設定画面
+     */
     public function general(): void
     {
         Auth::requireLogin();
@@ -19,13 +21,28 @@ class SettingController extends Controller
         ]);
     }
 
+    /*
+     * 一般設定を保存
+     */
     public function updateGeneral(): void
     {
         Auth::requireLogin();
 
-        $siteTitle = trim($_POST['site_title'] ?? 'My CMS');
-        $timezone = trim($_POST['timezone'] ?? 'Asia/Tokyo');
-        $siteIcon = trim($_POST['site_icon'] ?? '');
+        $siteTitle = trim(
+            $_POST['site_title'] ?? 'My CMS'
+        );
+
+        $timezone = trim(
+            $_POST['timezone'] ?? 'Asia/Tokyo'
+        );
+
+        $siteIcon = trim(
+            $_POST['site_icon'] ?? ''
+        );
+
+        $discourageSearchEngines = isset(
+            $_POST['discourage_search_engines']
+        );
 
         if ($siteTitle === '') {
             $siteTitle = 'My CMS';
@@ -35,34 +52,72 @@ class SettingController extends Controller
             $timezone = 'Asia/Tokyo';
         }
 
-        $configPath = BASE_PATH . '/config/general.php';
+        $config = [
+            'site_title' => $siteTitle,
+            'timezone' => $timezone,
+            'site_icon' => $siteIcon,
+            'discourage_search_engines' =>
+                $discourageSearchEngines,
+        ];
 
-        $content = "<?php\n\nreturn [\n";
-        $content .= "    'site_title' => '" . addslashes($siteTitle) . "',\n";
-        $content .= "    'timezone' => '" . addslashes($timezone) . "',\n";
-        $content .= "    'site_icon' => '" . addslashes($siteIcon) . "',\n";
-        $content .= "];\n";
+        $configPath = BASE_PATH
+            . '/config/general.php';
 
-        file_put_contents($configPath, $content);
+        $content = "<?php\n\nreturn "
+            . var_export($config, true)
+            . ";\n";
+
+        file_put_contents(
+            $configPath,
+            $content,
+            LOCK_EX
+        );
 
         redirect_to('admin/settings/general');
     }
 
+    /*
+     * 一般設定を取得
+     */
     private function loadGeneralConfig(): array
     {
-        $configPath = BASE_PATH . '/config/general.php';
+        $configPath = BASE_PATH
+            . '/config/general.php';
 
         if (!file_exists($configPath)) {
             return [
                 'site_title' => 'My CMS',
                 'timezone' => 'Asia/Tokyo',
                 'site_icon' => '',
+                'discourage_search_engines' => false,
             ];
         }
 
-        return require $configPath;
+        $config = require $configPath;
+
+        if (!is_array($config)) {
+            return [
+                'site_title' => 'My CMS',
+                'timezone' => 'Asia/Tokyo',
+                'site_icon' => '',
+                'discourage_search_engines' => false,
+            ];
+        }
+
+        return array_merge(
+            [
+                'site_title' => 'My CMS',
+                'timezone' => 'Asia/Tokyo',
+                'site_icon' => '',
+                'discourage_search_engines' => false,
+            ],
+            $config
+        );
     }
 
+    /*
+     * URL設定画面
+     */
     public function url(): void
     {
         Auth::requireLogin();
@@ -74,42 +129,85 @@ class SettingController extends Controller
         ]);
     }
 
+    /*
+     * URL設定を保存
+     */
     public function updateUrl(): void
     {
         Auth::requireLogin();
 
-        $siteUrlMode = $_POST['site_url_mode'] ?? 'public';
-        $postUrlType = $_POST['post_url_type'] ?? 'post_slug';
-        $pageUrlType = $_POST['page_url_type'] ?? 'page_slug';
+        $siteUrlMode =
+            $_POST['site_url_mode'] ?? 'public';
 
-        if (!in_array($siteUrlMode, ['public', 'root'], true)) {
+        $postUrlType =
+            $_POST['post_url_type'] ?? 'post_slug';
+
+        $pageUrlType =
+            $_POST['page_url_type'] ?? 'page_slug';
+
+        if (
+            !in_array(
+                $siteUrlMode,
+                ['public', 'root'],
+                true
+            )
+        ) {
             $siteUrlMode = 'public';
         }
 
-        if (!in_array($postUrlType, ['post_slug', 'slug', 'category_slug'], true)) {
+        if (
+            !in_array(
+                $postUrlType,
+                [
+                    'post_slug',
+                    'slug',
+                    'category_slug',
+                ],
+                true
+            )
+        ) {
             $postUrlType = 'post_slug';
         }
 
-        if (!in_array($pageUrlType, ['page_slug', 'slug'], true)) {
+        if (
+            !in_array(
+                $pageUrlType,
+                ['page_slug', 'slug'],
+                true
+            )
+        ) {
             $pageUrlType = 'page_slug';
         }
 
-        $configPath = BASE_PATH . '/config/url.php';
+        $configPath = BASE_PATH
+            . '/config/url.php';
 
-        $content = "<?php\n\nreturn [\n";
-        $content .= "    'site_url_mode' => '" . $siteUrlMode . "',\n";
-        $content .= "    'post_url_type' => '" . $postUrlType . "',\n";
-        $content .= "    'page_url_type' => '" . $pageUrlType . "',\n";
-        $content .= "];\n";
+        $config = [
+            'site_url_mode' => $siteUrlMode,
+            'post_url_type' => $postUrlType,
+            'page_url_type' => $pageUrlType,
+        ];
 
-        file_put_contents($configPath, $content);
+        $content = "<?php\n\nreturn "
+            . var_export($config, true)
+            . ";\n";
+
+        file_put_contents(
+            $configPath,
+            $content,
+            LOCK_EX
+        );
 
         redirect_to('admin/settings/url');
     }
 
+    /*
+     * URL設定を取得
+     */
     private function loadUrlConfig(): array
     {
-        $configPath = BASE_PATH . '/config/url.php';
+        $configPath = BASE_PATH
+            . '/config/url.php';
 
         if (!file_exists($configPath)) {
             return [
@@ -122,6 +220,9 @@ class SettingController extends Controller
         return require $configPath;
     }
 
+    /*
+     * デバッグ設定画面
+     */
     public function debug(): void
     {
         Auth::requireLogin();
@@ -133,26 +234,43 @@ class SettingController extends Controller
         ]);
     }
 
+    /*
+     * デバッグ設定を保存
+     */
     public function updateDebug(): void
     {
         Auth::requireLogin();
 
-        $enabled = ($_POST['enabled'] ?? '0') === '1';
+        $enabled =
+            ($_POST['enabled'] ?? '0') === '1';
 
-        $configPath = BASE_PATH . '/config/debug.php';
+        $configPath = BASE_PATH
+            . '/config/debug.php';
 
-        $content = "<?php\n\nreturn [\n";
-        $content .= "    'enabled' => " . ($enabled ? 'true' : 'false') . ",\n";
-        $content .= "];\n";
+        $config = [
+            'enabled' => $enabled,
+        ];
 
-        file_put_contents($configPath, $content);
+        $content = "<?php\n\nreturn "
+            . var_export($config, true)
+            . ";\n";
+
+        file_put_contents(
+            $configPath,
+            $content,
+            LOCK_EX
+        );
 
         redirect_to('admin/settings/debug');
     }
 
+    /*
+     * デバッグ設定を取得
+     */
     private function loadDebugConfig(): array
     {
-        $configPath = BASE_PATH . '/config/debug.php';
+        $configPath = BASE_PATH
+            . '/config/debug.php';
 
         if (!file_exists($configPath)) {
             return [

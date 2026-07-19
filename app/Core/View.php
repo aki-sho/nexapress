@@ -38,17 +38,30 @@ class View
             return;
         }
 
-        if ($view === 'install') {
+        if (
+            $view === 'install' ||
+            str_starts_with($view, 'install-')
+        ) {
             if (!file_exists($appViewPath)) {
-                echo 'View not found: ' . htmlspecialchars($view, ENT_QUOTES, 'UTF-8');
+                echo 'View not found: '
+                    . htmlspecialchars(
+                        $view,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    );
+
                 return;
             }
 
             ob_start();
+
             require $appViewPath;
+
             $content = ob_get_clean();
 
-            require BASE_PATH . '/app/Views/install-layout.php';
+            require BASE_PATH
+                . '/app/Views/install-layout.php';
+
             return;
         }
 

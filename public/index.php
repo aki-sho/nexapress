@@ -90,8 +90,30 @@ $router->get('/', 'app\Controllers\HomeController@index');
 $router->get('/post/{slug}', 'app\Controllers\PostController@show');
 
 // インストール
-$router->get('/install', 'app\Controllers\InstallController@index');
-$router->post('/install', 'app\Controllers\InstallController@store');
+$router->get(
+    '/install',
+    'app\Controllers\InstallController@index'
+);
+
+$router->get(
+    '/install/database',
+    'app\Controllers\InstallController@database'
+);
+
+$router->post(
+    '/install/database',
+    'app\Controllers\InstallController@storeDatabase'
+);
+
+$router->get(
+    '/install/site',
+    'app\Controllers\InstallController@site'
+);
+
+$router->post(
+    '/install/site',
+    'app\Controllers\InstallController@storeSite'
+);
 
 // 管理画面ログイン
 $router->get('/admin/login', 'app\Controllers\Admin\AuthController@login');

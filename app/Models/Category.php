@@ -10,9 +10,12 @@ class Category
     {
         $pdo = Database::connect();
 
+        $categories =
+            Database::table('categories');
+
         $stmt = $pdo->query("
             SELECT *
-            FROM categories
+            FROM {$categories}
             ORDER BY created_at DESC
         ");
 
@@ -23,9 +26,12 @@ class Category
     {
         $pdo = Database::connect();
 
+        $categories =
+            Database::table('categories');
+
         $stmt = $pdo->prepare("
             SELECT *
-            FROM categories
+            FROM {$categories}
             WHERE id = :id
             LIMIT 1
         ");
@@ -39,13 +45,23 @@ class Category
         return $category ?: null;
     }
 
-    public static function create(array $data): void
-    {
+    public static function create(
+        array $data
+    ): void {
         $pdo = Database::connect();
 
+        $categories =
+            Database::table('categories');
+
         $stmt = $pdo->prepare("
-            INSERT INTO categories (name, slug)
-            VALUES (:name, :slug)
+            INSERT INTO {$categories} (
+                name,
+                slug
+            )
+            VALUES (
+                :name,
+                :slug
+            )
         ");
 
         $stmt->execute([
@@ -54,12 +70,17 @@ class Category
         ]);
     }
 
-    public static function update(int $id, array $data): void
-    {
+    public static function update(
+        int $id,
+        array $data
+    ): void {
         $pdo = Database::connect();
 
+        $categories =
+            Database::table('categories');
+
         $stmt = $pdo->prepare("
-            UPDATE categories
+            UPDATE {$categories}
             SET name = :name,
                 slug = :slug,
                 updated_at = NOW()
@@ -73,12 +94,16 @@ class Category
         ]);
     }
 
-    public static function delete(int $id): void
-    {
+    public static function delete(
+        int $id
+    ): void {
         $pdo = Database::connect();
 
+        $categories =
+            Database::table('categories');
+
         $stmt = $pdo->prepare("
-            DELETE FROM categories
+            DELETE FROM {$categories}
             WHERE id = :id
         ");
 
