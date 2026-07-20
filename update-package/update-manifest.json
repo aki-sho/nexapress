@@ -1,7 +1,7 @@
 {
   "name": "NexaPress",
-  "version": "2.1.0",
-  "minimum_nexapress": "2.0.0",
+  "version": "2.1.1",
+  "minimum_nexapress": "2.1.0",
   "minimum_php": "8.0.0",
   "package_directory": "package"
 }

@@ -71,8 +71,8 @@ class ExtensionCatalog
 
                 if (is_array($catalogItem)) {
                     $manifest = array_merge(
-                        $manifest,
-                        $catalogItem
+                        $catalogItem,
+                        $manifest
                     );
                 }
 

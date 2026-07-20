@@ -25,7 +25,7 @@ class ExtensionController extends Controller
         $catalogError = null;
 
         try {
-            $catalogExtensions = ExtensionCatalog::all();
+            $catalogExtensions = ExtensionCatalog::all(true);
 
             foreach ($catalogExtensions as $extensionId => &$extension) {
                 $extension['is_installed'] = isset(
