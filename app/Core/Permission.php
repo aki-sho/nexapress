@@ -17,7 +17,7 @@ class Permission
         }
 
         $path = BASE_PATH
-            . '/config/roles.php';
+            . '/app/Config/roles.php';
 
         if (!file_exists($path)) {
             self::$roles = [];
