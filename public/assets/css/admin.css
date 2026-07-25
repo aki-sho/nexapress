@@ -387,3 +387,112 @@
         flex-direction: column;
     }
 }
+
+/* ========================================
+   ユーザー管理画面
+======================================== */
+
+.admin-page {
+    width: 100%;
+}
+
+.admin-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.admin-page-header h1,
+.admin-page-header h2 {
+    margin: 0;
+}
+
+.admin-card {
+    padding: 24px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.admin-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.user-form-card {
+    max-width: 720px;
+}
+
+.user-form {
+    width: 100%;
+}
+
+.form-help {
+    margin: 6px 0 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 5px 9px;
+    color: #1e40af;
+    background: #dbeafe;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.user-current {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 3px 7px;
+    color: #166534;
+    background: #dcfce7;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.button.secondary {
+    color: #111827;
+    background: #e5e7eb;
+}
+
+.button.secondary:hover {
+    background: #d1d5db;
+}
+
+.forbidden-card {
+    max-width: 600px;
+    margin: 40px auto;
+    text-align: center;
+}
+
+.forbidden-card h1 {
+    margin-bottom: 8px;
+    color: #dc2626;
+    font-size: 56px;
+}
+
+.forbidden-card h2 {
+    margin-top: 0;
+}
+
+@media (max-width: 700px) {
+    .admin-page-header {
+        display: block;
+    }
+
+    .admin-page-header .button {
+        margin-top: 12px;
+    }
+
+    .main {
+        padding: 20px;
+    }
+}

@@ -229,6 +229,8 @@ class Installer
                 name VARCHAR(100) NOT NULL,
                 email VARCHAR(255) NOT NULL UNIQUE,
                 password_hash VARCHAR(255) NOT NULL,
+                role VARCHAR(30) NOT NULL
+                    DEFAULT 'administrator',
                 created_at DATETIME NOT NULL
                     DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB
@@ -369,13 +371,15 @@ class Installer
                 username,
                 name,
                 email,
-                password_hash
+                password_hash,
+                role
             )
             VALUES (
                 :username,
                 :name,
                 :email,
-                :password_hash
+                :password_hash,
+                :role
             )
         ");
 
@@ -388,6 +392,8 @@ class Installer
                 $data['admin_email'],
             ':password_hash' =>
                 $passwordHash,
+            ':role' =>
+                'administrator',
         ]);
     }
 

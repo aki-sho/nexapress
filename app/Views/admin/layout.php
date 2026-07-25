@@ -15,49 +15,190 @@
         <h2><?= e(site_title()) ?></h2>
 
         <nav>
-            <a href="<?= url('admin') ?>">ダッシュボード</a>
-            <a href="<?= url('admin/updates') ?>">更新</a>
-            <a href="<?= url('admin/posts') ?>">投稿一覧</a>
-            <a href="<?= url('admin/posts/create') ?>">新規追加</a>
-            <a href="<?= url('admin/categories') ?>">カテゴリ</a>
-            <a href="<?= url('admin/media') ?>">メディア</a>
-
-            <?php $enabledExtensions = \app\Core\Extension::enabled(); ?>
-
-            <div class="sidebar-menu-item sidebar-menu-item-has-submenu">
-                <a href="<?= url('admin/extensions') ?>" class="sidebar-menu-link">
-                    拡張機能
+            <?php if (
+                \app\Core\Permission::can(
+                    'dashboard.view'
+                )
+            ): ?>
+                <a href="<?= url('admin') ?>">
+                    ダッシュボード
                 </a>
+            <?php endif; ?>
 
-                <div class="sidebar-submenu">
-                    <a href="<?= url('admin/extensions') ?>">
-                        拡張機能一覧
+            <?php if (
+                \app\Core\Permission::can(
+                    'updates.manage'
+                )
+            ): ?>
+                <a href="<?= url('admin/updates') ?>">
+                    更新
+                </a>
+            <?php endif; ?>
+
+            <?php if (
+                \app\Core\Permission::can(
+                    'posts.view'
+                )
+            ): ?>
+                <a href="<?= url('admin/posts') ?>">
+                    投稿一覧
+                </a>
+            <?php endif; ?>
+
+            <?php if (
+                \app\Core\Permission::can(
+                    'posts.create'
+                )
+            ): ?>
+                <a href="<?= url('admin/posts/create') ?>">
+                    新規追加
+                </a>
+            <?php endif; ?>
+
+            <?php if (
+                \app\Core\Permission::can(
+                    'categories.manage'
+                )
+            ): ?>
+                <a href="<?= url('admin/categories') ?>">
+                    カテゴリ
+                </a>
+            <?php endif; ?>
+
+            <?php if (
+                \app\Core\Permission::can(
+                    'media.manage'
+                )
+            ): ?>
+                <a href="<?= url('admin/media') ?>">
+                    メディア
+                </a>
+            <?php endif; ?>
+
+            <?php if (
+                \app\Core\Permission::can(
+                    'users.manage'
+                )
+            ): ?>
+                <a href="<?= url('admin/users') ?>">
+                    ユーザー
+                </a>
+            <?php endif; ?>
+
+            <?php if (
+                \app\Core\Permission::can(
+                    'extensions.manage'
+                )
+            ): ?>
+                <?php
+                $enabledExtensions =
+                    \app\Core\Extension::enabled();
+                ?>
+
+                <div
+                    class="
+                        sidebar-menu-item
+                        sidebar-menu-item-has-submenu
+                    "
+                >
+                    <a
+                        href="<?= url('admin/extensions') ?>"
+                        class="sidebar-menu-link"
+                    >
+                        拡張機能
                     </a>
 
-                    <?php foreach ($enabledExtensions as $extension): ?>
-                        <?php if ($extension['has_dashboard']): ?>
-                            <a href="<?= url(
-                                'admin/extensions/' .
-                                rawurlencode($extension['key']) .
-                                '/dashboard'
-                            ) ?>">
-                                <?= e($extension['admin_menu_label']) ?>
-                            </a>
-                        <?php endif; ?>
-                    <?php endforeach; ?>
-                </div>
-            </div>
+                    <div class="sidebar-submenu">
+                        <a href="<?= url('admin/extensions') ?>">
+                            拡張機能一覧
+                        </a>
 
-            <a href="<?= url('admin/themes') ?>">テーマ設定</a>
-            <a href="<?= url('admin/pages') ?>">固定ページ</a>
-            <div class="sidebar-group">
-                <div class="sidebar-group-title">設定</div>
-                <a href="<?= url('admin/settings/general') ?>">一般設定</a>
-                <a href="<?= url('admin/settings/url') ?>">URL設定</a>
-                <a href="<?= url('admin/settings/debug') ?>">デバッグ設定</a>
-            </div>
-            <a href="<?= url('') ?>" target="_blank">サイトを見る</a>
-            <a href="<?= url('admin/logout') ?>">ログアウト</a>
+                        <?php foreach (
+                            $enabledExtensions
+                            as $extension
+                        ): ?>
+                            <?php if (
+                                $extension['has_dashboard']
+                            ): ?>
+                                <a href="<?= url(
+                                    'admin/extensions/'
+                                    . rawurlencode(
+                                        $extension['key']
+                                    )
+                                    . '/dashboard'
+                                ) ?>">
+                                    <?= e(
+                                        $extension[
+                                            'admin_menu_label'
+                                        ]
+                                    ) ?>
+                                </a>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if (
+                \app\Core\Permission::can(
+                    'themes.manage'
+                )
+            ): ?>
+                <a href="<?= url('admin/themes') ?>">
+                    テーマ設定
+                </a>
+            <?php endif; ?>
+
+            <?php if (
+                \app\Core\Permission::can(
+                    'pages.manage'
+                )
+            ): ?>
+                <a href="<?= url('admin/pages') ?>">
+                    固定ページ
+                </a>
+            <?php endif; ?>
+
+            <?php if (
+                \app\Core\Permission::can(
+                    'settings.manage'
+                )
+            ): ?>
+                <div class="sidebar-group">
+                    <div class="sidebar-group-title">
+                        設定
+                    </div>
+
+                    <a href="<?= url(
+                        'admin/settings/general'
+                    ) ?>">
+                        一般設定
+                    </a>
+
+                    <a href="<?= url(
+                        'admin/settings/url'
+                    ) ?>">
+                        URL設定
+                    </a>
+
+                    <a href="<?= url(
+                        'admin/settings/debug'
+                    ) ?>">
+                        デバッグ設定
+                    </a>
+                </div>
+            <?php endif; ?>
+
+            <a
+                href="<?= url('') ?>"
+                target="_blank"
+            >
+                サイトを見る
+            </a>
+
+            <a href="<?= url('admin/logout') ?>">
+                ログアウト
+            </a>
         </nav>
     </aside>
 

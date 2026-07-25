@@ -123,6 +123,37 @@ $router->get('/admin/logout', 'app\Controllers\Admin\AuthController@logout');
 // 管理画面トップ
 $router->get('/admin', 'app\Controllers\Admin\DashboardController@index');
 
+// ユーザー管理
+$router->get(
+    '/admin/users',
+    'app\Controllers\Admin\UserController@index'
+);
+
+$router->get(
+    '/admin/users/create',
+    'app\Controllers\Admin\UserController@create'
+);
+
+$router->post(
+    '/admin/users/store',
+    'app\Controllers\Admin\UserController@store'
+);
+
+$router->get(
+    '/admin/users/edit/{id}',
+    'app\Controllers\Admin\UserController@edit'
+);
+
+$router->post(
+    '/admin/users/update/{id}',
+    'app\Controllers\Admin\UserController@update'
+);
+
+$router->post(
+    '/admin/users/delete/{id}',
+    'app\Controllers\Admin\UserController@delete'
+);
+
 // CMS更新
 $router->get(
     '/admin/updates',

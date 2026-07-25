@@ -14,12 +14,27 @@ class Auth
         return $_SESSION['user'] ?? null;
     }
 
-    public static function login(array $user): void
+    /*
+    * ログインユーザーの権限を取得
+    */
+    public static function role(): ?string
     {
+        $user = self::user();
+
+        return $user['role'] ?? null;
+    }
+
+    public static function login(
+        array $user
+    ): void {
+        session_regenerate_id(true);
+
         $_SESSION['user'] = [
             'id' => $user['id'],
+            'username' => $user['username'],
             'name' => $user['name'],
             'email' => $user['email'],
+            'role' => $user['role'],
         ];
     }
 

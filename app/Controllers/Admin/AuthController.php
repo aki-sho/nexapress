@@ -19,27 +19,28 @@ class AuthController extends Controller
 
     public function authenticate(): void
     {
-        $login = trim(
-            $_POST['login'] ?? ''
+        $username = trim(
+            $_POST['username'] ?? ''
         );
 
         $password =
             $_POST['password'] ?? '';
 
         if (
-            $login === '' ||
+            $username === '' ||
             $password === ''
         ) {
             $this->showLoginError(
-                'ユーザー名またはメールアドレスと'
-                . 'パスワードを入力してください。',
-                $login
+                'ユーザー名とパスワードを入力してください。',
+                $username
             );
 
             return;
         }
 
-        $user = User::findForLogin($login);
+        $user = User::findByUsername(
+            $username
+        );
 
         if (
             !$user ||
@@ -49,8 +50,8 @@ class AuthController extends Controller
             )
         ) {
             $this->showLoginError(
-                'ログイン情報が正しくありません。',
-                $login
+                'ユーザー名またはパスワードが正しくありません。',
+                $username
             );
 
             return;
@@ -70,11 +71,11 @@ class AuthController extends Controller
 
     private function showLoginError(
         string $error,
-        string $login
+        string $username
     ): void {
         $this->view('admin/login', [
             'error' => $error,
-            'login' => $login,
+            'username' => $username,
         ]);
     }
 }

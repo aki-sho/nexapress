@@ -2,7 +2,7 @@
 
 $title = 'ログイン';
 
-$login = $login ?? '';
+$username = $username ?? '';
 
 ?>
 
@@ -21,16 +21,15 @@ $login = $login ?? '';
             method="post"
         >
             <div class="form-group">
-                <label for="login">
-                    ユーザー名または
-                    メールアドレス
+                <label for="username">
+                    ユーザー名
                 </label>
 
                 <input
                     type="text"
-                    id="login"
-                    name="login"
-                    value="<?= e($login) ?>"
+                    id="username"
+                    name="username"
+                    value="<?= e($username) ?>"
                     autocomplete="username"
                     required
                 >

@@ -74,12 +74,28 @@ class Router
         return '#^' . $pattern . '$#';
     }
 
-    private function runAction(string $action, array $params = []): void
-    {
-        [$controllerName, $methodName] = explode('@', $action);
+    private function runAction(
+        string $action,
+        array $params = []
+    ): void {
+        [$controllerName, $methodName] =
+            explode('@', $action);
 
-        $controller = new $controllerName();
+        /*
+        * 管理画面の権限を確認
+        */
+        Permission::authorizeAction(
+            $controllerName,
+            $methodName,
+            $params
+        );
 
-        call_user_func_array([$controller, $methodName], $params);
+        $controller =
+            new $controllerName();
+
+        call_user_func_array(
+            [$controller, $methodName],
+            $params
+        );
     }
 }
