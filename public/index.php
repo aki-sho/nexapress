@@ -207,13 +207,77 @@ $router->get(
 );
 
 // 投稿管理
-$router->get('/admin/posts', 'app\Controllers\Admin\PostController@index');
-$router->get('/admin/posts/create', 'app\Controllers\Admin\PostController@create');
-$router->post('/admin/posts/store', 'app\Controllers\Admin\PostController@store');
-$router->get('/admin/posts/edit/{id}', 'app\Controllers\Admin\PostController@edit');
-$router->post('/admin/posts/update/{id}', 'app\Controllers\Admin\PostController@update');
-$router->post('/admin/posts/delete/{id}', 'app\Controllers\Admin\PostController@delete');
-$router->post('/admin/posts/status/{id}', 'app\Controllers\Admin\PostController@status');
+$router->get(
+    '/admin/posts',
+    'app\Controllers\Admin\PostController@index'
+);
+
+$router->get(
+    '/admin/posts/create',
+    'app\Controllers\Admin\PostController@create'
+);
+
+$router->post(
+    '/admin/posts/store',
+    'app\Controllers\Admin\PostController@store'
+);
+
+$router->get(
+    '/admin/posts/edit/{id}',
+    'app\Controllers\Admin\PostController@edit'
+);
+
+$router->post(
+    '/admin/posts/update/{id}',
+    'app\Controllers\Admin\PostController@update'
+);
+
+/*
+ * 保存済み投稿のプレビュー
+ */
+$router->get(
+    '/admin/posts/preview/{id}',
+    'app\Controllers\Admin\PostController@preview'
+);
+
+/*
+ * 公開・下書き切り替え
+ */
+$router->post(
+    '/admin/posts/status/{id}',
+    'app\Controllers\Admin\PostController@status'
+);
+
+/*
+ * ゴミ箱
+ */
+$router->post(
+    '/admin/posts/delete/{id}',
+    'app\Controllers\Admin\PostController@delete'
+);
+
+$router->post(
+    '/admin/posts/restore/{id}',
+    'app\Controllers\Admin\PostController@restore'
+);
+
+$router->post(
+    '/admin/posts/destroy/{id}',
+    'app\Controllers\Admin\PostController@destroy'
+);
+
+/*
+ * 投稿編集履歴
+ */
+$router->get(
+    '/admin/posts/revisions/{postId}',
+    'app\Controllers\Admin\PostRevisionController@index'
+);
+
+$router->post(
+    '/admin/posts/revisions/{postId}/restore/{revisionId}',
+    'app\Controllers\Admin\PostRevisionController@restore'
+);
 
 // カテゴリ管理
 $router->get('/admin/categories', 'app\Controllers\Admin\CategoryController@index');

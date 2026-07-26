@@ -58,3 +58,228 @@
     margin-top: 28px;
     color: #1f2937;
 }
+/* ========================================
+   NexaPress 2.3.0：投稿一覧
+======================================== */
+
+.post-archive-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 22px;
+    margin-bottom: 28px;
+}
+
+.post-archive-header .page-title {
+    margin: 0;
+}
+
+.post-archive-count {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.post-card {
+    display: grid;
+    grid-template-columns:
+        minmax(240px, 36%)
+        minmax(0, 1fr);
+    padding: 0;
+    overflow: hidden;
+}
+
+.post-card-image {
+    display: block;
+    min-height: 250px;
+    overflow: hidden;
+    background: #e5e7eb;
+}
+
+.post-card-image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 250px;
+    object-fit: cover;
+    transition:
+        transform 0.28s ease,
+        filter 0.28s ease;
+}
+
+.post-card-image:hover img {
+    transform: scale(1.04);
+    filter: contrast(1.04);
+}
+
+.post-card-body {
+    padding: 30px;
+}
+
+.post-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 9px 15px;
+    margin-bottom: 12px;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.post-card-category {
+    padding: 4px 9px;
+    color: #ffffff;
+    background: #111827;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.post-card .post-excerpt {
+    margin: 0 0 20px;
+    line-height: 1.85;
+}
+
+.post-card-readmore {
+    display: inline-flex;
+    padding-bottom: 3px;
+    color: #111827;
+    border-bottom: 2px solid #111827;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.post-card-readmore:hover {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+}
+
+/* ========================================
+   NexaPress 2.3.0：投稿詳細
+======================================== */
+
+.post-featured-image {
+    margin: -40px -40px 34px;
+    overflow: hidden;
+    background: #e5e7eb;
+    border-radius: 6px 6px 0 0;
+}
+
+.post-featured-image img {
+    display: block;
+    width: 100%;
+    max-height: 600px;
+    object-fit: cover;
+}
+
+.post-detail-header {
+    padding-bottom: 24px;
+    border-bottom: 2px solid #111827;
+}
+
+.post-detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px 20px;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.post-preview-notice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px 14px;
+    margin-bottom: 24px;
+    padding: 14px 17px;
+    color: #111827;
+    background: #fef3c7;
+    border-left: 6px solid #f59e0b;
+    border-radius: 5px;
+}
+
+.post-content {
+    overflow-wrap: anywhere;
+    line-height: 1.95;
+}
+
+.post-content img,
+.post-content video {
+    max-width: 100%;
+    height: auto;
+}
+
+.post-content table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.post-content th,
+.post-content td {
+    padding: 10px;
+    border: 1px solid #9ca3af;
+}
+
+.post-content pre {
+    max-width: 100%;
+    padding: 20px;
+    overflow-x: auto;
+    color: #f9fafb;
+    background: #111827;
+    border-radius: 7px;
+}
+
+.post-detail-footer {
+    padding-top: 26px;
+    margin-top: 36px;
+    border-top: 2px solid #111827;
+}
+
+/* ========================================
+   NexaPress 2.3.0：ページ送り
+======================================== */
+
+.public-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 34px;
+}
+
+.public-pagination a,
+.public-pagination span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    min-height: 42px;
+    padding: 8px 13px;
+    color: #111827;
+    background: #ffffff;
+    border: 2px solid #111827;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.public-pagination a:hover {
+    color: #ffffff;
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+.public-pagination .is-current {
+    color: #ffffff;
+    background: #111827;
+    border-color: #111827;
+}
+
+.public-pagination
+.public-pagination-ellipsis {
+    min-width: auto;
+    background: transparent;
+    border-color: transparent;
+}

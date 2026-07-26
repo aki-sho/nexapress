@@ -137,6 +137,24 @@ class Permission
             return;
         }
 
+        /*
+        * 投稿編集履歴も
+        * 投稿所有者によって権限を分ける
+        */
+        if (
+            $controllerName ===
+            $adminPrefix
+            . 'PostRevisionController'
+        ) {
+            self::authorizePostRevisionAction(
+                $methodName,
+                $params
+            );
+
+            return;
+        }
+
+
         $permissions = [
             $adminPrefix . 'DashboardController' =>
                 'dashboard.view',
@@ -223,8 +241,15 @@ class Permission
         }
 
         if (
-            $methodName === 'edit' ||
-            $methodName === 'update'
+            in_array(
+                $methodName,
+                [
+                    'edit',
+                    'update',
+                    'preview',
+                ],
+                true
+            )
         ) {
             self::requirePostOwnerPermission(
                 $post,
@@ -245,7 +270,17 @@ class Permission
             return;
         }
 
-        if ($methodName === 'delete') {
+        if (
+            in_array(
+                $methodName,
+                [
+                    'delete',
+                    'restore',
+                    'destroy',
+                ],
+                true
+            )
+        ) {
             self::requirePostOwnerPermission(
                 $post,
                 'posts.delete_any',
@@ -264,6 +299,96 @@ class Permission
         }
 
         self::require('admin.manage');
+    }
+
+    /*
+    * 投稿編集履歴の権限を確認
+    */
+    private static function authorizePostRevisionAction(
+        string $methodName,
+        array $params
+    ): void {
+        $postId = (int)(
+            $params[0]
+            ?? 0
+        );
+
+        $post = \app\Models\Post::find(
+            $postId
+        );
+
+        /*
+        * 存在しない投稿は
+        * Controller側で404にする
+        */
+        if (!$post) {
+            return;
+        }
+
+        /*
+        * 履歴表示・履歴復元には
+        * 投稿の編集権限が必要
+        */
+        if (
+            in_array(
+                $methodName,
+                [
+                    'index',
+                    'restore',
+                ],
+                true
+            )
+        ) {
+            self::requirePostOwnerPermission(
+                $post,
+                'posts.edit_any',
+                'posts.edit_own'
+            );
+        } else {
+            self::require('admin.manage');
+
+            return;
+        }
+
+        if ($methodName === 'index') {
+            return;
+        }
+
+        /*
+        * 履歴復元時は
+        * 復元対象の履歴を確認
+        */
+        $revisionId = (int)(
+            $params[1]
+            ?? 0
+        );
+
+        $revision =
+            \app\Models\PostRevision::findForPost(
+                $revisionId,
+                $postId
+            );
+
+        /*
+        * 存在しない履歴は
+        * Controller側で404にする
+        */
+        if (!$revision) {
+            return;
+        }
+
+        /*
+        * 公開状態の履歴を復元する場合は
+        * 公開権限も必要
+        */
+        if (
+            ($revision['status'] ?? 'draft')
+            === 'published'
+        ) {
+            self::requirePostPublishPermission(
+                $post
+            );
+        }
     }
 
     /*

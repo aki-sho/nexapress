@@ -253,3 +253,222 @@ function nexapress_admin_header(): void
     </header>
     <?php
 }
+
+/*
+ * 投稿本文を安全化して取得
+ *
+ * 2.3.0より前に保存された投稿も
+ * 公開時に再度安全化する。
+ */
+function nx_post_content(
+    array $post
+): string {
+    return \app\Core\HtmlSanitizer::sanitize(
+        (string)(
+            $post['content']
+            ?? ''
+        )
+    );
+}
+
+/*
+ * 投稿一覧用の抜粋を取得
+ */
+function nx_post_excerpt(
+    array $post,
+    int $length = 120
+): string {
+    $length = max(
+        1,
+        min($length, 1000)
+    );
+
+    $excerpt = trim(
+        (string)(
+            $post['excerpt']
+            ?? ''
+        )
+    );
+
+    /*
+     * 保存済み抜粋がない場合は
+     * 本文から自動生成
+     */
+    if ($excerpt === '') {
+        $excerpt = html_entity_decode(
+            strip_tags(
+                nx_post_content($post)
+            ),
+            ENT_QUOTES |
+            ENT_HTML5,
+            'UTF-8'
+        );
+    }
+
+    $excerpt = str_replace(
+        "\u{00A0}",
+        ' ',
+        $excerpt
+    );
+
+    $excerpt = preg_replace(
+        '/\s+/u',
+        ' ',
+        $excerpt
+    ) ?? '';
+
+    $excerpt = trim($excerpt);
+
+    if ($excerpt === '') {
+        return '';
+    }
+
+    if (
+        function_exists('mb_strlen') &&
+        function_exists('mb_substr')
+    ) {
+        if (
+            mb_strlen(
+                $excerpt,
+                'UTF-8'
+            ) <= $length
+        ) {
+            return $excerpt;
+        }
+
+        return mb_substr(
+            $excerpt,
+            0,
+            $length,
+            'UTF-8'
+        ) . '…';
+    }
+
+    if (strlen($excerpt) <= $length) {
+        return $excerpt;
+    }
+
+    return substr(
+        $excerpt,
+        0,
+        $length
+    ) . '…';
+}
+
+/*
+ * 投稿のアイキャッチ画像URLを取得
+ */
+function nx_post_featured_image_url(
+    array $post
+): string {
+    $path = trim(
+        (string)(
+            $post[
+                'featured_media_path'
+            ] ?? ''
+        )
+    );
+
+    if ($path === '') {
+        return '';
+    }
+
+    return public_url($path);
+}
+
+/*
+ * アイキャッチ画像の代替テキスト
+ */
+function nx_post_featured_image_alt(
+    array $post
+): string {
+    $alt = trim(
+        (string)(
+            $post[
+                'featured_media_description'
+            ] ?? ''
+        )
+    );
+
+    if ($alt !== '') {
+        return $alt;
+    }
+
+    $alt = trim(
+        (string)(
+            $post[
+                'featured_media_title'
+            ] ?? ''
+        )
+    );
+
+    if ($alt !== '') {
+        return $alt;
+    }
+
+    return trim(
+        (string)(
+            $post['title']
+            ?? ''
+        )
+    );
+}
+
+/*
+ * 投稿の表示日を取得
+ */
+function nx_post_date(
+    array $post,
+    string $format = 'Y/m/d'
+): string {
+    $date = trim(
+        (string)(
+            $post['published_at']
+            ??
+            $post['created_at']
+            ?? ''
+        )
+    );
+
+    if ($date === '') {
+        return '';
+    }
+
+    $timestamp = strtotime($date);
+
+    if ($timestamp === false) {
+        return $date;
+    }
+
+    return date(
+        $format,
+        $timestamp
+    );
+}
+
+/*
+ * トップページのページ送りURL
+ */
+function nx_home_page_url(
+    int $page
+): string {
+    $page = max(1, $page);
+
+    $params = $_GET;
+
+    unset($params['page']);
+
+    if ($page > 1) {
+        $params['page'] = $page;
+    }
+
+    $query = http_build_query(
+        $params
+    );
+
+    $homeUrl = url('');
+
+    return $query !== ''
+        ? $homeUrl . '?' . $query
+        : $homeUrl;
+}

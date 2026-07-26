@@ -27,3 +27,50 @@
         font-size: 24px;
     }
 }
+
+/* NexaPress 2.3.0：投稿表示 */
+@media (max-width: 760px) {
+    .post-archive-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    .post-card {
+        grid-template-columns: 1fr;
+        padding: 0;
+    }
+
+    .post-card-image,
+    .post-card-image img {
+        min-height: 200px;
+        max-height: 320px;
+    }
+}
+
+@media (max-width: 600px) {
+    .post-card {
+        padding: 0;
+    }
+
+    .post-card-body {
+        padding: 20px;
+    }
+
+    .post-featured-image {
+        margin:
+            -20px
+            -20px
+            24px;
+    }
+
+    .post-detail-meta {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .public-pagination {
+        justify-content: flex-start;
+    }
+}

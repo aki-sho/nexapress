@@ -202,6 +202,14 @@ class Installer
             'posts'
         );
 
+        /*
+        * 投稿編集履歴テーブル
+        */
+        $postRevisions = self::tableName(
+            $prefix,
+            'post_revisions'
+        );
+
         $pages = self::tableName(
             $prefix,
             'pages'
@@ -251,25 +259,110 @@ class Installer
               COLLATE=utf8mb4_unicode_ci
         ");
 
+        /*
+        * 投稿テーブル
+        */
         $pdo->exec("
             CREATE TABLE IF NOT EXISTS {$posts} (
                 id INT AUTO_INCREMENT PRIMARY KEY,
+
                 title VARCHAR(255) NOT NULL,
+
                 slug VARCHAR(255) NOT NULL UNIQUE,
+
+                excerpt TEXT NULL,
+
                 content TEXT NOT NULL,
+
                 status VARCHAR(20) NOT NULL
                     DEFAULT 'draft',
+
                 user_id INT NOT NULL,
+
                 category_id INT NULL,
+
+                featured_media_id INT NULL,
+
                 published_at DATETIME NULL,
+
                 created_at DATETIME NOT NULL
                     DEFAULT CURRENT_TIMESTAMP,
+
                 updated_at DATETIME NULL,
+
+                deleted_at DATETIME NULL,
+
+                INDEX idx_posts_status_published (
+                    status,
+                    published_at
+                ),
+
+                INDEX idx_posts_category (
+                    category_id
+                ),
+
+                INDEX idx_posts_featured_media (
+                    featured_media_id
+                ),
+
+                INDEX idx_posts_deleted (
+                    deleted_at
+                ),
+
                 FOREIGN KEY (user_id)
                     REFERENCES {$users}(id)
             ) ENGINE=InnoDB
-              DEFAULT CHARSET=utf8mb4
-              COLLATE=utf8mb4_unicode_ci
+            DEFAULT CHARSET=utf8mb4
+            COLLATE=utf8mb4_unicode_ci
+        ");
+
+        /*
+        * 投稿編集履歴テーブル
+        */
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS {$postRevisions} (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+
+                post_id INT NOT NULL,
+
+                title VARCHAR(255) NOT NULL,
+
+                slug VARCHAR(255) NOT NULL,
+
+                excerpt TEXT NULL,
+
+                content TEXT NOT NULL,
+
+                status VARCHAR(20) NOT NULL
+                    DEFAULT 'draft',
+
+                category_id INT NULL,
+
+                featured_media_id INT NULL,
+
+                editor_user_id INT NOT NULL,
+
+                created_at DATETIME NOT NULL
+                    DEFAULT CURRENT_TIMESTAMP,
+
+                INDEX idx_post_revisions_post_created (
+                    post_id,
+                    created_at
+                ),
+
+                INDEX idx_post_revisions_editor (
+                    editor_user_id
+                ),
+
+                FOREIGN KEY (post_id)
+                    REFERENCES {$posts}(id)
+                    ON DELETE CASCADE,
+
+                FOREIGN KEY (editor_user_id)
+                    REFERENCES {$users}(id)
+            ) ENGINE=InnoDB
+            DEFAULT CHARSET=utf8mb4
+            COLLATE=utf8mb4_unicode_ci
         ");
 
         $pdo->exec("

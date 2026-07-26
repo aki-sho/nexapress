@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title><?= e(($title ?? '管理画面') . ' - ' . site_title()) ?></title>
     <link rel="stylesheet" href="<?= public_url('assets/css/style.css') ?>">
+    <!-- 投稿管理画面専用CSS -->
+    <link rel="stylesheet "href="<?= public_url('assets/css/admin-posts.css') ?>">
     <?php if (function_exists('do_action')): ?>
         <?php do_action('admin_head'); ?>
     <?php endif; ?>
