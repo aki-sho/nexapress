@@ -19,6 +19,10 @@
     {
       "manifest_url": "https://raw.githubusercontent.com/aki-sho/nx-import-export/main/manifest.json",
       "download_url": "https://github.com/aki-sho/nx-import-export/releases/download/v1.0.0/nx-import-export-1.0.0.zip"
+    },
+    {
+      "manifest_url": "https://raw.githubusercontent.com/aki-sho/nx_nitro_cache/main/manifest.json",
+      "download_url": "https://github.com/aki-sho/nx_nitro_cache/releases/download/v1.0.0/nx_nitro_cache-1.0.0.zip"
     }
   ]
 }
