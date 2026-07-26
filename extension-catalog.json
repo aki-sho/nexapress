@@ -23,6 +23,10 @@
     {
       "manifest_url": "https://raw.githubusercontent.com/aki-sho/nx_nitro_cache/main/manifest.json",
       "download_url": "https://github.com/aki-sho/nx_nitro_cache/releases/download/v1.0.0/nx_nitro_cache-1.0.0.zip"
+    },
+    {
+      "manifest_url": "https://raw.githubusercontent.com/aki-sho/nexapress-mail/main/manifest.json",
+      "download_url": "https://github.com/aki-sho/nexapress-mail/releases/download/v1.0.0/nexapress-mail-1.0.0.zip"
     }
   ]
 }
