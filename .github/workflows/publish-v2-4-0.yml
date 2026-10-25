@@ -1,0 +1,75 @@
+name: Publish NexaPress v2.4.0
+on:
+  push:
+    branches: ["codex/release-v2.4.0-c064f5"]
+permissions:
+  contents: write
+concurrency:
+  group: nexapress-release-v2.4.0
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: aki-sho/nexapress
+      SOURCE_SHA: bbd23bccf33104a30a6815e4004366c2fab97841
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: bbd23bccf33104a30a6815e4004366c2fab97841
+          persist-credentials: false
+      - name: Validate and build distribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(php -r '$v=require "config/version.php"; echo $v["version"];')" = '2.4.0'
+          find app config database public -name '*.php' -print0 | xargs -0 -n1 php -l >/dev/null
+          php update-package/build.php
+          mkdir -p dist
+          cp update-package/nexapress-update-2.4.0.zip dist/
+          git archive --format=zip --prefix=nexapress-2.4.0/ -o dist/nexapress-2.4.0.zip HEAD app config database extensions public storage index.php .htaccess .gitignore README.md extension-catalog.json update-package/build.php update-package/update-manifest.json
+          python3 - <<'PY'
+          import json,zipfile
+          with zipfile.ZipFile('dist/nexapress-update-2.4.0.zip') as archive:
+              assert archive.testzip() is None
+              assert json.loads(archive.read('update-manifest.json'))['version'] == '2.4.0'
+              assert 'package/database/migrations/2.4.0.php' in archive.namelist()
+              assert 'package/config/config.php' not in archive.namelist()
+          PY
+          sha256sum dist/*.zip
+      - name: Publish release after both ZIP uploads finish
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > dist/release-notes.md <<'NOTES'
+          NexaPress本体のサイト構成と編集機能を強化しました。
+          
+          - メニュー管理（固定ページ・カテゴリ・任意リンクと並べ替え）
+          - トップページの記事一覧／固定ページ選択
+          - 固定ページの下書きプレビュー・編集履歴・ゴミ箱
+          - 投稿・固定ページのブラウザ自動保存・復元・未保存警告
+          - 自分の表示名・メール・パスワードの変更
+          - 公開カテゴリーページ・記事検索・ページ送り
+          - 拡張機能の更新・必要環境チェック・更新前バックアップ
+          
+          新規導入には nexapress-2.4.0.zip を使用してください。
+          既存の2.2.0以降のサイトは、管理画面の「更新」から更新できます。
+          更新用ファイルは nexapress-update-2.4.0.zip です。DBマイグレーションは更新処理が実行します。
+          自動保存はブラウザ内の入力保護です。サイトへの保存・公開には保存操作が必要です。
+          NOTES
+          gh release create v2.4.0 dist/nexapress-2.4.0.zip dist/nexapress-update-2.4.0.zip --draft --target "$SOURCE_SHA" --title 'NexaPress v2.4.0' --notes-file dist/release-notes.md
+          gh release edit v2.4.0 --draft=false --latest
+          gh api repos/aki-sho/nexapress/releases/tags/v2.4.0 > dist/published-release.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          release=json.loads(pathlib.Path('dist/published-release.json').read_text())
+          assert release['tag_name']=='v2.4.0' and not release['draft'] and not release['prerelease']
+          assets={asset['name']:asset for asset in release['assets']}
+          for name in ['nexapress-2.4.0.zip','nexapress-update-2.4.0.zip']:
+              assert assets[name]['state']=='uploaded'
+              digest='sha256:'+hashlib.sha256((pathlib.Path('dist')/name).read_bytes()).hexdigest()
+              assert assets[name]['digest']==digest
+          print(release['html_url'])
+          PY
