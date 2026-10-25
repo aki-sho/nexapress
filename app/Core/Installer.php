@@ -110,6 +110,8 @@ class Installer
                 $prefix
             );
 
+            SiteSchema::ensure($pdo);
+
             self::createAdministrator(
                 $pdo,
                 $prefix,

@@ -93,7 +93,7 @@ class PostValidator
                 self::lower($slug),
                 self::reservedSlugs(),
                 true
-            )
+            ) && !($postId !== null && (Post::find($postId)['slug'] ?? null) === $slug)
         ) {
             $errors['slug'] =
                 'このスラッグは'
@@ -453,6 +453,9 @@ class PostValidator
             'admin',
             'install',
             'public',
+            'posts',
+            'search',
+            'category',
         ];
     }
 

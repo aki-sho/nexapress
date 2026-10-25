@@ -148,7 +148,7 @@ if ($updatedDateTime !== '') {
                         $post['category_name']
                     )
                 ): ?>
-                    <span>
+                    <a href="<?= e(category_url(['slug' => $post['category_slug']])) ?>">
                         カテゴリ：
                         <?= e(
                             (string)(
@@ -157,7 +157,7 @@ if ($updatedDateTime !== '') {
                                 ]
                             )
                         ) ?>
-                    </span>
+                    </a>
                 <?php endif; ?>
             </div>
         </header>

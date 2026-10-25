@@ -87,6 +87,24 @@ Debug::log('Request start', [
 
 // 公開サイト
 $router->get('/', 'app\Controllers\HomeController@index');
+$router->get('/posts', 'app\Controllers\ArchiveController@index');
+$router->get('/search', 'app\Controllers\ArchiveController@search');
+$router->get('/category/{slug}', 'app\Controllers\ArchiveController@category');
+$router->get('/post/archive/posts', 'app\Controllers\ArchiveController@index');
+$router->get('/post/archive/search', 'app\Controllers\ArchiveController@search');
+$router->get('/post/archive/category/{slug}', 'app\Controllers\ArchiveController@category');
+$router->get('/admin/profile', 'app\Controllers\Admin\ProfileController@index');
+$router->post('/admin/profile', 'app\Controllers\Admin\ProfileController@update');
+$router->get('/admin/navigation', 'app\Controllers\Admin\NavigationController@index');
+$router->post('/admin/navigation/save', 'app\Controllers\Admin\NavigationController@save');
+$router->post('/admin/navigation/move/{id}', 'app\Controllers\Admin\NavigationController@move');
+$router->post('/admin/navigation/delete/{id}', 'app\Controllers\Admin\NavigationController@delete');
+$router->get('/admin/pages/preview/{id}', 'app\Controllers\Admin\PageController@preview');
+$router->get('/admin/pages/revisions/{id}', 'app\Controllers\Admin\PageController@revisions');
+$router->post('/admin/pages/revisions/{id}/restore/{revision}', 'app\Controllers\Admin\PageController@restoreRevision');
+$router->post('/admin/pages/restore/{id}', 'app\Controllers\Admin\PageController@restore');
+$router->post('/admin/pages/destroy/{id}', 'app\Controllers\Admin\PageController@destroy');
+$router->post('/admin/extensions/update/{extensionKey}', 'app\Controllers\Admin\ExtensionController@update');
 $router->get('/post/{slug}', 'app\Controllers\PostController@show');
 
 // インストール

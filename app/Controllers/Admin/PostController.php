@@ -142,6 +142,8 @@ class PostController extends Controller
 
             Post::create($data);
 
+            nx_editor_saved();
+
             $this->setNotice(
                 '投稿を保存しました。'
             );
@@ -259,6 +261,8 @@ class PostController extends Controller
                 '変更内容はありませんでした。'
             );
 
+            nx_editor_saved();
+
             $this->redirectToList();
         }
 
@@ -294,6 +298,8 @@ class PostController extends Controller
             );
 
             $pdo->commit();
+
+            nx_editor_saved();
 
             $this->setNotice(
                 '投稿を更新しました。'

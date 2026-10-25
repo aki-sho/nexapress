@@ -125,6 +125,13 @@ class Permission
         /*
         * 投稿は所有者によって権限を分ける
         */
+        if ($controllerName === $adminPrefix . 'ProfileController') {
+            return;
+        }
+        if ($controllerName === $adminPrefix . 'NavigationController') {
+            self::require('settings.manage');
+            return;
+        }
         if (
             $controllerName ===
             $adminPrefix . 'PostController'

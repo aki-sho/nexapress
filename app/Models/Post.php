@@ -7,6 +7,44 @@ use PDO;
 
 class Post
 {
+    public static function countPublicArchive(?int $category, string $query): int
+    {
+        [$where, $params] = self::publicConditions($category, $query);
+        $stmt = Database::connect()->prepare('SELECT COUNT(*) FROM ' . Database::table('posts') . ' p ' . $where);
+        $stmt->execute($params);
+        return (int)$stmt->fetchColumn();
+    }
+
+    public static function publicArchive(?int $category, string $query, int $limit, int $offset): array
+    {
+        [$where, $params] = self::publicConditions($category, $query);
+        $stmt = Database::connect()->prepare(self::selectSql() . $where .
+            ' ORDER BY p.published_at DESC, p.id DESC LIMIT :archive_limit OFFSET :archive_offset');
+        self::bindValues($stmt, $params);
+        $stmt->bindValue(':archive_limit', max(1, min(100, $limit)), PDO::PARAM_INT);
+        $stmt->bindValue(':archive_offset', max(0, $offset), PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    private static function publicConditions(?int $category, string $query): array
+    {
+        $where = " WHERE p.status = 'published' AND p.deleted_at IS NULL";
+        $params = [];
+        if ($category !== null) {
+            $where .= ' AND p.category_id = :archive_category';
+            $params[':archive_category'] = $category;
+        }
+        if ($query !== '') {
+            $where .= " AND (p.title LIKE :archive_title ESCAPE '=' OR p.content LIKE :archive_content ESCAPE '='
+                OR p.excerpt LIKE :archive_excerpt ESCAPE '=')";
+            foreach (['title', 'content', 'excerpt'] as $field) {
+                $params[':archive_' . $field] = '%' . self::escapeLike($query) . '%';
+            }
+        }
+        return [$where, $params];
+    }
+
     /*
      * 管理画面：
      * 通常投稿を全件取得

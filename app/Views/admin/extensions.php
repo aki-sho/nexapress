@@ -69,6 +69,8 @@ $title = '拡張機能';
                                 >
                                     インストール済み
                                 </button>
+                            <?php elseif (!empty($extension['compatibility_issues'])): ?>
+                                <p class="error-message"><?= e(implode(' ', $extension['compatibility_issues'])) ?></p>
                             <?php else: ?>
                                 <form
                                     action="<?= url(
@@ -78,6 +80,7 @@ $title = '拡張機能';
                                     method="post"
                                     onsubmit="return confirm('この拡張機能をインストールしますか？');"
                                 >
+<input type="hidden" name="_csrf_token" value="<?= e(\app\Core\Csrf::token()) ?>">
                                     <button
                                         type="submit"
                                         class="extension-button"
@@ -102,6 +105,7 @@ $title = '拡張機能';
         method="post"
         enctype="multipart/form-data"
     >
+<input type="hidden" name="_csrf_token" value="<?= e(\app\Core\Csrf::token()) ?>">
         <input
             type="file"
             name="extension_file"
@@ -142,7 +146,11 @@ $title = '拡張機能';
                                 <?= e($extension['description']) ?>
                             </td>
 
-                            <td><?= e($extension['version']) ?></td>
+                            <td>
+                                <?= e($extension['version']) ?>
+                                <p>必要環境：NexaPress <?= e((string)($extension['requires']['nexapress'] ?? '指定なし')) ?> ／ PHP <?= e((string)($extension['requires']['php'] ?? '指定なし')) ?></p>
+                                <?php foreach ($extension['compatibility_issues'] as $issue): ?><p class="error-message"><?= e($issue) ?> 有効でも読み込みを停止しています。</p><?php endforeach; ?>
+                            </td>
 
                             <td>
                                 <?= $extension['is_enabled']
@@ -152,6 +160,16 @@ $title = '拡張機能';
 
                             <td>
                                 <div class="extension-actions">
+                                    <?php $available = $catalogExtensions[$extension['key']] ?? null; ?>
+                                    <?php if ($available && version_compare($available['version'], $extension['version'], '>')): ?>
+                                        <p>新しいバージョン：<?= e($available['version']) ?></p>
+                                        <?php if (!$available['compatibility_issues']): ?>
+                                            <form action="<?= e(url('admin/extensions/update/' . rawurlencode($extension['key']))) ?>" method="post">
+                                                <input type="hidden" name="_csrf_token" value="<?= e(\app\Core\Csrf::token()) ?>">
+                                                <button type="submit">更新する</button>
+                                            </form>
+                                        <?php else: ?><p class="error-message"><?= e(implode(' ', $available['compatibility_issues'])) ?></p><?php endif; ?>
+                                    <?php endif; ?>
                                     <?php if ($extension['is_enabled']): ?>
                                         <?php if ($extension['has_dashboard']): ?>
                                             <a href="<?= url(
@@ -174,6 +192,7 @@ $title = '拡張機能';
                                             ) ?>"
                                             method="post"
                                         >
+<input type="hidden" name="_csrf_token" value="<?= e(\app\Core\Csrf::token()) ?>">
                                             <button type="submit">
                                                 無効化
                                             </button>
@@ -188,6 +207,7 @@ $title = '拡張機能';
                                             ) ?>"
                                             method="post"
                                         >
+<input type="hidden" name="_csrf_token" value="<?= e(\app\Core\Csrf::token()) ?>">
                                             <button type="submit">
                                                 有効化
                                             </button>
@@ -203,6 +223,7 @@ $title = '拡張機能';
                                             method="post"
                                             onsubmit="return confirm('この拡張機能を削除しますか？');"
                                         >
+<input type="hidden" name="_csrf_token" value="<?= e(\app\Core\Csrf::token()) ?>">
                                             <button type="submit">
                                                 削除
                                             </button>

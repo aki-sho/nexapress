@@ -18,6 +18,15 @@ class HomeController extends Controller
             $this->redirect('/install');
         }
 
+        $config = general_config();
+        if (($config['homepage_mode'] ?? 'posts') === 'page') {
+            $page = \app\Models\Page::find((int)($config['homepage_page_id'] ?? 0));
+            if ($page && $page['status'] === 'published' && $page['deleted_at'] === null) {
+                $this->view('page-detail', ['page' => $page]);
+                return;
+            }
+        }
+
         $requestedPage = max(
             1,
             (int)(

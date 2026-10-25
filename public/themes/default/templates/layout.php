@@ -22,6 +22,7 @@
             . '/style.css'
         ) ?>"
     >
+<link rel="stylesheet" href="<?= e(public_url('assets/css/core-features.css')) ?>">
 </head>
 <body>
 

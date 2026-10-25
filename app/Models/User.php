@@ -6,6 +6,14 @@ use app\Core\Database;
 
 class User
 {
+    public static function verifyPassword(int $id, string $password): bool
+    {
+        $stmt = Database::connect()->prepare('SELECT password_hash FROM ' . Database::table('users') . ' WHERE id = ?');
+        $stmt->execute([$id]);
+        $hash = $stmt->fetchColumn();
+        return is_string($hash) && password_verify($password, $hash);
+    }
+
     /*
      * ユーザー名から取得
      */

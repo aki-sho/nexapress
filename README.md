@@ -5,7 +5,7 @@
 NexaPressは、PHPとMySQL／MariaDBで動作するWeb CMSです。  
 ブラウザからの初期セットアップに対応し、投稿、固定ページ、メディア、テーマ、ユーザー、拡張機能を管理画面から一元管理できます。
 
-![Version](https://img.shields.io/badge/version-v2.3.0-2563eb)
+![Version](https://img.shields.io/badge/version-v2.4.0-2563eb)
 ![PHP](https://img.shields.io/badge/PHP-8.x-777bb4)
 ![Database](https://img.shields.io/badge/MySQL%20%2F%20MariaDB-supported-f59e0b)
 ![Architecture](https://img.shields.io/badge/Architecture-MVC-111827)
@@ -34,6 +34,36 @@ NexaPressは、扱いやすさと拡張性を両立したCMSです。
 ---
 
 ## Features
+
+### 2.4.0で追加した本体機能
+
+| 機能 | 操作場所・動作 |
+|---|---|
+| メニュー管理 | 「メニュー管理」で固定ページ・カテゴリ・任意リンクを追加し、表示名や順序を編集。両同梱テーマに反映 |
+| トップページ選択 | 「設定 → 一般設定」で記事一覧または公開中の固定ページを選択。記事一覧は別URLでも閲覧可能 |
+| 固定ページのプレビュー・履歴・ゴミ箱 | 保存済み下書きのプレビュー、最新50件の更新前履歴、履歴復元、ゴミ箱への移動・下書きへの復元・完全削除 |
+| 編集内容の保護 | 投稿・固定ページの入力をブラウザに自動保存し、再訪時に復元。未保存で移動すると警告 |
+| 自分のプロフィール | すべてのログインユーザーが自分の表示名・メール・パスワードを変更可能。メール・パスワード変更は現在のパスワードを確認 |
+| 公開カテゴリ・記事検索 | 公開記事だけをカテゴリ・キーワードで絞り込み、ページ送り。下書き・ゴミ箱の記事は対象外 |
+| 拡張機能の更新・互換性管理 | カタログの新バージョンを確認して更新。CMS・PHPの必要バージョンを導入・有効化・更新時に確認 |
+
+自動保存はサイトへの保存・公開とは別です。同じブラウザ・サイト・ユーザー・編集対象ごとに入力を保管し、7日以内の入力を復元できます。保存に成功した入力は削除し、保存エラーの場合は保持します。共有端末では、復元画面で不要な入力を破棄してください。
+
+トップ用の固定ページを下書きやゴミ箱に戻した場合は、トップを記事一覧に切り替えて表示します。メニューの固定ページリンクも、公開中のページだけ表示します。
+
+公開URLは通常 `/posts`、`/search?q=キーワード`、`/category/カテゴリスラッグ` です。既存記事・固定ページのURLと重なる場合は、生成するリンクを `/post/archive/` 以下へ切り替え、既存のURLを維持します。
+
+拡張機能の更新では、DBと `storage/extensions` の設定を維持します。更新前の拡張機能ファイルは `storage/backups/extensions` へ退避し、新ファイルの配置に失敗した場合は元に戻します。必要環境を満たさない拡張機能は起動を停止し、管理画面に理由を表示します。ZIPを自分でアップロードする場合も、必要環境を確認します。
+
+既存サイトは管理画面の本体更新でDBマイグレーションを実行します。ファイルを手動で更新する場合は、バックアップ取得後に次を実行してください。
+
+```sh
+php app/Console/migrate.php
+```
+
+新規インストールでは、必要なテーブルをインストーラーが作成します。
+
+検証手順は [tests/README.md](tests/README.md) を参照してください。
 
 ### セットアップ
 
@@ -164,7 +194,7 @@ NexaPressを動作させるには、以下の環境が必要です。
 GitHub Releasesから最新版の本体ZIPをダウンロードします。
 
 ```text
-nexapress-2.3.0.zip
+nexapress-2.4.0.zip
 ```
 
 ### 2. サーバーへ配置
@@ -173,7 +203,7 @@ ZIPを展開し、Webサーバーの公開可能なディレクトリへ配置�
 
 ```text
 htdocs/
-└─ nexapress-2.3.0/
+└─ nexapress-2.4.0/
 ```
 
 ### 3. データベースを作成
@@ -185,7 +215,7 @@ NexaPressで使用するMySQLまたはMariaDBのデータベースを作成し�
 ブラウザからNexaPressのURLへアクセスします。
 
 ```text
-http://localhost/nexapress-2.3.0/
+http://localhost/nexapress-2.4.0/
 ```
 
 未インストールの場合は、自動的にインストーラーへ移動します。
@@ -216,13 +246,13 @@ http://localhost/nexapress-2.3.0/
 
 ```text
 サイト：
-http://localhost/nexapress-2.3.0/
+http://localhost/nexapress-2.4.0/
 
 ログイン画面：
-http://localhost/nexapress-2.3.0/admin/login
+http://localhost/nexapress-2.4.0/admin/login
 
 管理画面：
-http://localhost/nexapress-2.3.0/admin
+http://localhost/nexapress-2.4.0/admin
 ```
 
 ---
@@ -250,10 +280,10 @@ NexaPress 2.2.0以降では、管理画面から本体をアップデートで�
 - バージョン情報の更新
 - 更新失敗時のバックアップ復元
 
-NexaPress 2.3.0の更新用ファイル名は以下です。
+NexaPress 2.4.0の更新用ファイル名は以下です。
 
 ```text
-nexapress-update-2.3.0.zip
+nexapress-update-2.4.0.zip
 ```
 
 ---
@@ -465,13 +495,13 @@ NexaPressを安定して運用するため、以下を推奨します。
 リリースには、用途の異なる2種類のZIPが含まれます。
 
 ```text
-nexapress-2.3.0.zip
+nexapress-2.4.0.zip
 ```
 
 新規インストール用の本体パッケージです。
 
 ```text
-nexapress-update-2.3.0.zip
+nexapress-update-2.4.0.zip
 ```
 
 既存のNexaPress 2.2.0以上を更新するためのパッケージです。

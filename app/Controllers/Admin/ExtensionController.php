@@ -7,6 +7,8 @@ use app\Core\Controller;
 use app\Core\Extension;
 use app\Core\ExtensionCatalog;
 use app\Core\ExtensionInstaller;
+use app\Core\ExtensionCompatibility;
+use app\Core\Csrf;
 use RuntimeException;
 use Throwable;
 use app\Models\ExtensionSetting;
@@ -63,6 +65,7 @@ class ExtensionController extends Controller
     public function install(string $extensionKey): void
     {
         Auth::requireLogin();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
 
         try {
             $extension = ExtensionCatalog::find(
@@ -92,6 +95,7 @@ class ExtensionController extends Controller
     public function upload(): void
     {
         Auth::requireLogin();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
 
         if (
             empty($_FILES['extension_file']) ||
@@ -247,6 +251,19 @@ class ExtensionController extends Controller
         $temporaryExtensionDirectory =
             $temporaryDirectory . '/' . $rootFolder;
 
+        try {
+            $manifest = json_decode((string)file_get_contents($temporaryExtensionDirectory . '/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
+            if (!is_array($manifest) || !preg_match('/^[A-Za-z0-9_-]+$/', (string)($manifest['id'] ?? '')) ||
+                empty($manifest['version']) || Extension::find($manifest['id']) !== null) {
+                throw new RuntimeException('拡張機能の定義が正しくないか、同じIDがインストール済みです。');
+            }
+            ExtensionCompatibility::requireCompatible($manifest);
+        } catch (Throwable $exception) {
+            $this->removeDirectory($temporaryDirectory);
+            $_SESSION['extension_error'] = $exception->getMessage();
+            redirect_to('admin/extensions');
+        }
+
         if (
             !is_dir($temporaryExtensionDirectory) ||
             !rename($temporaryExtensionDirectory, $targetDirectory)
@@ -263,9 +280,14 @@ class ExtensionController extends Controller
     public function enable(string $extensionKey): void
     {
         Auth::requireLogin();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
 
-        if (Extension::find($extensionKey)) {
-            ExtensionSetting::enable($extensionKey);
+        if ($extension = Extension::find($extensionKey)) {
+            if ($extension['compatibility_issues']) {
+                $_SESSION['extension_error'] = implode(' ', $extension['compatibility_issues']);
+            } else {
+                ExtensionSetting::enable($extensionKey);
+            }
         }
 
         redirect_to('admin/extensions');
@@ -274,6 +296,7 @@ class ExtensionController extends Controller
     public function disable(string $extensionKey): void
     {
         Auth::requireLogin();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
 
         if (Extension::find($extensionKey)) {
             ExtensionSetting::disable($extensionKey);
@@ -285,6 +308,7 @@ class ExtensionController extends Controller
     public function delete(string $extensionKey): void
     {
         Auth::requireLogin();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
 
         $extension = Extension::find($extensionKey);
 
@@ -314,6 +338,24 @@ class ExtensionController extends Controller
         redirect_to('admin/extensions');
     }
 
+    public function update(string $extensionKey): void
+    {
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
+        try {
+            $extension = ExtensionCatalog::find($extensionKey, true);
+            if ($extension === null) {
+                throw new RuntimeException('カタログから更新情報を取得できませんでした。');
+            }
+            ExtensionInstaller::install($extension, true);
+            do_action('extension_updated', $extensionKey);
+            ExtensionCatalog::clearCache();
+            $_SESSION['extension_notice'] = $extension['name'] . 'を更新しました。更新前のファイルはバックアップしました。';
+        } catch (Throwable $exception) {
+            $_SESSION['extension_error'] = $exception->getMessage();
+        }
+        redirect_to('admin/extensions');
+    }
+
     public function dashboard(string $extensionKey): void
     {
         Auth::requireLogin();
@@ -329,6 +371,12 @@ class ExtensionController extends Controller
         if (!$extension['is_enabled']) {
             http_response_code(403);
             echo 'この拡張機能は無効です。';
+            return;
+        }
+
+        if ($extension['compatibility_issues']) {
+            http_response_code(409);
+            echo e(implode(' ', $extension['compatibility_issues']));
             return;
         }
 

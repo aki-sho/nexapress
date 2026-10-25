@@ -216,6 +216,9 @@ class ExtensionCatalog
             'banner_url' => $bannerUrl,
             'download_url' => $downloadUrl,
             'manifest_url' => $manifestUrl,
+            'requires' => $manifest['requires'] ?? [],
+            'compatibility_issues' => ExtensionCompatibility::issues($manifest),
+            'update' => is_array($manifest['update'] ?? null) ? $manifest['update'] : [],
             'author' => trim(
                 (string)($manifest['author'] ?? '')
             ),
@@ -239,6 +242,11 @@ class ExtensionCatalog
         }
 
         $curl = curl_init($url);
+
+        $caFile = ini_get('curl.cainfo');
+        if (is_string($caFile) && $caFile !== '') {
+            curl_setopt($curl, CURLOPT_CAINFO, $caFile);
+        }
 
         curl_setopt_array($curl, [
             CURLOPT_RETURNTRANSFER => true,

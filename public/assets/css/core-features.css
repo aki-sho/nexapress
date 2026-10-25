@@ -1,0 +1,15 @@
+.core-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; margin: .65rem 0; }
+.core-actions form { margin: 0; padding: 0; }
+.navigation-editor { margin: 1rem 0; padding: 1rem; }
+.navigation-item-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: end; }
+.navigation-item-form input, .navigation-item-form select { width: 100%; }
+.navigation-item-form label { display: grid; gap: .4rem; }
+.navigation-item-form [hidden] { display: none; }
+.editor-draft-status { padding: .8rem 1rem; margin-bottom: 1rem; background: #eef5ff; color: #15385d; border: 1px solid #c5d9f3; border-radius: .5rem; }
+.editor-draft-status p { margin: 0; }
+.revision-content { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 24rem; overflow: auto; }
+.public-search { display: flex; gap: .5rem; flex-wrap: wrap; }
+.public-search input { min-width: 8rem; max-width: 15rem; padding: .4rem .6rem; border: 1px solid #999; border-radius: .25rem; color: #111827; background: #fff; }
+.public-search button { padding: .4rem .7rem; cursor: pointer; }
+.preview-notice { padding: 1rem; border: 1px solid #b7791f; background: #fff9dc; color: #5d430b; }
+@media (max-width: 700px) { .site-header-inner { flex-wrap: wrap; gap: .75rem; } .site-nav { flex-wrap: wrap; } .main { min-width: 0; } }

@@ -45,9 +45,7 @@ $totalPages = max(
         ): ?>
             <a
                 href="<?= e(
-                    nx_home_page_url(
-                        $currentPage - 1
-                    )
+                    nx_archive_page_url($currentPage - 1, $archivePath ?? '', $searchQuery ?? '')
                 ) ?>"
                 rel="prev"
             >
@@ -58,7 +56,7 @@ $totalPages = max(
         <?php if ($startPage > 1): ?>
             <a
                 href="<?= e(
-                    nx_home_page_url(1)
+                    nx_archive_page_url(1, $archivePath ?? '', $searchQuery ?? '')
                 ) ?>"
             >
                 1
@@ -94,9 +92,7 @@ $totalPages = max(
             <?php else: ?>
                 <a
                     href="<?= e(
-                        nx_home_page_url(
-                            $pageNumber
-                        )
+                        nx_archive_page_url($pageNumber, $archivePath ?? '', $searchQuery ?? '')
                     ) ?>"
                 >
                     <?= $pageNumber ?>
@@ -121,9 +117,7 @@ $totalPages = max(
 
             <a
                 href="<?= e(
-                    nx_home_page_url(
-                        $totalPages
-                    )
+                    nx_archive_page_url($totalPages, $archivePath ?? '', $searchQuery ?? '')
                 ) ?>"
             >
                 <?= $totalPages ?>
@@ -135,9 +129,7 @@ $totalPages = max(
         ): ?>
             <a
                 href="<?= e(
-                    nx_home_page_url(
-                        $currentPage + 1
-                    )
+                    nx_archive_page_url($currentPage + 1, $archivePath ?? '', $searchQuery ?? '')
                 ) ?>"
                 rel="next"
             >

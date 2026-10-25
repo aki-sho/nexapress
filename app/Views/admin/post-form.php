@@ -194,7 +194,7 @@ foreach (
     <form
         action="<?= e($action) ?>"
         method="post"
-        class="post-editor-form"
+        class="post-editor-form post-form" data-editor-kind="post" data-editor-id="<?= $postId ?>" data-editor-unsaved="<?= $errors ? '1' : '0' ?>"
     >
         <input
             type="hidden"
