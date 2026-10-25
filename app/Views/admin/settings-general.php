@@ -19,6 +19,7 @@ $discourageSearchEngines = (bool) (
 ?>
 
 <h1>一般設定</h1>
+<?php if (!empty($error)): ?><p class="error-message" role="alert"><?= e($error) ?></p><?php endif; ?>
 
 <form
     action="<?= url(
@@ -26,6 +27,20 @@ $discourageSearchEngines = (bool) (
     ) ?>"
     method="post"
 >
+    <input type="hidden" name="_csrf_token" value="<?= e(\app\Core\Csrf::token()) ?>">
+    <fieldset class="admin-card">
+        <legend>トップページの表示</legend>
+        <div class="form-group"><label for="homepage-mode">表示内容</label>
+            <select id="homepage-mode" name="homepage_mode">
+                <option value="posts" <?= ($config['homepage_mode'] ?? 'posts') === 'posts' ? 'selected' : '' ?>>最新の記事一覧</option>
+                <option value="page" <?= ($config['homepage_mode'] ?? '') === 'page' ? 'selected' : '' ?>>固定ページ</option>
+            </select></div>
+        <div class="form-group"><label for="homepage-page">トップに表示する固定ページ</label>
+            <select id="homepage-page" name="homepage_page_id"><option value="0">選択してください</option>
+                <?php foreach ($pages ?? [] as $homepage): ?><option value="<?= (int)$homepage['id'] ?>" <?= (int)($config['homepage_page_id'] ?? 0) === (int)$homepage['id'] ? 'selected' : '' ?>><?= e($homepage['title']) ?></option><?php endforeach; ?>
+            </select></div>
+        <p>公開中の固定ページを選べます。固定ページをトップにした後も <a href="<?= e(url(nx_public_archive_path('posts'))) ?>">記事一覧</a> を表示できます。</p>
+    </fieldset>
     <div class="form-group">
         <label for="site_title">
             サイトのタイトル

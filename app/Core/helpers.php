@@ -13,6 +13,62 @@ function url(string $path = ''): string
     return $base . '/' . $path;
 }
 
+function category_url(array $category): string
+{
+    return url(nx_public_archive_path('category', $category['slug']));
+}
+
+/** Keep existing plain-slug articles/pages reachable when adding archive routes. */
+function nx_public_archive_path(string $kind, ?string $slug = null): string
+{
+    static $paths = [];
+    $path = $kind === 'category' ? 'category/' . rawurlencode((string)$slug) : $kind;
+    if (isset($paths[$path])) {
+        return $paths[$path];
+    }
+    $candidate = rawurldecode((string)parse_url(url($path), PHP_URL_PATH));
+    $post = \app\Models\Post::findBySlug($slug ?? $kind);
+    $page = $slug === null ? \app\Models\Page::findBySlug($kind) : null;
+    if (($post && rawurldecode((string)parse_url(post_url($post), PHP_URL_PATH)) === $candidate) ||
+        ($page && rawurldecode((string)parse_url(page_url($page), PHP_URL_PATH)) === $candidate)) {
+        return $paths[$path] = 'post/archive/' . $path;
+    }
+    return $paths[$path] = $path;
+}
+
+function nx_text_length(string $value): int
+{
+    return function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
+}
+
+function nx_navigation(): void
+{
+    foreach (\app\Models\Navigation::links() as $link) {
+        echo '<a href="' . e($link['url']) . '">' . e($link['label']) . '</a>';
+    }
+}
+
+function nx_archive_page_url(int $page, string $path = '', string $query = ''): string
+{
+    $params = [];
+    if ($query !== '') {
+        $params['q'] = $query;
+    }
+    if ($page > 1) {
+        $params['page'] = $page;
+    }
+    return url($path) . ($params ? '?' . http_build_query($params) : '');
+}
+
+function nx_editor_saved(): void
+{
+    $key = $_POST['_editor_draft_key'] ?? null;
+    $prefix = 'nx-editor:' . (int)(\app\Core\Auth::user()['id'] ?? 0) . ':';
+    if (is_string($key) && strlen($key) < 300 && str_starts_with($key, $prefix)) {
+        $_SESSION['editor_saved_keys'][] = $key;
+    }
+}
+
 function public_url(string $path = ''): string
 {
     $base = base_url();

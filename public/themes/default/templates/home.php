@@ -1,6 +1,6 @@
 <?php
 
-$title = site_title();
+$title = $archiveTitle ?? site_title();
 
 $pagination = is_array(
     $pagination ?? null
@@ -12,7 +12,7 @@ $pagination = is_array(
 <section class="post-archive">
     <header class="post-archive-header">
         <h1 class="page-title">
-            記事一覧
+            <?= e($archiveTitle ?? '記事一覧') ?>
         </h1>
 
         <?php if (
@@ -33,7 +33,7 @@ $pagination = is_array(
     <?php if (empty($posts)): ?>
         <div class="empty-message">
             <p>
-                公開中の記事はありません。
+                <?= !empty($searchQuery) ? '該当する記事はありません。' : '公開中の記事はありません。' ?>
             </p>
         </div>
     <?php else: ?>

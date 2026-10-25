@@ -15,10 +15,10 @@ class Csrf
         return $_SESSION['_csrf_token'];
     }
 
-    public static function validate(?string $token): bool
+    public static function validate(mixed $token): bool
     {
         if (
-            empty($_SESSION['_csrf_token']) ||
+            !is_string($token) || empty($_SESSION['_csrf_token']) ||
             empty($token)
         ) {
             return false;
@@ -31,7 +31,7 @@ class Csrf
     }
 
     public static function requireValid(
-        ?string $token
+        mixed $token
     ): void {
         if (self::validate($token)) {
             return;

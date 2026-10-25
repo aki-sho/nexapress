@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title><?= e(($title ?? '管理画面') . ' - ' . site_title()) ?></title>
+    <link rel="stylesheet" href="<?= e(public_url('assets/css/core-features.css')) ?>">
     <link rel="stylesheet" href="<?= public_url('assets/css/style.css') ?>">
     <!-- 投稿管理画面専用CSS -->
     <link rel="stylesheet "href="<?= public_url('assets/css/admin-posts.css') ?>">
@@ -17,6 +18,10 @@
         <h2><?= e(site_title()) ?></h2>
 
         <nav>
+            <a href="<?= e(url('admin/profile')) ?>">自分のプロフィール</a>
+            <?php if (\app\Core\Permission::can('settings.manage')): ?>
+                <a href="<?= e(url('admin/navigation')) ?>">メニュー管理</a>
+            <?php endif; ?>
             <?php if (
                 \app\Core\Permission::can(
                     'dashboard.view'
@@ -211,5 +216,13 @@
 <?php if (function_exists('do_action')): ?>
     <?php do_action('admin_footer'); ?>
 <?php endif; ?>
+<?php
+$savedEditorKeys = $_SESSION['editor_saved_keys'] ?? [];
+unset($_SESSION['editor_saved_keys']);
+?>
+<script type="application/json" id="editor-drafts-config"><?= json_encode([
+    'userId' => (int)(\app\Core\Auth::user()['id'] ?? 0), 'base' => base_url(), 'savedKeys' => $savedEditorKeys,
+], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+<script src="<?= e(public_url('assets/js/editor-drafts.js')) ?>" defer></script>
 </body>
 </html>

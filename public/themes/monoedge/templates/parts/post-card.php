@@ -76,7 +76,7 @@ $publishedDateTime =
                     $post['category_name']
                 )
             ): ?>
-                <span class="post-card-category">
+                <a class="post-card-category" href="<?= e(category_url(['slug' => $post['category_slug']])) ?>">
                     <?= e(
                         (string)(
                             $post[
@@ -84,7 +84,7 @@ $publishedDateTime =
                             ]
                         )
                     ) ?>
-                </span>
+                </a>
             <?php endif; ?>
         </div>
 

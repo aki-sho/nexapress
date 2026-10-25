@@ -4,6 +4,8 @@ namespace app\Controllers\Admin;
 
 use app\Core\Auth;
 use app\Core\Controller;
+use app\Core\Csrf;
+use app\Models\Page;
 
 class SettingController extends Controller
 {
@@ -18,6 +20,7 @@ class SettingController extends Controller
 
         $this->view('admin/settings-general', [
             'config' => $config,
+            'pages' => Page::published(),
         ]);
     }
 
@@ -27,6 +30,26 @@ class SettingController extends Controller
     public function updateGeneral(): void
     {
         Auth::requireLogin();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
+
+        foreach (['site_title', 'timezone', 'site_icon', 'homepage_mode', 'homepage_page_id'] as $field) {
+            if (isset($_POST[$field]) && !is_scalar($_POST[$field])) {
+                http_response_code(400);
+                echo '入力形式が正しくありません。';
+                return;
+            }
+        }
+
+        $homepageMode = ($_POST['homepage_mode'] ?? 'posts') === 'page' ? 'page' : 'posts';
+        $homepageId = (int)($_POST['homepage_page_id'] ?? 0);
+        $homepage = $homepageId > 0 ? Page::find($homepageId) : null;
+        if ($homepageMode === 'page' && (!$homepage || $homepage['status'] !== 'published' || $homepage['deleted_at'] !== null)) {
+            $this->view('admin/settings-general', [
+                'config' => array_merge($this->loadGeneralConfig(), $_POST), 'pages' => Page::published(),
+                'error' => 'トップページには公開中の固定ページを選択してください。',
+            ]);
+            return;
+        }
 
         $siteTitle = trim(
             $_POST['site_title'] ?? 'My CMS'
@@ -51,14 +74,21 @@ class SettingController extends Controller
         if ($timezone === '') {
             $timezone = 'Asia/Tokyo';
         }
+        if (!in_array($timezone, timezone_identifiers_list(), true)) {
+            $this->view('admin/settings-general', ['config' => array_merge($this->loadGeneralConfig(), $_POST),
+                'pages' => Page::published(), 'error' => '有効なタイムゾーンを選択してください。']);
+            return;
+        }
 
-        $config = [
+        $config = array_merge($this->loadGeneralConfig(), [
             'site_title' => $siteTitle,
             'timezone' => $timezone,
             'site_icon' => $siteIcon,
             'discourage_search_engines' =>
                 $discourageSearchEngines,
-        ];
+            'homepage_mode' => $homepageMode,
+            'homepage_page_id' => $homepageMode === 'page' ? $homepageId : 0,
+        ]);
 
         $configPath = BASE_PATH
             . '/config/general.php';
@@ -67,12 +97,17 @@ class SettingController extends Controller
             . var_export($config, true)
             . ";\n";
 
-        file_put_contents(
+        $written = file_put_contents(
             $configPath,
             $content,
             LOCK_EX
         );
 
+        if ($written === false) {
+            $this->view('admin/settings-general', ['config' => $config, 'pages' => Page::published(), 'error' => '設定ファイルを保存できませんでした。']);
+            return;
+        }
+        do_action('site_settings_saved');
         redirect_to('admin/settings/general');
     }
 

@@ -7,7 +7,7 @@ use ZipArchive;
 
 class ExtensionInstaller
 {
-    public static function install(array $extension): array
+    public static function install(array $extension, bool $updating = false): array
     {
         $config = self::loadConfig();
 
@@ -31,7 +31,15 @@ class ExtensionInstaller
             );
         }
 
-        if (Extension::find($extensionId) !== null) {
+        ExtensionCompatibility::requireCompatible($extension);
+        $installed = Extension::find($extensionId);
+        if ($updating && $installed === null) {
+            throw new RuntimeException('更新対象の拡張機能が見つかりません。');
+        }
+        if ($updating && !version_compare((string)($extension['version'] ?? '0'), $installed['version'], '>')) {
+            throw new RuntimeException('新しいバージョンはありません。');
+        }
+        if (!$updating && $installed !== null) {
             throw new RuntimeException(
                 'この拡張機能はインストール済みです。'
             );
@@ -61,6 +69,15 @@ class ExtensionInstaller
             mkdir($cacheDirectory, 0755, true);
         }
 
+        $lock = fopen($cacheDirectory . '/install-' . $extensionId . '.lock', 'c');
+        if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
+            if (is_resource($lock)) {
+                fclose($lock);
+            }
+            throw new RuntimeException('この拡張機能は別の処理で変更中です。');
+        }
+        $backupDirectory = null;
+
         $token = bin2hex(random_bytes(8));
 
         $packagePath = $cacheDirectory
@@ -73,6 +90,12 @@ class ExtensionInstaller
             . $token;
 
         try {
+            if ($updating) {
+                $installed = Extension::find($extensionId);
+                if (!$installed || !version_compare((string)($extension['version'] ?? '0'), $installed['version'], '>')) {
+                    throw new RuntimeException('更新対象が変更されました。拡張機能一覧を再表示してください。');
+                }
+            }
             self::downloadPackage(
                 $downloadUrl,
                 $packagePath,
@@ -98,6 +121,8 @@ class ExtensionInstaller
             $manifest = self::readManifest(
                 $temporaryExtensionDirectory
             );
+
+            ExtensionCompatibility::requireCompatible($manifest);
 
             if (
                 (string)($manifest['id'] ?? '') !==
@@ -138,12 +163,27 @@ class ExtensionInstaller
 
             $targetDirectory = $extensionsDirectory
                 . '/'
-                . $package['root_folder'];
+                . ($updating ? $installed['folder'] : $package['root_folder']);
 
-            if (file_exists($targetDirectory)) {
+            if (!$updating && file_exists($targetDirectory)) {
                 throw new RuntimeException(
                     '同名の拡張機能フォルダが存在します。'
                 );
+            }
+
+            if ($updating) {
+                if (is_link($targetDirectory) || !is_dir($targetDirectory) ||
+                    !str_starts_with((string)realpath($targetDirectory), realpath($extensionsDirectory) . DIRECTORY_SEPARATOR)) {
+                    throw new RuntimeException('更新対象のフォルダを確認できません。');
+                }
+                $backupRoot = BASE_PATH . '/storage/backups/extensions';
+                if (!is_dir($backupRoot) && !mkdir($backupRoot, 0755, true)) {
+                    throw new RuntimeException('更新前バックアップを作成できません。');
+                }
+                $backupDirectory = $backupRoot . '/' . $extensionId . '-' . date('Ymd-His') . '-' . $token;
+                if (!rename($targetDirectory, $backupDirectory)) {
+                    throw new RuntimeException('更新前の拡張機能を退避できません。');
+                }
             }
 
             if (
@@ -152,6 +192,9 @@ class ExtensionInstaller
                     $targetDirectory
                 )
             ) {
+                if ($backupDirectory !== null && !rename($backupDirectory, $targetDirectory)) {
+                    throw new RuntimeException('更新に失敗しました。退避ファイルを確認してください：' . $backupDirectory);
+                }
                 throw new RuntimeException(
                     '拡張機能を配置できませんでした。'
                 );
@@ -159,10 +202,13 @@ class ExtensionInstaller
 
             return [
                 'id' => $extensionId,
-                'folder' => $package['root_folder'],
+                'folder' => $updating ? $installed['folder'] : $package['root_folder'],
                 'version' => $packageVersion,
+                'backup_path' => $backupDirectory,
             ];
         } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
             if (is_file($packagePath)) {
                 unlink($packagePath);
             }
@@ -198,6 +244,11 @@ class ExtensionInstaller
         );
 
         $curl = curl_init($url);
+
+        $caFile = ini_get('curl.cainfo');
+        if (is_string($caFile) && $caFile !== '') {
+            curl_setopt($curl, CURLOPT_CAINFO, $caFile);
+        }
 
         curl_setopt_array($curl, [
             CURLOPT_FILE => $output,

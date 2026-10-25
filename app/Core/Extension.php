@@ -67,6 +67,8 @@ class Extension
                 'folder' => $folderName,
                 'name' => $name,
                 'description' => (string)($data['description'] ?? ''),
+                'requires' => is_array($data['requires'] ?? null) ? $data['requires'] : [],
+                'compatibility_issues' => ExtensionCompatibility::issues($data),
                 'version' => (string)($data['version'] ?? '1.0.0'),
 
                 'bootstrap_file' => $bootstrapFile,
@@ -105,6 +107,9 @@ class Extension
     public static function bootEnabled(Router $router): void
     {
         foreach (self::enabled() as $extension) {
+            if (!empty($extension['compatibility_issues'])) {
+                continue;
+            }
             if (!$extension['has_bootstrap']) {
                 continue;
             }
@@ -112,6 +117,16 @@ class Extension
             $extensionInfo = $extension;
 
             require_once $extension['bootstrap_file'];
+        }
+
+        // Older Nitro Cache versions watch known URLs. New core operations also
+        // emit events so their changes are visible immediately with that release.
+        $cache = '\\NxNitroCache\\CacheManager';
+        if (class_exists($cache, false) && is_callable([$cache, 'clear'])) {
+            foreach (['navigation_saved', 'page_saved', 'page_trashed', 'page_restored',
+                'page_deleted', 'site_settings_saved', 'profile_saved', 'extension_updated'] as $event) {
+                Hook::addAction($event, static function () use ($cache): void { $cache::clear(); });
+            }
         }
     }
 

@@ -13,7 +13,11 @@
         </div>
 
         <nav class="site-nav">
-            <a href="<?= url('') ?>">トップ</a>
+            <?php nx_navigation(); ?>
         </nav>
+        <form class="public-search" action="<?= e(url(nx_public_archive_path('search'))) ?>" method="get" role="search">
+            <input type="search" name="q" aria-label="記事を検索" placeholder="記事を検索" maxlength="200" value="<?= e($searchQuery ?? '') ?>">
+            <button type="submit">検索</button>
+        </form>
     </div>
 </header>
