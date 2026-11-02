@@ -5,8 +5,15 @@
     <title><?= e(($title ?? '管理画面') . ' - ' . site_title()) ?></title>
     <link rel="stylesheet" href="<?= e(public_url('assets/css/core-features.css')) ?>">
     <link rel="stylesheet" href="<?= public_url('assets/css/style.css') ?>">
+    <link rel="stylesheet" href="<?= e(public_url('assets/css/admin.css')) ?>">
+    <?php $adminStylePath = (string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH); ?>
+    <?php if (preg_match('#/admin/media(?:/|$)#', $adminStylePath)): ?>
+    <link rel="stylesheet" href="<?= e(public_url('assets/css/admin-media.css')) ?>">
+    <?php endif; ?>
     <!-- 投稿管理画面専用CSS -->
-    <link rel="stylesheet "href="<?= public_url('assets/css/admin-posts.css') ?>">
+    <?php if (preg_match('#/admin/posts(?:/|$)#', $adminStylePath)): ?>
+    <link rel="stylesheet" href="<?= e(public_url('assets/css/admin-posts.css')) ?>">
+    <?php endif; ?>
     <?php if (function_exists('do_action')): ?>
         <?php do_action('admin_head'); ?>
     <?php endif; ?>

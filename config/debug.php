@@ -1,5 +1,5 @@
 <?php
 
 return [
-    'enabled' => true,
+    'enabled' => false,
 ];

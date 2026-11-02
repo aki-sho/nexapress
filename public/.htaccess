@@ -1,4 +1,12 @@
+Options -Indexes
 RewriteEngine On
+
+RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,L]
+RewriteRule ^(?:app|config|database|storage|extensions|tests|update-package|dist|vendor|node_modules)(?:/|$) - [F,L,NC]
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule \.(?:bak|old|orig|save|swp|sql|log)(?:\.[^/]*)?$ - [F,L,NC]
+# index.php is the only PHP entry point in the public document root.
+RewriteRule ^(?!index\.php$).*\.(?:php[0-9]*|phtml|phar|cgi|pl)(?:/|$|\.) - [F,L,NC]
 
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

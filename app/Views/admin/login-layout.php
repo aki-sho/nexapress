@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title><?= e($title ?? 'ログイン') ?></title>
     <link rel="stylesheet" href="<?= public_url('assets/css/style.css') ?>">
+    <link rel="stylesheet" href="<?= e(public_url('assets/css/login.css')) ?>">
 </head>
 <body class="login-body">
 

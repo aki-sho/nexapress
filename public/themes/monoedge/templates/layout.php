@@ -22,7 +22,10 @@
             . '/style.css'
         ) ?>"
     >
-<link rel="stylesheet" href="<?= e(public_url('assets/css/core-features.css')) ?>">
+<link rel="stylesheet" href="<?= e(public_url('assets/css/public-features.css')) ?>">
+<?php if (\app\Core\Auth::check()): ?>
+<link rel="stylesheet" href="<?= e(public_url('assets/css/admin-preview.css')) ?>">
+<?php endif; ?>
 </head>
 <body>
 

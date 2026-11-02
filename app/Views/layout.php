@@ -5,6 +5,10 @@
 
     <link rel="stylesheet" href="<?= public_url('assets/css/style.css') ?>">
     <link rel="stylesheet" href="<?= public_url('themes/' . \app\Core\Theme::active() . '/style.css') ?>">
+<?php if (\app\Core\Auth::check()): ?>
+<link rel="stylesheet" href="<?= e(public_url('assets/css/admin-preview.css')) ?>">
+<?php endif; ?>
+<link rel="stylesheet" href="<?= e(public_url('assets/css/public-features.css')) ?>">
 </head>
 <body>
 
