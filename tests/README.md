@@ -34,3 +34,22 @@ php tests/fixture.php '表示されたsiteのパス' cleanup
 ```
 
 HTTPSパッケージの検証は一時的なローカルCA証明書を明示的に信頼して行います。TLS検証は無効化しません。
+
+
+## 公開旧版からの本体更新
+
+DB移行テストとは別に、Gitタグから取得した無改変の旧版を起動し、実際の管理画面の更新POSTを確認します。事前に `git fetch --tags` を実行してください。
+
+```powershell
+python tests/updater-release.py --package update-package/nexapress-update-2.4.2.zip
+```
+
+既定では2.2.0・2.3.0・2.4.0・2.4.1を対象に、TLS検証を有効にしたローカル配信先へ通信だけを接続します。製品の更新処理、ZIP検証、ハッシュ確認、バックアップ、ファイル配置、DB移行は差し替えません。設定・投稿・利用者・拡張状態・アップロードの維持、失敗時の版維持、バックアップからの実復元も確認します。
+
+公開後は `--public` を指定すると、接続差し替えなしで実際のGitHub最新版APIと公開ZIPを使用します。最新版APIが指定ZIPと同じ版を案内している状態で実行してください。`--ca-file` で検証環境が信頼するCA証明書を指定できます。TLS検証は無効化しません。
+
+```powershell
+python tests/updater-release.py --package update-package/nexapress-update-2.4.2.zip --public --from-ref v2.4.0
+```
+
+`--reproduce-package` に2.4.1の更新ZIPを指定すると、旧版での拒否と未変更を確認した後、修正版へ更新する経路も検証します。ランダム名の専用検証DBは終了時に削除し、一時サイトとHTTP結果は調査用に残します。

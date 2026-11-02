@@ -69,6 +69,13 @@ foreach (
         '/'
     );
 
+    // Versions 2.2-2.4.0 validate this ZIP with their own existing allowlist.
+    // These redundant guards are delivered by the clean installer; the root
+    // .htaccess also protects both directories on upgraded installations.
+    if (in_array($relativePath, ['config/.htaccess', 'database/.htaccess'], true)) {
+        continue;
+    }
+
     $source = $basePath . '/' . $relativePath;
     $destination = $packageDirectory
         . '/'

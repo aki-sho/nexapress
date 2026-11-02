@@ -17,6 +17,7 @@ class Updater
 
         $packagePath = null;
         $backupPath = null;
+        $step = '事前確認';
 
         self::acquireLock();
 
@@ -34,21 +35,25 @@ class Updater
             $version = $updateInfo['latest_version'];
             $asset = $updateInfo['asset'];
 
+            $step = '更新ZIPの取得';
             $packagePath = UpdatePackage::download(
                 $asset,
                 $version
             );
 
+            $step = '更新ZIPの展開';
             $packageInfo = UpdatePackage::extract(
                 $packagePath,
                 $version
             );
 
+            $step = '更新ファイルの確認';
             self::validatePackageFiles(
                 $packageInfo['package_directory'],
                 $version
             );
 
+            $step = 'バックアップの作成';
             $backupPath = UpdateBackup::create(
                 $packageInfo['package_directory'],
                 $updateInfo['current_version'],
@@ -57,6 +62,7 @@ class Updater
 
             self::enableMaintenanceMode();
 
+            $step = 'ファイルの配置';
             self::applyFiles(
                 $packageInfo['package_directory'],
                 true
@@ -66,10 +72,12 @@ class Updater
                 $packageInfo['package_directory']
                 . '/database/migrations';
 
+            $step = 'データベースの更新';
             $migrations = Migrator::run(
                 $migrationDirectory
             );
 
+            $step = 'バージョン情報の更新';
             self::applyVersionFile(
                 $packageInfo['package_directory']
             );
@@ -111,7 +119,7 @@ class Updater
                 }
             }
 
-            $message = '更新に失敗しました。';
+            $message = '更新に失敗しました。処理：' . $step . '。';
 
             if ($restored) {
                 $message .= ' 更新前の状態へ復元しました。';
@@ -131,6 +139,7 @@ class Updater
                 'to_version' =>
                     $updateInfo['latest_version'] ?? '',
                 'error' => $exception->getMessage(),
+                'step' => $step,
                 'restored' => $restored,
                 'restore_error' => $restoreError,
                 'backup' => $backupPath !== null
