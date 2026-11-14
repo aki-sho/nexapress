@@ -1,7 +1,5 @@
 <?php
 
-session_start();
-
 // プロジェクト直下のパスを定義
 define('BASE_PATH', dirname(__DIR__));
 
@@ -74,6 +72,11 @@ spl_autoload_register(function ($class) {
     }
 });
 
+\app\Core\Auth::startSession();
+if (isset($_SESSION['user'])) {
+    header('Cache-Control: no-store');
+}
+
 use app\Core\Router;
 use app\Core\Debug;
 
@@ -133,10 +136,13 @@ $router->post(
     'app\Controllers\InstallController@storeSite'
 );
 
-// 管理画面ログイン
-$router->get('/admin/login', 'app\Controllers\Admin\AuthController@login');
-$router->post('/admin/login', 'app\Controllers\Admin\AuthController@authenticate');
-$router->get('/admin/logout', 'app\Controllers\Admin\AuthController@logout');
+// Use one activation decision for both registration and bootstrap.
+$guardRequired = \app\Core\Installer::isInstalled() && \app\Models\ExtensionSetting::isEnabled('access-guard');
+if (!$guardRequired) {
+    $router->get('/admin/login', 'app\Controllers\Admin\AuthController@login');
+    $router->post('/admin/login', 'app\Controllers\Admin\AuthController@authenticate');
+    $router->post('/admin/logout', 'app\Controllers\Admin\AuthController@logout');
+}
 
 // 管理画面トップ
 $router->get('/admin', 'app\Controllers\Admin\DashboardController@index');
@@ -337,7 +343,7 @@ $router->post('/admin/settings/debug/update', 'app\Controllers\Admin\SettingCont
 $router->get('/page/{slug}', 'app\Controllers\PageController@show');
 
 // 有効な拡張機能を読み込む
-\app\Core\Extension::bootEnabled($router);
+\app\Core\Extension::bootEnabled($router, $guardRequired);
 
 // 投稿URL設定用
 // 固定URLとぶつからないように、必ず最後に置く

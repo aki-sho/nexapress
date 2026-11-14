@@ -104,9 +104,14 @@ class Extension
         );
     }
 
-    public static function bootEnabled(Router $router): void
+    public static function bootEnabled(Router $router, bool $guardRequired): void
     {
+        $guardLoaded = false;
         foreach (self::enabled() as $extension) {
+            if ($extension['key'] === 'access-guard' && !$guardRequired) {
+                continue;
+            }
+
             if (!empty($extension['compatibility_issues'])) {
                 continue;
             }
@@ -117,6 +122,16 @@ class Extension
             $extensionInfo = $extension;
 
             require_once $extension['bootstrap_file'];
+            if ($extension['key'] === 'access-guard') {
+                $guardLoaded = true;
+            }
+        }
+
+        if ($guardRequired && !$guardLoaded) {
+            http_response_code(503);
+            header('Cache-Control: no-store');
+            header('Retry-After: 60');
+            exit('アクセスガードを利用できません。時間をおいて再度お試しください。');
         }
 
         // Older Nitro Cache versions watch known URLs. New core operations also

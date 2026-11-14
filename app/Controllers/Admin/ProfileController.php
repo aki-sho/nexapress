@@ -48,12 +48,18 @@ class ProfileController extends Controller
         }
         if (!$error) {
             try {
+                $passwordHash = $password !== '' ? password_hash($password, PASSWORD_DEFAULT) : null;
                 // Keep the username and role from the database, never from form input.
-                User::update((int)$user['id'], array_merge($user, [
+                $updatedUser = array_merge($user, [
                     'name' => $name, 'email' => $email,
-                    'password_hash' => $password !== '' ? password_hash($password, PASSWORD_DEFAULT) : null,
-                ]));
-                Auth::login(User::find((int)$user['id']));
+                    'password_hash' => $passwordHash,
+                ]);
+                User::update((int)$user['id'], $updatedUser);
+                if ($passwordHash !== null) {
+                    Auth::login($updatedUser);
+                    Csrf::regenerate();
+                }
+
                 do_action('profile_saved', (int)$user['id']);
                 $_SESSION['profile_notice'] = 'プロフィールを保存しました。';
                 redirect_to('admin/profile');

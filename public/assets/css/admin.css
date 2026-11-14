@@ -41,15 +41,26 @@
     font-size: 24px;
 }
 
-.sidebar a {
+.sidebar a,
+.sidebar .logout-form button {
     display: block;
     padding: 8px 0;
     color: #fff;
 }
 
-.sidebar a:hover {
+.sidebar a:hover,
+.sidebar .logout-form button:hover {
     color: #93c5fd;
     text-decoration: none;
+}
+
+.sidebar .logout-form button {
+    background: none;
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    width: 100%;
 }
 
 .sidebar-group {

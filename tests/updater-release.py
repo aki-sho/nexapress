@@ -66,6 +66,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--package', type=Path, required=True)
     parser.add_argument('--from-ref', action='append', default=[])
+    parser.add_argument('--source-repo', type=Path, default=SOURCE)
     parser.add_argument('--reproduce-package', type=Path)
     parser.add_argument('--public', action='store_true', help='Use actual public GitHub API and download URLs.')
     parser.add_argument('--ca-file', type=Path)
@@ -150,7 +151,7 @@ function curl_setopt_array($handle, array $options): bool {
         for index, ref in enumerate(refs):
             fixture = work / ('site-' + str(index))
             fixture.mkdir()
-            archive = subprocess.run(['git', 'archive', ref], cwd=SOURCE, capture_output=True, check=True).stdout
+            archive = subprocess.run(['git', 'archive', ref], cwd=args.source_repo, capture_output=True, check=True).stdout
             with tarfile.open(fileobj=io.BytesIO(archive)) as source_archive:
                 for member in source_archive.getmembers():
                     assert member.isfile() or member.isdir()
@@ -191,7 +192,8 @@ function curl_setopt_array($handle, array $options): bool {
                             break
                     except (ConnectionError, urllib.error.URLError):
                         time.sleep(.1)
-                check(admin.request('/admin/login', {'username': 'admin', 'password': 'Test-Password-2026'})[2].endswith('/admin'), ref + ': original admin login')
+                credentials = {'username': 'admin', 'password': 'Test-Password-2026'}
+                check(admin.request('/admin/login', credentials)[2].endswith('/admin'), ref + ': original admin login')
                 check('/admin/login' in guest.request('/admin/updates')[2], ref + ': guest cannot access updater')
                 token = admin.token()
                 check(admin.request('/admin/updates/install', {'_token': 'bad'})[0] == 419, ref + ': update CSRF enforcement')
@@ -218,6 +220,9 @@ function curl_setopt_array($handle, array $options): bool {
                     check(backup.testzip() is None and 'database.sql' in backup.namelist() and 'backup-manifest.json' in backup.namelist(), ref + ': backup ZIP contains DB and restore manifest')
                 check(not (fixture / 'storage/maintenance.lock').exists(), ref + ': maintenance lock cleared')
                 check('Retained page content' in guest.request('/page/retained-page')[1], ref + ': public page works after update')
+                if version in ['2.2.0', '2.3.0', '2.4.0', '2.4.1', '2.4.2'] and tuple(map(int, target.split('.'))) >= (2, 4, 3):
+                    check(admin.request('/admin/updates')[2].endswith('/admin/login'), ref + ': legacy session is retired by the update')
+                    check(admin.request('/admin/login', credentials)[2].endswith('/admin'), ref + ': administrator can sign in again')
                 check('NexaPressは最新です' in admin.request('/admin/updates')[1], ref + ': admin update page reloads as current')
                 if not args.public:
                     token = admin.token()

@@ -1,5 +1,6 @@
 """Integration checks against a disposable MySQL/MariaDB instance (see tests/README.md)."""
 import argparse
+import copy
 import functools
 import http.cookiejar
 import http.server
@@ -31,7 +32,8 @@ def port():
 class Client:
     def __init__(self, base):
         self.base = base
-        self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+        self.cookies = http.cookiejar.CookieJar()
+        self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.cookies))
 
     def request(self, path, data=None):
         request = urllib.request.Request(self.base + path, None if data is None else urllib.parse.urlencode(data).encode())
@@ -60,6 +62,7 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--keep', action='store_true')
     parser.add_argument('--from-2.2', action='store_true', dest='from22')
+    parser.add_argument('--access-guard', type=Path)
     args = parser.parse_args()
     if 'NEXAPRESS_TEST_PASSWORD' not in os.environ:
         raise RuntimeError('Set NEXAPRESS_TEST_PASSWORD for a disposable MariaDB/MySQL server.')
@@ -197,14 +200,55 @@ def main():
         viewer = Client(base)
         viewer.login('viewer')
         check(viewer.request('/admin/navigation')[0] == 403 and viewer.request('/admin/pages')[0] == 403, 'viewer cannot manage content or menus')
+        second_viewer = Client(base)
+        check(second_viewer.login('viewer')[2].endswith('/admin'), 'second session is active before password change')
         profile_token = viewer.csrf('/admin/profile')
         body = viewer.request('/admin/profile', {'_csrf_token': profile_token, 'name': '閲覧者', 'email': 'new@example.test', 'role': 'administrator'})[1]
         check('現在のパスワード' in body and '保存しました' not in body, 'sensitive profile changes require current password')
         viewer.request('/admin/profile', {'_csrf_token': profile_token, 'name': '閲覧者', 'email': 'new@example.test',
             'current_password': 'Test-Password-2026', 'password': 'Changed-Password-2026', 'password_confirmation': 'Changed-Password-2026', 'role': 'administrator'})
         check(viewer.request('/admin/navigation')[0] == 403, 'profile input cannot escalate role')
+        check(second_viewer.request('/admin/profile')[2].endswith('/admin/login'), 'password change invalidates the other session')
         new_viewer = Client(base)
         check(new_viewer.login('viewer', 'Changed-Password-2026')[2].endswith('/admin'), 'new profile password works')
+        check(new_viewer.request('/admin/logout')[0] == 404, 'GET cannot log out')
+        check(new_viewer.request('/admin/logout', {'_csrf_token': 'bad'})[0] == 419, 'logout requires CSRF')
+        logout_token = new_viewer.csrf('/admin/profile')
+        check(new_viewer.request('/admin/logout', {'_csrf_token': logout_token})[2].endswith('/admin/login'), 'valid logout returns to login')
+        check(new_viewer.request('/admin/profile')[2].endswith('/admin/login'), 'logout invalidates the authenticated session')
+
+        with urllib.request.urlopen(base + '/admin/login', timeout=10) as response:
+            cookie = response.headers['Set-Cookie']
+        check(cookie.startswith('NexaPress') and 'HttpOnly' in cookie and 'SameSite=Lax' in cookie,
+              'HTTP session cookie uses the installation name and protection attributes')
+
+        other_site = work / 'other-site'
+        shutil.copytree(fixture, other_site)
+        other_port = port()
+        with (work / 'other-php-server.log').open('w', encoding='utf-8') as other_log:
+            other_server = subprocess.Popen([
+                'php', '-d', 'session.save_path=' + sessions.as_posix(), '-S', f'127.0.0.1:{other_port}',
+                '-t', str(other_site), str(SOURCE / 'tests/router.php'),
+            ], cwd=other_site, stdout=other_log, stderr=other_log,
+                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+            try:
+                other = Client(f'http://127.0.0.1:{other_port}')
+                for _ in range(60):
+                    try:
+                        if other.request('/admin/login')[0] == 200:
+                            break
+                    except (urllib.error.URLError, ConnectionError):
+                        time.sleep(.1)
+                check(other.login('admin')[2].endswith('/admin'), 'same-host installation can sign in independently')
+                primary_cookie = next(iter(admin.cookies))
+                check(primary_cookie.name != next(iter(other.cookies)).name, 'same-host installations use distinct cookie names')
+                other.cookies.clear()
+                other.cookies.set_cookie(copy.copy(primary_cookie))
+                check(other.request('/admin/profile')[2].endswith('/admin/login'), 'session belongs only to the issuing installation')
+            finally:
+                other_server.terminate()
+                other_server.wait(timeout=10)
+
         extension_token = admin.csrf('/admin/extensions')
         admin.request('/admin/extensions/enable/test-extension', {'_csrf_token': extension_token})
         check(admin.request('/admin/extensions/update/test-extension', {'_csrf_token': 'bad'})[0] == 419, 'extension update CSRF protection')
@@ -221,6 +265,37 @@ def main():
         admin.request('/admin/extensions/update/test-extension', {'_csrf_token': extension_token})
         check(json.loads((installed / 'manifest.json').read_text(encoding='utf-8'))['version'] == '2.0.0' and not (fixture / 'escape.php').exists(), 'unsafe update leaves old installation intact')
         release('2.0.0')
+        if args.access_guard:
+            guard_dir = fixture / 'extensions/access-guard'
+            with zipfile.ZipFile(args.access_guard) as archive:
+                guard_prefix = archive.namelist()[0].split('/', 1)[0] + '/'
+                for entry in archive.infolist():
+                    if entry.is_dir():
+                        continue
+                    assert entry.filename.startswith(guard_prefix)
+                    output = (guard_dir / entry.filename[len(guard_prefix):]).resolve()
+                    assert output.is_relative_to(guard_dir.resolve())
+                    output.parent.mkdir(parents=True, exist_ok=True)
+                    output.write_bytes(archive.read(entry))
+            admin.request('/admin/extensions/enable/access-guard', {'_csrf_token': admin.csrf('/admin/extensions')})
+            check(guest.request('/admin/login')[0] == 200, 'Access Guard registers the standard login route when the URL is unchanged')
+            guard_token = admin.csrf('/admin/extensions/access-guard/dashboard')
+            admin.request('/admin/extensions/access-guard/settings/login-url', {
+                '_csrf_token': guard_token, 'enabled': '1', 'slug': 'test-guard-entry',
+            })
+            check(guest.request('/admin/login')[0] == 404, 'Access Guard disables core login at the old URL')
+            check(guest.request('/admin')[2].endswith('/admin') and guest.request('/admin')[0] == 404,
+                  'guest management request does not expose the changed login URL')
+            logout_token = admin.csrf('/admin/profile')
+            check(admin.request('/admin/logout', {'_csrf_token': logout_token})[2].endswith('/test-guard-entry'),
+                  'valid Access Guard logout returns to the changed login URL')
+            guard_dir.rename(guard_dir.with_name('.guard-parked'))
+            try:
+                check(guest.request('/admin/login')[0] == 503, 'enabled Access Guard cannot fall back to core login when files are missing')
+            finally:
+                guard_dir.with_name('.guard-parked').rename(guard_dir)
+            check(guest.request('/test-guard-entry')[0] == 200, 'routes resume after the extension files are restored')
+
         if args.browser:
             if classic:
                 admin.request('/admin/extensions/enable/classic-editor', {'_csrf_token': extension_token})

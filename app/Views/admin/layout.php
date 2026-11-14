@@ -210,9 +210,7 @@
                 サイトを見る
             </a>
 
-            <a href="<?= url('admin/logout') ?>">
-                ログアウト
-            </a>
+            <?php if (function_exists('nx_logout_form')) { nx_logout_form(); } ?>
         </nav>
     </aside>
 

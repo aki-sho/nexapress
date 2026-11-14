@@ -288,7 +288,7 @@ function nx_head(?string $title = null): void
 function nexapress_admin_header(): void
 {
     // ログイン中の管理者だけに、本体側の管理者用ヘッダーを表示する
-    if (empty($_SESSION['user'])) {
+    if (!\app\Core\Auth::check()) {
         return;
     }
 
@@ -303,10 +303,20 @@ function nexapress_admin_header(): void
             <nav class="admin-preview-nav">
                 <a href="<?= url('') ?>">トップ</a>
                 <a href="<?= url('admin') ?>">管理画面</a>
-                <a href="<?= url('admin/logout') ?>">ログアウト</a>
+                <?php nx_logout_form(); ?>
             </nav>
         </div>
     </header>
+    <?php
+}
+
+function nx_logout_form(): void
+{
+    ?>
+    <form class="logout-form" action="<?= e(url('admin/logout')) ?>" method="post">
+        <input type="hidden" name="_csrf_token" value="<?= e(\app\Core\Csrf::token()) ?>">
+        <button type="submit">ログアウト</button>
+    </form>
     <?php
 }
 

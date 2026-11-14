@@ -4,6 +4,7 @@ namespace app\Controllers\Admin;
 
 use app\Core\Auth;
 use app\Core\Controller;
+use app\Core\Csrf;
 use app\Models\User;
 
 class AuthController extends Controller
@@ -64,6 +65,7 @@ class AuthController extends Controller
 
     public function logout(): void
     {
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
         Auth::logout();
 
         redirect_to('admin/login');
