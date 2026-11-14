@@ -56,6 +56,19 @@ class Client:
         return self.request('/admin/login', {'username': username, 'password': password})
 
 
+def install_access_guard(archive_path, destination):
+    with zipfile.ZipFile(archive_path) as archive:
+        prefix = archive.namelist()[0].split('/', 1)[0] + '/'
+        for entry in archive.infolist():
+            if entry.is_dir():
+                continue
+            assert entry.filename.startswith(prefix)
+            output = (destination / entry.filename[len(prefix):]).resolve()
+            assert output.is_relative_to(destination.resolve())
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_bytes(archive.read(entry))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--browser', action='store_true')
@@ -63,6 +76,7 @@ def main():
     parser.add_argument('--keep', action='store_true')
     parser.add_argument('--from-2.2', action='store_true', dest='from22')
     parser.add_argument('--access-guard', type=Path)
+    parser.add_argument('--previous-access-guard', type=Path)
     args = parser.parse_args()
     if 'NEXAPRESS_TEST_PASSWORD' not in os.environ:
         raise RuntimeError('Set NEXAPRESS_TEST_PASSWORD for a disposable MariaDB/MySQL server.')
@@ -267,16 +281,17 @@ def main():
         release('2.0.0')
         if args.access_guard:
             guard_dir = fixture / 'extensions/access-guard'
-            with zipfile.ZipFile(args.access_guard) as archive:
-                guard_prefix = archive.namelist()[0].split('/', 1)[0] + '/'
-                for entry in archive.infolist():
-                    if entry.is_dir():
-                        continue
-                    assert entry.filename.startswith(guard_prefix)
-                    output = (guard_dir / entry.filename[len(guard_prefix):]).resolve()
-                    assert output.is_relative_to(guard_dir.resolve())
-                    output.parent.mkdir(parents=True, exist_ok=True)
-                    output.write_bytes(archive.read(entry))
+            if args.previous_access_guard:
+                install_access_guard(args.previous_access_guard, guard_dir)
+                admin.request('/admin/extensions/enable/access-guard', {'_csrf_token': admin.csrf('/admin/extensions')})
+                check(admin.request('/admin/logout')[0] == 404, 'new core blocks GET logout with the previous Access Guard')
+                post_token = admin.csrf('/admin/profile')
+                check(admin.request('/admin/logout', {'_csrf_token': post_token})[2].endswith('/admin/login'),
+                      'new core accepts POST logout with the previous Access Guard')
+                admin.request('/admin/login', {'_csrf_token': admin.csrf('/admin/login'),
+                                               'username': 'admin', 'password': 'Test-Password-2026'})
+                guard_dir.rename(work / 'previous-access-guard')
+            install_access_guard(args.access_guard, guard_dir)
             admin.request('/admin/extensions/enable/access-guard', {'_csrf_token': admin.csrf('/admin/extensions')})
             check(guest.request('/admin/login')[0] == 200, 'Access Guard registers the standard login route when the URL is unchanged')
             guard_token = admin.csrf('/admin/extensions/access-guard/dashboard')

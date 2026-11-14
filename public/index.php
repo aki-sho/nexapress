@@ -141,8 +141,8 @@ $guardRequired = \app\Core\Installer::isInstalled() && \app\Models\ExtensionSett
 if (!$guardRequired) {
     $router->get('/admin/login', 'app\Controllers\Admin\AuthController@login');
     $router->post('/admin/login', 'app\Controllers\Admin\AuthController@authenticate');
-    $router->post('/admin/logout', 'app\Controllers\Admin\AuthController@logout');
 }
+$router->post('/admin/logout', 'app\Controllers\Admin\AuthController@logout');
 
 // 管理画面トップ
 $router->get('/admin', 'app\Controllers\Admin\DashboardController@index');
@@ -344,6 +344,7 @@ $router->get('/page/{slug}', 'app\Controllers\PageController@show');
 
 // 有効な拡張機能を読み込む
 \app\Core\Extension::bootEnabled($router, $guardRequired);
+$router->get('/admin/logout', 'app\Controllers\Admin\AuthController@logout');
 
 // 投稿URL設定用
 // 固定URLとぶつからないように、必ず最後に置く
