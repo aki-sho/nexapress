@@ -73,6 +73,11 @@ check(\app\Models\Post::findBySlug('legacy-post')['content'] === '<p>既存投�
 check(\app\Core\Migrator::run($fixture . '/database/migrations') === [], 'migration is idempotent');
 \app\Core\SiteSchema::ensure($pdo);
 check(count(\app\Models\Page::published()) === 1, 'fresh-install schema helper is idempotent');
+$previousDesign = \app\Core\Design::settings();
+unset($previousDesign['widgets']['header_after'], $previousDesign['widgets']['footer_before']);
+$previousDesign['widgets']['footer1'] = [];
+$pdo->prepare('UPDATE nx_site_design SET settings = ? WHERE id = 1')
+    ->execute([json_encode(['themes' => ['default' => $previousDesign]], JSON_THROW_ON_ERROR)]);
 \app\Models\Category::create(['name' => 'ニュース', 'slug' => 'news']);
 for ($i = 0; $i < 12; $i++) {
     \app\Models\Post::create(['title' => '公開記事 ' . $i, 'slug' => 'article-' . $i, 'content' => '<p>検索対象</p>',

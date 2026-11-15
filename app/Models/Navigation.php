@@ -8,6 +8,13 @@ use Throwable;
 
 class Navigation
 {
+    public const TYPES = [
+        'page' => '固定ページ',
+        'category' => 'カテゴリ',
+        'post' => '投稿記事',
+        'custom' => '任意リンク',
+    ];
+
     public static function all(bool $lock = false): array
     {
         return Database::connect()->query('SELECT * FROM ' . Database::table('navigation_items') .
@@ -32,24 +39,45 @@ class Navigation
     {
         $links = [];
         foreach ($items as $item) {
-            $href = null;
-            if ($item['type'] === 'page') {
-                $page = Page::find((int)$item['reference_id']);
-                if ($page && $page['status'] === 'published' && $page['deleted_at'] === null) {
-                    $href = page_url($page);
-                }
-            } elseif ($item['type'] === 'category') {
-                if ($category = Category::find((int)$item['reference_id'])) {
-                    $href = category_url($category);
-                }
-            } elseif ($item['type'] === 'custom' && self::safeUrl($item['url'])) {
-                $href = str_starts_with($item['url'], '/') ? url(ltrim($item['url'], '/')) : $item['url'];
-            }
-            if ($href !== null) {
-                $links[] = ['label' => $item['label'], 'url' => $href];
+            $link = self::resolveLink($item);
+            if ($link !== null) {
+                $links[] = $link;
             }
         }
         return $links;
+    }
+
+    public static function resolveLink(array $item): ?array
+    {
+        $label = $item['label'] ?? '';
+        $id = (int)($item['reference_id'] ?? 0);
+        switch ($item['type']) {
+            case 'page':
+                $page = Page::find($id);
+                if ($page && $page['status'] === 'published' && $page['deleted_at'] === null) {
+                    return ['label' => $label === '' ? $page['title'] : $label, 'url' => page_url($page)];
+                }
+                break;
+            case 'category':
+                $category = Category::find($id);
+                if ($category) {
+                    return ['label' => $label === '' ? $category['name'] : $label, 'url' => category_url($category)];
+                }
+                break;
+            case 'post':
+                $post = Post::find($id);
+                if ($post && $post['status'] === 'published' && $post['deleted_at'] === null) {
+                    return ['label' => $label === '' ? $post['title'] : $label, 'url' => post_url($post)];
+                }
+                break;
+            case 'custom':
+                $url = $item['url'] ?? '';
+                if ($label !== '' && self::safeUrl($url)) {
+                    return ['label' => $label, 'url' => str_starts_with($url, '/') ? url(ltrim($url, '/')) : $url];
+                }
+                break;
+        }
+        return null;
     }
 
     /** Use the caller's transaction so both menus and the layout publish together. */

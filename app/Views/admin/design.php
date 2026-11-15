@@ -44,7 +44,7 @@
                     </div>
                 </div>
             </div>
-            <div id="nx-design-stage" class="nx-design-stage" aria-busy="true">
+            <div id="nx-design-stage" class="nx-design-stage" role="region" aria-label="サイトプレビュー" aria-busy="true" tabindex="0">
                 <div id="nx-design-canvas">
                     <iframe id="nx-design-frame" title="公開サイトの見た目" sandbox="allow-same-origin" tabindex="-1"></iframe>
                 </div>
@@ -54,4 +54,4 @@
     <noscript><p>デザイン編集にはJavaScriptを有効にしてください。</p></noscript>
 </section>
 <script type="application/json" id="nx-design-data"><?= json_encode($designData, JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
-<script src="<?= e(public_url('assets/js/design.js')) ?>" defer></script>
+<script src="<?= e(nx_asset_url('assets/js/design.js')) ?>" defer></script>

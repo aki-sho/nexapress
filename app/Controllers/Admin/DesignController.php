@@ -8,7 +8,9 @@ use app\Core\Csrf;
 use app\Core\Design;
 use app\Core\Theme;
 use app\Models\Category;
+use app\Models\Navigation;
 use app\Models\Page;
+use app\Models\Post;
 use InvalidArgumentException;
 use JsonException;
 use Throwable;
@@ -29,17 +31,22 @@ final class DesignController extends Controller
                 'state' => $states[$id],
             ];
         }
-        $pages = array_map(static fn(array $page): array => [
-            'id' => (int)$page['id'],
-            'label' => $page['title'] . ($page['status'] === 'published' ? '' : '（非公開）'),
-        ], Page::all());
-        $categories = array_map(static fn(array $category): array => [
-            'id' => (int)$category['id'], 'label' => $category['name'],
-        ], Category::all());
+        $contentChoices = static fn(array $item): array => [
+            'id' => (int)$item['id'],
+            'label' => $item['title'] . ($item['status'] === 'published' ? '' : '（非公開）'),
+        ];
 
         $this->view('admin/design', ['designData' => [
-            'active' => $active, 'themes' => $catalog, 'pages' => $pages, 'categories' => $categories,
-            'widgets' => Design::WIDGETS, 'token' => Csrf::token(),
+            'active' => $active, 'themes' => $catalog,
+            'targets' => [
+                'page' => array_map($contentChoices, Page::all()),
+                'category' => array_map(static fn(array $category): array => [
+                    'id' => (int)$category['id'], 'label' => $category['name'],
+                ], Category::all()),
+                'post' => array_map($contentChoices, Post::navigationChoices()),
+            ],
+            'linkTypes' => Navigation::TYPES, 'widgets' => Design::WIDGETS,
+            'regions' => Design::REGIONS, 'token' => Csrf::token(),
             'preview' => url('admin/design/preview'), 'publish' => url('admin/design/publish'),
         ]]);
     }

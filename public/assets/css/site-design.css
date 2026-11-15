@@ -43,6 +43,14 @@
 .nx-design-main--left .nx-design-sidebar { grid-column: 1; grid-row: 1; }
 .nx-design-main > *, .nx-design-footer-column { min-width: 0; overflow-wrap: anywhere; }
 .nx-design-sidebar, .nx-design-footer-column { display: grid; align-content: start; gap: 18px; }
+.nx-design-region {
+    display: grid;
+    gap: 18px;
+    max-width: var(--theme-content-width, 1080px);
+    margin: 24px auto;
+    padding-inline: var(--theme-gutter, 24px);
+    overflow-wrap: anywhere;
+}
 .nx-design-sidebar:empty { display: none; }
 .nx-design-sidebar .public-search { flex-wrap: wrap; }
 .nx-design-widget h2 { font-size: 1.1rem; margin: 0 0 8px; }

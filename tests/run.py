@@ -171,6 +171,13 @@ def main():
         check('>トップ</a>' not in default_header and 'class="site-nav"' not in default_header
               and 'class="public-search"' in default_header and 'class="admin-preview-header"' not in guest_home,
               'default header omits the automatic top item and retains public search')
+        check('data-design-area=' not in guest_home, 'empty extra regions add no public markup')
+        asset_pattern = r'href="([^"]+/themes/default/header\.css\?v=[a-f0-9]{16})"'
+        initial_asset = re.search(asset_pattern, guest_home)[1]
+        with (fixture / 'public/themes/default/header.css').open('a', encoding='utf-8') as css:
+            css.write('\n/* changed in the integration fixture */\n')
+        check(re.search(asset_pattern, guest.request('/')[1])[1] != initial_asset,
+              'a changed theme stylesheet gets a new URL on a plain request')
         signed_in_home = admin.request('/')[1]
         admin_bar = signed_in_home.split('<nav class="admin-preview-nav">', 1)[1].split('</nav>', 1)[0]
         check('>トップ</a>' in admin_bar and '>管理画面</a>' in admin_bar and 'method="post"' in admin_bar
@@ -208,8 +215,29 @@ def main():
         design = json.loads(re.search(r'<script type="application/json" id="nx-design-data">(.*?)</script>', design_page, re.S)[1])
         draft = design['themes']['default']['state']
         check(draft['menus']['header'][0]['label'] == '案内', 'design editor imports the existing menu and ordering')
+        widget_areas = draft['layout']['widgets']
+        check(widget_areas['header_after'] == widget_areas['footer_before'] == widget_areas['footer1'] == [],
+              'older settings gain empty extra regions and retain explicitly empty widgets')
+        post_choices = {item['label']: item['id'] for item in design['targets']['post']}
+        article = post_choices['公開記事 0']
+        hidden_article = post_choices['非公開シークレット（非公開）']
+        check('ゴミ箱シークレット' not in design_page and 'data-navigation-target="post"' in nav_body,
+              'the editors offer article choices and omit trashed posts')
         draft['menus']['header'].append({'id': None, 'type': 'custom', 'reference_id': None, 'label': 'デザイン追加', 'url': '/design-test'})
-        draft['menus']['footer'] = [{'id': None, 'type': 'custom', 'reference_id': None, 'label': 'フッターテスト', 'url': '/footer-test'}]
+        draft['menus']['header'].append({'id': None, 'type': 'post', 'reference_id': article, 'label': '記事メニュー', 'url': ''})
+        draft['menus']['footer'] = [
+            {'id': None, 'type': 'custom', 'reference_id': None, 'label': 'フッターテスト', 'url': '/footer-test'},
+            {'id': None, 'type': 'post', 'reference_id': hidden_article, 'label': '非公開のメニューリンク', 'url': ''},
+        ]
+        widget_areas['header_after'] = [
+            {'type': 'page', 'reference_id': page_id},
+            {'type': 'post', 'reference_id': article},
+            {'type': 'post', 'reference_id': hidden_article, 'title': '非公開のウィジェットリンク'},
+        ]
+        widget_areas['footer_before'] = [
+            {'type': 'category', 'reference_id': 1},
+            {'type': 'custom', 'title': '案内サイト', 'url': 'https://example.test/guide'},
+        ]
         draft['layout']['header']['placement'] = 'stack'
         draft['layout']['columns'] = 'left'
         draft['layout']['footer'] = 2
@@ -219,19 +247,33 @@ def main():
         check(admin.request('/admin/design/publish', dict(design_request, _csrf_token='bad'))[0] == 419, 'design publish verifies CSRF')
         preview_code, preview_body, _ = admin.request('/admin/design/preview', design_request)
         check(preview_code == 200 and 'サイドバーテスト' in preview_body and '&lt;span&gt;文字として表示&lt;/span&gt;' in preview_body
-              and '管理者プレビュー中' not in preview_body and 'サイドバーテスト' not in guest.request('/')[1],
+              and '管理者プレビュー中' not in preview_body and 'サイドバーテスト' not in guest.request('/')[1]
+              and 'data-design-area="header_after"' in preview_body and 'data-design-area="footer_before"' in preview_body,
               'draft renders through the real theme without changing the public site')
         check(admin.request('/admin/design/publish', design_request)[0] == 200, 'design publishes to the database')
         public_design = guest.request('/')[1]
         check('nx-design-main--left' in public_design and 'nx-design-footer--2' in public_design and 'nx-design-header-stacked' in public_design
               and '>デザイン追加</a>' in public_design and '>フッターテスト</a>' in public_design,
               'the published design updates both menus, header, sidebar, and footer')
+        header_end = public_design.index('</header>')
+        above = public_design.index('data-design-area="header_after"')
+        main = public_design.index('<main')
+        below = public_design.index('data-design-area="footer_before"')
+        footer = public_design.index('<footer')
+        check(header_end < above < main < below < footer and '/article-0">記事メニュー</a>' in public_design[:header_end]
+              and '/page/welcome">公開ページ</a>' in public_design[above:main] and '/article-0">公開記事 0</a>' in public_design[above:main]
+              and '/category/news">ニュース</a>' in public_design[below:footer]
+              and 'https://example.test/guide">案内サイト</a>' in public_design[below:footer]
+              and '非公開のメニューリンク' not in public_design and '非公開のウィジェットリンク' not in public_design,
+              'new regions render all four link types in order and hide unpublished article links')
         check(admin.request('/admin/design/publish', design_request)[0] == 409, 'stale design edits cannot overwrite a newer publication')
         theme_token = admin.csrf('/admin/themes')
         admin.request('/admin/themes/update', {'_csrf_token': theme_token, 'theme': 'monoedge'})
         alternate = guest.request('/')[1]
         check('nx-design-main--left' not in alternate and '>デザイン追加</a>' in alternate and 'Powered by MonoEdge.' in alternate,
               'theme layouts are independent and menus are shared')
+        check('data-design-area=' not in alternate and 'header_after' in design['themes']['monoedge']['areas']
+              and 'footer_before' in design['themes']['monoedge']['areas'], 'MonoEdge offers its own empty extra regions')
         admin.request('/admin/themes/update', {'_csrf_token': theme_token, 'theme': 'default'})
         check('nx-design-main--left' in guest.request('/')[1], 'switching back restores the saved theme layout')
         custom_theme = fixture / 'public/themes/test-footer-theme'
@@ -269,16 +311,19 @@ def main():
         check('FORM_SUBMITTED' in guest.request('/', {'_nx_content_action': 'design-content-test'})[1],
               'public front-page forms still submit through their registered handler')
         admin.request('/admin/extensions/disable/design-content-test', {'_csrf_token': extension_csrf})
-        category_body = guest.request('/category/news')[1]
+        category_body = guest.request('/category/news')[1].split('<main', 1)[1].split('</main>', 1)[0]
         check('公開記事' in category_body and '/category/news?page=2' in category_body, 'public category pagination')
         search_path = re.search(r'class="public-search" action="([^"]+)"', guest.request('/posts')[1])[1]
         check(search_path.endswith('/post/archive/search') and '旧検索スラッグ' in guest.request('/search')[1], 'existing content URL is preserved alongside search')
         search = guest.request(search_path + '?q=' + urllib.parse.quote('検索対象'))[1]
         check('非公開シークレット' not in search and 'ゴミ箱シークレット' not in search and 'page=2' in search and 'q=' in search, 'public search filtering and pagination')
-        check('公開記事' not in guest.request(search_path + '?q=%25')[1], 'public search escapes wildcard input')
+        wildcard_results = guest.request(search_path + '?q=%25')[1].split('<main', 1)[1].split('</main>', 1)[0]
+        check('該当する記事はありません。' in wildcard_results and 'class="post-list"' not in wildcard_results,
+              'public search escapes wildcard input')
         admin.request(f'/admin/pages/delete/{page_id}', {'_csrf_token': token})
         check(guest.request('/page/welcome')[0] == 404 and '>案内</a>' not in guest.request('/')[1], 'trash hides page and navigation entry')
-        check('公開記事' in guest.request('/')[1], 'front page gracefully falls back when selected page is trashed')
+        fallback_home = guest.request('/')[1].split('<main', 1)[1].split('</main>', 1)[0]
+        check('公開記事' in fallback_home, 'front page gracefully falls back when selected page is trashed')
         admin.request(f'/admin/pages/restore/{page_id}', {'_csrf_token': token})
         check(guest.request('/page/welcome')[0] == 404 and 'プレビュー' in admin.request(f'/admin/pages/preview/{page_id}')[1], 'restored page stays private until published')
         check(admin.request(f'/admin/pages/destroy/{page_id}', {'_csrf_token': token})[0] == 404, 'active page cannot be permanently deleted')

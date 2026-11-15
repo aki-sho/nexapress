@@ -2,6 +2,13 @@
     <p class="nx-design-empty">ここにウィジェットを配置できます。</p>
 <?php endif; ?>
 <?php foreach ($widgets as $widget): ?>
+    <?php if (isset(\app\Models\Navigation::TYPES[$widget['type']])): ?>
+        <?php $link = \app\Models\Navigation::resolveLink(['label' => $widget['title']] + $widget); ?>
+        <?php if ($link !== null): ?>
+            <div class="nx-design-widget"><a href="<?= e($link['url']) ?>"><?= e($link['label']) ?></a></div>
+        <?php endif; ?>
+        <?php continue; ?>
+    <?php endif; ?>
     <section class="nx-design-widget">
         <?php if ($widget['title'] !== ''): ?>
             <h2><?= e($widget['title']) ?></h2>
@@ -13,7 +20,7 @@
                 </nav>
                 <?php break;
             case 'recent': ?>
-                <ul><?php foreach (\app\Models\Post::publishedPage(5, 0) as $post): ?>
+                <ul><?php foreach (\app\Models\Post::publishedPage(1, 5) as $post): ?>
                     <li><a href="<?= e(post_url($post)) ?>"><?= e($post['title']) ?></a></li>
                 <?php endforeach; ?></ul>
                 <?php break;

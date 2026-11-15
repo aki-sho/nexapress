@@ -57,9 +57,22 @@ class Theme
         $path = BASE_PATH . '/public/themes/' . $theme . '/theme.php';
         $info = is_file($path) ? require $path : [];
         $areas = $info['design_areas'] ?? [];
+        $supportedAreas = ['header', 'columns', 'footer', ...array_keys(Design::REGIONS)];
         return is_array($areas)
-            ? array_values(array_filter(['header', 'columns', 'footer'], static fn(string $area): bool => in_array($area, $areas, true)))
+            ? array_values(array_filter($supportedAreas, static fn(string $area): bool => in_array($area, $areas, true)))
             : [];
+    }
+
+    public static function stylesheetPaths(): array
+    {
+        $directory = 'themes/' . self::active() . '/';
+        $manifest = BASE_PATH . '/public/' . $directory . 'theme.php';
+        $info = is_file($manifest) ? require $manifest : [];
+        $styles = $info['styles'] ?? [];
+        $styles = is_array($styles) ? array_filter($styles, static fn($file): bool =>
+            is_string($file) && preg_match('/^[a-zA-Z0-9_.-]+\.css$/D', $file) &&
+            is_file(BASE_PATH . '/public/' . $directory . $file)) : [];
+        return array_map(static fn(string $file): string => $directory . $file, $styles ?: ['style.css']);
     }
 
     public static function all(): array

@@ -9,7 +9,10 @@ use Throwable;
 
 final class Design
 {
-    public const AREAS = ['sidebar', 'footer1', 'footer2', 'footer3'];
+    public const REGIONS = [
+        'header_after' => 'ヘッダー直下',
+        'footer_before' => 'フッター直前',
+    ];
     public const WIDGETS = [
         'recent' => '新着記事',
         'categories' => 'カテゴリ一覧',
@@ -17,7 +20,7 @@ final class Design
         'text' => 'テキスト',
         'search' => '検索',
         'copyright' => '著作権表記',
-    ];
+    ] + Navigation::TYPES;
 
     private static ?array $stored = null;
     private static ?array $preview = null;
@@ -114,6 +117,8 @@ final class Design
                 foreach (['footer1', 'footer2', 'footer3'] as $key) {
                     $defaults['widgets'][$key] = self::widgets($layout['widgets'][$key] ?? []);
                 }
+            } elseif (isset(self::REGIONS[$area])) {
+                $defaults['widgets'][$area] = self::widgets($layout['widgets'][$area] ?? []);
             }
         }
         return [
@@ -198,7 +203,11 @@ final class Design
 
     private static function layout(string $theme, array $stored): array
     {
-        return $stored['themes'][$theme] ?? self::defaults($theme);
+        $defaults = self::defaults($theme);
+        $saved = $stored['themes'][$theme] ?? [];
+        $layout = array_replace($defaults, $saved);
+        $layout['widgets'] = array_replace($defaults['widgets'], $saved['widgets'] ?? []);
+        return $layout;
     }
 
     private static function defaults(string $theme): array
@@ -208,7 +217,9 @@ final class Design
             'columns' => 'none',
             'footer' => 1,
             'widgets' => [
+                'header_after' => [],
                 'sidebar' => [],
+                'footer_before' => [],
                 'footer1' => [[
                     'type' => 'copyright',
                     'title' => '',
@@ -232,22 +243,14 @@ final class Design
             $label = self::text($item['label'] ?? null, 255);
             $type = $item['type'] ?? null;
             $id = $item['id'] ?? null;
-            $ref = $item['reference_id'] ?? null;
-            $url = $item['url'] ?? null;
-            if ($label === '' || !in_array($type, ['page', 'category', 'custom'], true) ||
-                ($id !== null && (!is_int($id) || $id < 1 || isset($ids[$id]))) ||
-                ($type === 'custom' && (!is_string($url) || !Navigation::safeUrl($url))) ||
-                ($type !== 'custom' && (!is_int($ref) || $ref < 1))) {
+            if ($label === '' || !is_string($type) || !isset(Navigation::TYPES[$type]) ||
+                ($id !== null && (!is_int($id) || $id < 1 || isset($ids[$id])))) {
                 throw new InvalidArgumentException('メニュー項目の表示名またはリンク先を確認してください。');
             }
             if ($id !== null) {
                 $ids[$id] = true;
             }
-            $result[] = [
-                'id' => $id, 'label' => $label, 'type' => $type,
-                'reference_id' => $type === 'custom' ? null : $ref,
-                'url' => $type === 'custom' ? $url : '',
-            ];
+            $result[] = ['id' => $id, 'label' => $label, 'type' => $type] + self::destination($item);
         }
         return $result;
     }
@@ -264,14 +267,37 @@ final class Design
             if (!is_string($type) || !isset(self::WIDGETS[$type]) || !in_array($menu, ['header', 'footer'], true)) {
                 throw new InvalidArgumentException('ウィジェットの種類を確認してください。');
             }
-            $result[] = [
+            $settings = [
                 'type' => $type,
                 'title' => self::text($widget['title'] ?? '', 80),
                 'text' => self::text($widget['text'] ?? '', 1000),
                 'menu' => $menu,
             ];
+            if (isset(Navigation::TYPES[$type])) {
+                if ($type === 'custom' && $settings['title'] === '') {
+                    throw new InvalidArgumentException('任意リンクの表示名を入力してください。');
+                }
+                $settings += self::destination($widget);
+            }
+            $result[] = $settings;
         }
         return $result;
+    }
+
+    private static function destination(array $item): array
+    {
+        if ($item['type'] === 'custom') {
+            $url = $item['url'] ?? null;
+            if (is_string($url) && Navigation::safeUrl($url)) {
+                return ['reference_id' => null, 'url' => $url];
+            }
+        } else {
+            $id = $item['reference_id'] ?? null;
+            if (is_int($id) && $id > 0) {
+                return ['reference_id' => $id, 'url' => ''];
+            }
+        }
+        throw new InvalidArgumentException('リンク先を確認してください。');
     }
 
     private static function text(mixed $value, int $limit): string

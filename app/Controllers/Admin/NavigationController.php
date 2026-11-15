@@ -7,6 +7,7 @@ use app\Core\Csrf;
 use app\Models\Category;
 use app\Models\Navigation;
 use app\Models\Page;
+use app\Models\Post;
 use Throwable;
 
 class NavigationController extends Controller
@@ -28,12 +29,14 @@ class NavigationController extends Controller
         $error = null;
         if ($label === '' || nx_text_length($label) > 255) {
             $error = '表示名を1〜255文字で入力してください。';
-        } elseif (!in_array($type, ['page', 'category', 'custom'], true)) {
+        } elseif (!isset(Navigation::TYPES[$type])) {
             $error = 'リンクの種類が正しくありません。';
         } elseif ($type === 'page' && !(($page = Page::find($reference)) && $page['deleted_at'] === null)) {
             $error = 'ゴミ箱以外の固定ページを選択してください。';
         } elseif ($type === 'category' && !Category::find($reference)) {
             $error = 'カテゴリを選択してください。';
+        } elseif ($type === 'post' && !(($post = Post::find($reference)) && $post['deleted_at'] === null)) {
+            $error = 'ゴミ箱以外の投稿記事を選択してください。';
         } elseif ($type === 'custom' && !Navigation::safeUrl($url)) {
             $error = 'URLは / から始まるサイト内パス、または http(s) URLを入力してください。';
         } elseif ($id === null && count(Navigation::all()) >= 100) {
@@ -73,6 +76,7 @@ class NavigationController extends Controller
         unset($_SESSION['navigation_notice']);
         $this->view('admin/navigation', [
             'items' => Navigation::all(), 'pages' => Page::all(), 'categories' => Category::all(),
+            'posts' => Post::navigationChoices(),
             'error' => $error, 'notice' => $notice,
         ]);
     }

@@ -11,10 +11,12 @@
     const stage = root.querySelector('#nx-design-stage');
     const canvas = root.querySelector('#nx-design-canvas');
     const frame = root.querySelector('#nx-design-frame');
-    const areas = {sidebar: 'サイドバー', footer1: 'フッター 1', footer2: 'フッター 2', footer3: 'フッター 3'};
+    const {linkTypes, targets, regions} = data;
+    const regionIds = Object.keys(regions);
+    const linkTypeIds = Object.keys(linkTypes);
+    const areas = {...regions, sidebar: 'サイドバー', footer1: 'フッター 1', footer2: 'フッター 2', footer3: 'フッター 3'};
     const menus = {header: 'ヘッダー用', footer: 'フッター用'};
-    const linkTypes = {page: '固定ページ', category: 'カテゴリ', custom: '任意リンク'};
-    const labels = {header: 'ヘッダー', columns: '本文カラム', footer: 'フッター'};
+    const labels = {header: 'ヘッダー', columns: '本文カラム', footer: 'フッター', ...regions};
     const clone = value => JSON.parse(JSON.stringify(value));
     const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
     const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
@@ -29,7 +31,7 @@
     let menuItems = clone(published[theme].menus);
     let pane = 'menus';
     let menuName = 'header';
-    let area = 'sidebar';
+    let area = 'header_after';
     let mode = 'draft';
     let device = 'desktop';
     let editor = null;
@@ -39,9 +41,12 @@
 
     const state = () => ({theme, layout: layouts[theme], menus: menuItems});
     const supports = feature => data.themes[theme].areas.includes(feature);
-    const activeAreas = () => Object.keys(areas).filter(key => key === 'sidebar'
-        ? supports('columns') && layouts[theme].columns !== 'none'
-        : supports('footer') && Number(key.slice(-1)) <= layouts[theme].footer);
+    const supportsWidgets = () => supports('columns') || supports('footer') || regionIds.some(supports);
+    const activeAreas = () => Object.keys(areas).filter(key => {
+        if (regionIds.includes(key)) return supports(key);
+        if (key === 'sidebar') return supports('columns') && layouts[theme].columns !== 'none';
+        return supports('footer') && Number(key.slice(-1)) <= layouts[theme].footer;
+    });
     const hasChanges = id => !same(menuItems, published[id].menus) || !same(layouts[id], published[id].layout);
     const currentList = () => pane === 'menus' ? menuItems[menuName] : layouts[theme].widgets[area];
     const button = (action, label, attributes = '') =>
@@ -67,7 +72,8 @@
         }
         return `<ol class="nx-design-item-list">${list.map((item, index) => {
             const kind = (forMenu ? linkTypes : data.widgets)[item.type];
-            const label = escape(item.label || item.title || kind);
+            const target = targets[item.type]?.find(choice => choice.id === item.reference_id);
+            const label = escape(item.label || item.title || target?.label || kind);
             const attrs = `data-index="${index}"`;
             return `<li class="nx-design-item">
                 <div><strong>${label}</strong><span class="nx-design-note">${escape(kind)}</span></div>
@@ -80,24 +86,35 @@
         }).join('')}</ol>`;
     }
 
+    function linkField(item) {
+        if (item.type === 'custom') {
+            return `<label>URL<input name="url" maxlength="2048" required value="${escape(item.url)}"
+                placeholder="/ または https://example.com/"></label>`;
+        }
+        const available = targets[item.type];
+        const choices = [['', '選択してください'], ...available.map(target => [target.id, target.label])];
+        if (item.reference_id && !available.some(target => target.id === item.reference_id)) {
+            choices.push([item.reference_id, '現在のリンク先（非表示）']);
+        }
+        return field('リンク先', 'reference_id', choices, item.reference_id, 'required');
+    }
+
     function renderForm() {
         const item = editor.item;
         let fields;
         if (pane === 'menus') {
-            const targets = item.type === 'page' ? data.pages : data.categories;
-            const choices = [['', '選択してください'], ...targets.map(target => [target.id, target.label])];
-            if (item.reference_id && !targets.some(target => target.id === item.reference_id)) {
-                choices.push([item.reference_id, '現在のリンク先（非表示）']);
-            }
             fields = field('種類', 'type', Object.entries(linkTypes), item.type, 'data-form-setting="type"') +
-                (item.type === 'custom'
-                    ? `<label>URL<input name="url" maxlength="2048" required value="${escape(item.url)}" placeholder="/ または https://example.com/"></label>`
-                    : field('リンク先', 'reference_id', choices, item.reference_id, 'required')) +
+                linkField(item) +
                 `<label>表示名<input name="label" maxlength="255" required value="${escape(item.label)}"></label>`;
         } else {
             fields = field('種類', 'type', Object.entries(data.widgets), item.type, 'data-form-setting="type"') +
-                field('表示場所', 'area', activeAreas().map(id => [id, areas[id]]), item.area) +
-                `<label>見出し<input name="title" maxlength="80" value="${escape(item.title)}"></label>`;
+                field('表示場所', 'area', activeAreas().map(id => [id, areas[id]]), item.area);
+            if (linkTypeIds.includes(item.type)) {
+                fields += linkField(item) + `<label>${item.type === 'custom' ? '表示名' : '表示名（省略するとリンク先の名前）'}
+                    <input name="title" maxlength="80" value="${escape(item.title)}" ${item.type === 'custom' ? 'required' : ''}></label>`;
+            } else {
+                fields += `<label>見出し<input name="title" maxlength="80" value="${escape(item.title)}"></label>`;
+            }
             if (['text', 'copyright'].includes(item.type)) {
                 fields += `<label>テキスト<textarea rows="3" name="text" maxlength="1000">${escape(item.text)}</textarea></label>`;
             } else if (item.type === 'menu') {
@@ -115,15 +132,16 @@
         if (!usable.includes(area)) area = usable[0] ?? '';
         const layout = layouts[theme];
         const supported = data.themes[theme].areas.map(id => labels[id]);
-        note.hidden = supported.length === 3 && theme === data.active;
+        const partial = supported.length < Object.keys(labels).length;
+        note.hidden = !partial && theme === data.active;
         note.textContent = [
             theme !== data.active ? 'プレビューするテーマです。メニューはサイト共通です。' : '',
-            supported.length < 3 ? (supported.length ? 'このテーマの対応範囲：' + supported.join('・') : 'このテーマはレイアウト編集に対応していません。') : '',
+            partial ? (supported.length ? 'このテーマの対応範囲：' + supported.join('・') : 'このテーマはレイアウト編集に対応していません。') : '',
         ].filter(Boolean).join(' ');
         root.querySelectorAll('[data-pane]').forEach(control => {
             const key = control.dataset.pane;
             control.disabled = publishing || (key !== 'menus' && (key === 'widgets'
-                ? !supports('columns') && !supports('footer') : !supports(key)));
+                ? !supportsWidgets() : !supports(key)));
             control.setAttribute('aria-pressed', String(key === pane));
         });
 
@@ -150,7 +168,7 @@
         } else if (pane === 'footer') {
             panel.innerHTML = '<h2>フッター</h2>' + field('カラム数', 'footer',
                 [[1, '1カラム'], [2, '2カラム'], [3, '3カラム']], layout.footer, 'data-setting="footer"') +
-                usable.filter(id => id.startsWith('footer')).map(id =>
+                usable.filter(id => /^footer[1-3]$/.test(id)).map(id =>
                     `<div>${button('area', areas[id] + 'の中身を編集', `data-area="${id}"`)}</div>`).join('');
         }
         renderStatus();
@@ -185,11 +203,22 @@
             (pane === 'menus' && menuName === 'footer');
         const body = pane === 'columns' || (pane === 'widgets' && area === 'sidebar');
         const document = frame.contentDocument;
-        const anchor = footer ? (document?.querySelector('.site-footer') || document?.querySelector('footer'))
-            : body ? document?.querySelector('.site-main, main') : (document?.querySelector('.site-header') || document?.querySelector('header'));
+        const region = pane === 'widgets' && regionIds.includes(area)
+            ? document?.querySelector(`[data-design-area="${area}"]`) : null;
+        const anchor = region || (footer ? (document?.querySelector('.site-footer') || document?.querySelector('footer'))
+            : body ? document?.querySelector('.site-main, main') : (document?.querySelector('.site-header') || document?.querySelector('header')));
         if (anchor && frame.clientWidth) {
             stage.scrollTop = anchor.getBoundingClientRect().top * canvas.clientWidth / frame.clientWidth;
         }
+    }
+
+    function scrollPreview(event) {
+        if (event.defaultPrevented || !event.cancelable || event.ctrlKey || event.shiftKey) return;
+        const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? stage.clientHeight : 1;
+        if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+        const previous = stage.scrollTop;
+        stage.scrollTop += event.deltaY * unit;
+        if (stage.scrollTop !== previous) event.preventDefault();
     }
 
     function body(extra) {
@@ -328,7 +357,7 @@
         if (setting === 'theme') {
             theme = input.value;
             editor = null;
-            if (pane !== 'menus' && (pane === 'widgets' ? !supports('columns') && !supports('footer') : !supports(pane))) {
+            if (pane !== 'menus' && (pane === 'widgets' ? !supportsWidgets() : !supports(pane))) {
                 pane = 'menus';
             }
             changed('[data-setting="theme"]');
@@ -350,22 +379,31 @@
         }
     });
 
+    function linkDestination(values) {
+        if (values.type === 'custom') {
+            const url = values.url.trim();
+            return /^(?:\/(?!\/)|https?:\/\/)[^\s\\]*$/i.test(url) ? {reference_id: null, url} : null;
+        }
+        const id = Number(values.reference_id);
+        return Number.isInteger(id) && id > 0 ? {reference_id: id, url: ''} : null;
+    }
+
     panel.addEventListener('submit', event => {
         event.preventDefault();
         if (!editor || publishing) return;
         const values = Object.fromEntries(new FormData(event.target));
         const list = currentList();
         const index = editor.index;
-        if (pane === 'menus') {
-            const item = {
-                id: editor.item.id, label: values.label.trim(), type: values.type,
-                reference_id: values.type === 'custom' ? null : Number(values.reference_id),
-                url: values.type === 'custom' ? values.url.trim() : '',
-            };
-            if (!item.label || (item.type === 'custom' && !/^(?:\/(?!\/)|https?:\/\/)[^\s\\]*$/i.test(item.url))) {
-                showError('表示名とリンク先を確認してください。');
-                return;
-            }
+        const forMenu = pane === 'menus';
+        const name = (forMenu ? values.label : values.title).trim();
+        const isLink = linkTypeIds.includes(values.type);
+        const link = isLink ? linkDestination(values) : null;
+        if (isLink && (!link || ((forMenu || values.type === 'custom') && !name))) {
+            showError('表示名とリンク先を確認してください。');
+            return;
+        }
+        if (forMenu) {
+            const item = {id: editor.item.id, label: name, type: values.type, ...link};
             if (index < 0) list.push(item);
             else list[index] = item;
         } else {
@@ -374,7 +412,7 @@
                 showError('この場所には12個まで配置できます。');
                 return;
             }
-            const item = {type: values.type, title: values.title.trim(), text: values.text?.trim() || '', menu: values.menu || 'footer'};
+            const item = {type: values.type, title: name, text: values.text?.trim() || '', menu: values.menu || 'footer', ...link};
             if (destination === list && index >= 0) list[index] = item;
             else {
                 if (index >= 0) list.splice(index, 1);
@@ -391,7 +429,9 @@
         event.preventDefault();
         event.returnValue = '';
     });
+    stage.addEventListener('wheel', scrollPreview, {passive: false});
     frame.addEventListener('load', () => {
+        frame.contentDocument?.addEventListener('wheel', scrollPreview, {passive: false});
         resizePreview();
         revealPreviewArea();
         stage.setAttribute('aria-busy', 'false');

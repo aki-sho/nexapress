@@ -67,6 +67,13 @@ class Post
         return $stmt->fetchAll();
     }
 
+    public static function navigationChoices(): array
+    {
+        $table = Database::table('posts');
+        return Database::connect()->query("SELECT id, title, status FROM {$table}
+            WHERE deleted_at IS NULL ORDER BY created_at DESC, id DESC")->fetchAll();
+    }
+
     /*
      * 公開投稿を全件取得
      *

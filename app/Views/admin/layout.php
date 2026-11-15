@@ -3,11 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <title><?= e(($title ?? '管理画面') . ' - ' . site_title()) ?></title>
-    <link rel="stylesheet" href="<?= e(public_url('assets/css/core-features.css')) ?>">
-    <link rel="stylesheet" href="<?= public_url('assets/css/style.css') ?>">
-    <link rel="stylesheet" href="<?= e(public_url('assets/css/admin.css')) ?>">
+    <?php
+    // The update result can render this layout before the new helpers are loaded.
+    $adminAssetUrl = function_exists('nx_asset_url') ? 'nx_asset_url' : 'public_url';
+    ?>
+    <link rel="stylesheet" href="<?= e($adminAssetUrl('assets/css/core-features.css')) ?>">
+    <link rel="stylesheet" href="<?= e($adminAssetUrl('assets/css/base.css')) ?>">
+    <link rel="stylesheet" href="<?= e($adminAssetUrl('assets/css/admin.css')) ?>">
     <?php if (($title ?? '') === 'デザイン'): ?>
-    <link rel="stylesheet" href="<?= e(public_url('assets/css/design-admin.css')) ?>">
+    <link rel="stylesheet" href="<?= e($adminAssetUrl('assets/css/design-admin.css')) ?>">
     <?php endif; ?>
     <?php $adminStylePath = (string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH); ?>
     <?php if (preg_match('#/admin/media(?:/|$)#', $adminStylePath)): ?>

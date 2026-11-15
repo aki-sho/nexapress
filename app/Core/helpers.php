@@ -74,6 +74,25 @@ function nx_design_widgets(string $area): void
     require BASE_PATH . '/app/Views/design/widgets.php';
 }
 
+function nx_design_region(string $area): void
+{
+    $label = \app\Core\Design::REGIONS[$area] ?? null;
+    if ($label === null) {
+        return;
+    }
+
+    ob_start();
+    try {
+        nx_design_widgets($area);
+        $content = trim(ob_get_contents());
+    } finally {
+        ob_end_clean();
+    }
+    if ($content !== '') {
+        echo '<section class="nx-design-region" data-design-area="' . e($area) . '" aria-label="' . e($label) . '">' . $content . '</section>';
+    }
+}
+
 function nx_design_footer(): void
 {
     $columns = nx_design_settings()['footer'];
@@ -116,6 +135,25 @@ function public_url(string $path = ''): string
     }
 
     return $base . '/' . $path;
+}
+
+function nx_asset_url(string $path): string
+{
+    static $versions = [];
+    $path = ltrim($path, '/');
+    if (!isset($versions[$path])) {
+        $file = BASE_PATH . '/public/' . $path;
+        $hash = is_file($file) ? hash_file('sha256', $file) : false;
+        $versions[$path] = $hash === false ? '' : '?v=' . substr($hash, 0, 16);
+    }
+    return public_url($path) . $versions[$path];
+}
+
+function nx_theme_styles(): void
+{
+    foreach (\app\Core\Theme::stylesheetPaths() as $path) {
+        echo '<link rel="stylesheet" href="' . e(nx_asset_url($path)) . '">' . "\n";
+    }
 }
 
 function base_url(): string
