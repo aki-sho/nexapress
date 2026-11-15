@@ -44,9 +44,9 @@
                     </div>
                 </div>
             </div>
-            <div id="nx-design-stage" class="nx-design-stage" role="region" aria-label="サイトプレビュー" aria-busy="true" tabindex="0">
+            <div id="nx-design-stage" class="nx-design-stage" role="region" aria-label="サイトプレビュー" aria-busy="true">
                 <div id="nx-design-canvas">
-                    <iframe id="nx-design-frame" title="公開サイトの見た目" sandbox="allow-same-origin" tabindex="-1"></iframe>
+                    <iframe id="nx-design-frame" title="公開サイトの見た目" sandbox="allow-same-origin"></iframe>
                 </div>
             </div>
         </div>

@@ -182,12 +182,9 @@
         if (available <= 0) return;
         const scale = Math.min(1, available / width);
         frame.style.width = width + 'px';
-        frame.style.height = '1px';
-        const height = Math.max(280, frame.contentDocument?.documentElement?.scrollHeight || 0);
-        frame.style.height = height + 'px';
+        frame.style.height = canvas.clientHeight / scale + 'px';
         frame.style.transform = `scale(${scale})`;
         canvas.style.width = width * scale + 'px';
-        canvas.style.height = height * scale + 'px';
     }
 
     function syncPreviewButtons() {
@@ -207,18 +204,10 @@
             ? document?.querySelector(`[data-design-area="${area}"]`) : null;
         const anchor = region || (footer ? (document?.querySelector('.site-footer') || document?.querySelector('footer'))
             : body ? document?.querySelector('.site-main, main') : (document?.querySelector('.site-header') || document?.querySelector('header')));
-        if (anchor && frame.clientWidth) {
-            stage.scrollTop = anchor.getBoundingClientRect().top * canvas.clientWidth / frame.clientWidth;
+        const scroller = document?.scrollingElement;
+        if (anchor && scroller) {
+            scroller.scrollTop += anchor.getBoundingClientRect().top;
         }
-    }
-
-    function scrollPreview(event) {
-        if (event.defaultPrevented || !event.cancelable || event.ctrlKey || event.shiftKey) return;
-        const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? stage.clientHeight : 1;
-        if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-        const previous = stage.scrollTop;
-        stage.scrollTop += event.deltaY * unit;
-        if (stage.scrollTop !== previous) event.preventDefault();
     }
 
     function body(extra) {
@@ -429,10 +418,11 @@
         event.preventDefault();
         event.returnValue = '';
     });
-    stage.addEventListener('wheel', scrollPreview, {passive: false});
     frame.addEventListener('load', () => {
-        frame.contentDocument?.addEventListener('wheel', scrollPreview, {passive: false});
-        resizePreview();
+        if (!frame.hasAttribute('srcdoc')) return;
+        // Keep the site controls read-only while allowing the iframe's native scrolling.
+        const body = frame.contentDocument?.body;
+        if (body) body.inert = true;
         revealPreviewArea();
         stage.setAttribute('aria-busy', 'false');
     });

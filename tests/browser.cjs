@@ -88,6 +88,36 @@ const assert = require('assert/strict');
             await page.screenshot({ path: path.join(output, theme + '-mobile.png'), fullPage: true });
             assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), theme + ' should fit a mobile viewport');
         }
+        await page.setViewportSize({ width: 1960, height: 920 });
+        await page.goto(base + '/admin/design');
+        const preview = page.locator('#nx-design-frame');
+        await page.waitForFunction(() => document.querySelector('#nx-design-stage').getAttribute('aria-busy') === 'false' &&
+            document.querySelector('#nx-design-frame').contentDocument.querySelector('.site-footer'));
+        await preview.evaluate(frame => {
+            const document = frame.contentDocument;
+            const cards = document.querySelectorAll('.post-card');
+            if (!cards.length) throw new Error('Expected a post archive in the site preview');
+            Array.from(cards).slice(1).forEach(card => card.remove());
+            document.querySelector('.public-pagination')?.remove();
+        });
+        for (const device of ['desktop', 'mobile']) {
+            await page.locator(`[data-device="${device}"]`).click();
+            assert(await preview.evaluate(frame => {
+                const stage = frame.closest('#nx-design-stage');
+                stage.scrollTop = stage.scrollHeight;
+                return stage.scrollTop === 0 && getComputedStyle(frame).pointerEvents === 'auto';
+            }), 'The site preview should have one interactive scrolling surface');
+            await preview.hover({ position: { x: 100, y: 100 } });
+            await page.mouse.wheel(0, 4000);
+            await page.waitForFunction(() => {
+                const document = window.document.querySelector('#nx-design-frame').contentDocument;
+                const scroll = document.scrollingElement;
+                const footer = document.querySelector('.site-footer').getBoundingClientRect();
+                return scroll.scrollTop > 0 && scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight <= 1 &&
+                    footer.top >= -1 && footer.bottom <= scroll.clientHeight + 1;
+            });
+        }
+        console.log('PASS: desktop and mobile preview scroll one short page all the way to the footer');
         assert.deepEqual(errors, []);
         console.log('PASS: browser warning, menu editing, profile, desktop/mobile layout, and no JavaScript exceptions');
     } finally {
