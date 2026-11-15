@@ -111,6 +111,7 @@ class Installer
             );
 
             SiteSchema::ensure($pdo);
+            SiteSchema::ensureDesign($pdo);
 
             self::createAdministrator(
                 $pdo,

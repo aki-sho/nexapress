@@ -36,4 +36,13 @@ class SiteSchema
             INDEX idx_navigation_position (position, id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
+
+    public static function ensureDesign(PDO $pdo): void
+    {
+        $table = Database::table('site_design');
+        $pdo->exec("CREATE TABLE IF NOT EXISTS {$table} (
+            id TINYINT UNSIGNED PRIMARY KEY, settings MEDIUMTEXT NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $pdo->exec("INSERT IGNORE INTO {$table} (id, settings) VALUES (1, '{}')");
+    }
 }

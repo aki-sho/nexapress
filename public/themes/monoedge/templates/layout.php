@@ -23,6 +23,7 @@
         ) ?>"
     >
 <link rel="stylesheet" href="<?= e(public_url('assets/css/public-features.css')) ?>">
+<link rel="stylesheet" href="<?= e(public_url('assets/css/site-design.css')) ?>">
 <?php if (\app\Core\Auth::check()): ?>
 <link rel="stylesheet" href="<?= e(public_url('assets/css/admin-preview.css')) ?>">
 <?php endif; ?>
@@ -43,9 +44,7 @@ if ($header) {
 
 ?>
 
-<main class="site-main">
-    <?= $content ?? '' ?>
-</main>
+<?php require BASE_PATH . '/app/Views/design/main.php'; ?>
 
 <?php
 

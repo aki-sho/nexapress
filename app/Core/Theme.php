@@ -4,8 +4,13 @@ namespace app\Core;
 
 class Theme
 {
+    private static ?string $preview = null;
+
     public static function active(): string
     {
+        if (self::$preview !== null) {
+            return self::$preview;
+        }
         // 現在有効なテーマ設定ファイルの場所
         $configPath = BASE_PATH . '/config/theme.php';
 
@@ -28,17 +33,33 @@ class Theme
 
     public static function exists(string $theme): bool
     {
-        // 不正な文字が入らないようにテーマ名を整形する
-        $theme = self::sanitize($theme);
-
-        // 空文字の場合は存在しない扱い
-        if ($theme === '') {
+        if ($theme === '' || $theme !== self::sanitize($theme)) {
             return false;
         }
 
         // テーマフォルダが存在し、style.css がある場合だけテーマとして認識する
         return is_dir(BASE_PATH . '/public/themes/' . $theme)
             && file_exists(BASE_PATH . '/public/themes/' . $theme . '/style.css');
+    }
+
+    public static function preview(string $theme): void
+    {
+        if (self::exists($theme)) {
+            self::$preview = $theme;
+        }
+    }
+
+    public static function designAreas(string $theme): array
+    {
+        if (!self::exists($theme)) {
+            return [];
+        }
+        $path = BASE_PATH . '/public/themes/' . $theme . '/theme.php';
+        $info = is_file($path) ? require $path : [];
+        $areas = $info['design_areas'] ?? [];
+        return is_array($areas)
+            ? array_values(array_filter(['header', 'columns', 'footer'], static fn(string $area): bool => in_array($area, $areas, true)))
+            : [];
     }
 
     public static function all(): array
@@ -63,12 +84,7 @@ class Theme
             $themePath = $themesPath . '/' . $item;
 
             // フォルダ以外はテーマとして扱わない
-            if (!is_dir($themePath)) {
-                continue;
-            }
-
-            // style.css がないものはテーマとして扱わない
-            if (!file_exists($themePath . '/style.css')) {
+            if (!self::exists($item)) {
                 continue;
             }
 
@@ -95,9 +111,6 @@ class Theme
 
     public static function set(string $theme): bool
     {
-        // 保存前にテーマ名を整形する
-        $theme = self::sanitize($theme);
-
         // 存在しないテーマは設定しない
         if (!self::exists($theme)) {
             return false;

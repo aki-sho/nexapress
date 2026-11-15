@@ -195,9 +195,71 @@ def main():
         check(header.index('>案内</a>') < header.index('>ホーム</a>'), 'menu ordering appears in theme')
         admin.request('/admin/navigation/save', {'_csrf_token': nav_token, 'label': '危険', 'type': 'custom', 'url': 'javascript:alert(1)'})
         check('>危険</a>' not in guest.request('/')[1], 'unsafe custom link rejected')
+        design_page = admin.request('/admin/design')[1]
+        design = json.loads(re.search(r'<script type="application/json" id="nx-design-data">(.*?)</script>', design_page, re.S)[1])
+        draft = design['themes']['default']['state']
+        check(draft['menus']['header'][0]['label'] == '案内', 'design editor imports the existing menu and ordering')
+        draft['menus']['header'].append({'id': None, 'type': 'custom', 'reference_id': None, 'label': 'デザイン追加', 'url': '/design-test'})
+        draft['menus']['footer'] = [{'id': None, 'type': 'custom', 'reference_id': None, 'label': 'フッターテスト', 'url': '/footer-test'}]
+        draft['layout']['header']['placement'] = 'stack'
+        draft['layout']['columns'] = 'left'
+        draft['layout']['footer'] = 2
+        draft['layout']['widgets']['sidebar'] = [{'type': 'text', 'title': 'サイドバーテスト', 'text': '<span>文字として表示</span>', 'menu': 'footer'}]
+        draft['layout']['widgets']['footer2'] = [{'type': 'menu', 'title': 'ご案内', 'text': '', 'menu': 'footer'}]
+        design_request = {'_csrf_token': design['token'], 'design': json.dumps(draft), 'revision': draft['revision']}
+        check(admin.request('/admin/design/publish', dict(design_request, _csrf_token='bad'))[0] == 419, 'design publish verifies CSRF')
+        preview_code, preview_body, _ = admin.request('/admin/design/preview', design_request)
+        check(preview_code == 200 and 'サイドバーテスト' in preview_body and '&lt;span&gt;文字として表示&lt;/span&gt;' in preview_body
+              and '管理者プレビュー中' not in preview_body and 'サイドバーテスト' not in guest.request('/')[1],
+              'draft renders through the real theme without changing the public site')
+        check(admin.request('/admin/design/publish', design_request)[0] == 200, 'design publishes to the database')
+        public_design = guest.request('/')[1]
+        check('nx-design-main--left' in public_design and 'nx-design-footer--2' in public_design and 'nx-design-header-stacked' in public_design
+              and '>デザイン追加</a>' in public_design and '>フッターテスト</a>' in public_design,
+              'the published design updates both menus, header, sidebar, and footer')
+        check(admin.request('/admin/design/publish', design_request)[0] == 409, 'stale design edits cannot overwrite a newer publication')
+        theme_token = admin.csrf('/admin/themes')
+        admin.request('/admin/themes/update', {'_csrf_token': theme_token, 'theme': 'monoedge'})
+        alternate = guest.request('/')[1]
+        check('nx-design-main--left' not in alternate and '>デザイン追加</a>' in alternate and 'Powered by MonoEdge.' in alternate,
+              'theme layouts are independent and menus are shared')
+        admin.request('/admin/themes/update', {'_csrf_token': theme_token, 'theme': 'default'})
+        check('nx-design-main--left' in guest.request('/')[1], 'switching back restores the saved theme layout')
+        custom_theme = fixture / 'public/themes/test-footer-theme'
+        (custom_theme / 'templates').mkdir(parents=True)
+        (custom_theme / 'style.css').write_text('/* fixture theme */', encoding='utf-8')
+        (custom_theme / 'theme.php').write_text("<?php return ['design_areas' => ['footer']];", encoding='utf-8')
+        (custom_theme / 'templates/layout.php').write_text('<main><?= $content ?></main><?php nx_design_footer(); ?>', encoding='utf-8')
+        custom_page = admin.request('/admin/design')[1]
+        custom = json.loads(re.search(r'<script type="application/json" id="nx-design-data">(.*?)</script>', custom_page, re.S)[1])
+        footer_theme = custom['themes']['test-footer-theme']
+        check(footer_theme['areas'] == ['footer'], 'custom themes declare only the areas they implement')
+        footer_theme['state']['layout']['footer'] = 3
+        footer_preview = admin.request('/admin/design/preview', {'_csrf_token': custom['token'], 'design': json.dumps(footer_theme['state'])})[1]
+        check('nx-design-footer--3' in footer_preview and 'nx-design-main--left' not in footer_preview,
+              'a footer-only theme previews its own supported areas')
         general_token = admin.csrf('/admin/settings/general')
         admin.request('/admin/settings/general/update', {'_csrf_token': general_token, 'site_title': 'NexaPress Test', 'timezone': 'Asia/Tokyo', 'homepage_mode': 'page', 'homepage_page_id': page_id})
         check('初稿の本文' in guest.request('/')[1] and '記事一覧' in guest.request('/posts')[1], 'static front page with separate post archive')
+        content_fixture = fixture / 'extensions/design-content-test'
+        content_fixture.mkdir()
+        (content_fixture / 'manifest.json').write_text(json.dumps({
+            'id': 'design-content-test', 'name': 'Design content test', 'version': '1.0.0', 'bootstrap': 'bootstrap.php',
+        }), encoding='utf-8')
+        (content_fixture / 'bootstrap.php').write_text(r"""<?php
+            \app\Core\ContentExtension::register('design-content-test',
+                static fn(string $html, array $context): string => $html . ($context['preview'] ? '<p>FORM_PREVIEW</p>' : '<p>FORM_PUBLIC</p>'),
+                static function (): void { echo 'FORM_SUBMITTED'; }
+            );
+        """, encoding='utf-8')
+        extension_csrf = admin.csrf('/admin/extensions')
+        admin.request('/admin/extensions/enable/design-content-test', {'_csrf_token': extension_csrf})
+        home_preview_status, home_preview, _ = admin.request('/admin/design/preview', dict(design_request, _nx_content_action='design-content-test'))
+        check(home_preview_status == 200 and 'FORM_PREVIEW' in home_preview and 'FORM_SUBMITTED' not in home_preview,
+              'static front page design previews render content extensions without submitting forms')
+        check('FORM_SUBMITTED' in guest.request('/', {'_nx_content_action': 'design-content-test'})[1],
+              'public front-page forms still submit through their registered handler')
+        admin.request('/admin/extensions/disable/design-content-test', {'_csrf_token': extension_csrf})
         category_body = guest.request('/category/news')[1]
         check('公開記事' in category_body and '/category/news?page=2' in category_body, 'public category pagination')
         search_path = re.search(r'class="public-search" action="([^"]+)"', guest.request('/posts')[1])[1]
@@ -214,6 +276,7 @@ def main():
         viewer = Client(base)
         viewer.login('viewer')
         check(viewer.request('/admin/navigation')[0] == 403 and viewer.request('/admin/pages')[0] == 403, 'viewer cannot manage content or menus')
+        check(viewer.request('/admin/design')[0] == 403, 'viewer cannot edit the site design')
         second_viewer = Client(base)
         check(second_viewer.login('viewer')[2].endswith('/admin'), 'second session is active before password change')
         profile_token = viewer.csrf('/admin/profile')

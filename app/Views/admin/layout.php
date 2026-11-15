@@ -6,6 +6,9 @@
     <link rel="stylesheet" href="<?= e(public_url('assets/css/core-features.css')) ?>">
     <link rel="stylesheet" href="<?= public_url('assets/css/style.css') ?>">
     <link rel="stylesheet" href="<?= e(public_url('assets/css/admin.css')) ?>">
+    <?php if (($title ?? '') === 'デザイン'): ?>
+    <link rel="stylesheet" href="<?= e(public_url('assets/css/design-admin.css')) ?>">
+    <?php endif; ?>
     <?php $adminStylePath = (string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH); ?>
     <?php if (preg_match('#/admin/media(?:/|$)#', $adminStylePath)): ?>
     <link rel="stylesheet" href="<?= e(public_url('assets/css/admin-media.css')) ?>">
@@ -26,7 +29,9 @@
 
         <nav>
             <a href="<?= e(url('admin/profile')) ?>">自分のプロフィール</a>
-            <?php if (\app\Core\Permission::can('settings.manage')): ?>
+            <?php if (\app\Core\Permission::can('themes.manage')): ?>
+                <a href="<?= e(url('admin/design')) ?>">デザイン</a>
+            <?php elseif (\app\Core\Permission::can('settings.manage')): ?>
                 <a href="<?= e(url('admin/navigation')) ?>">メニュー管理</a>
             <?php endif; ?>
             <?php if (
@@ -153,15 +158,6 @@
                 </div>
             <?php endif; ?>
 
-            <?php if (
-                \app\Core\Permission::can(
-                    'themes.manage'
-                )
-            ): ?>
-                <a href="<?= url('admin/themes') ?>">
-                    テーマ設定
-                </a>
-            <?php endif; ?>
 
             <?php if (
                 \app\Core\Permission::can(

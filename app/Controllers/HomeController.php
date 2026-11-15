@@ -3,6 +3,7 @@
 namespace app\Controllers;
 
 use app\Core\Controller;
+use app\Core\Design;
 use app\Core\Installer;
 use app\Core\Paginator;
 use app\Models\Post;
@@ -27,7 +28,7 @@ class HomeController extends Controller
             }
         }
 
-        if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !Design::isPreview()) {
             http_response_code(404);
             echo '固定ページが見つかりません。';
             return;

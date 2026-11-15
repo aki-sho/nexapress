@@ -1,0 +1,83 @@
+.nx-design-editor {
+    --design-line: #dbe3ee;
+    --design-blue: #2856c9;
+    --design-tint: #ebf1ff;
+    --design-muted: #526378;
+    color: #17263c;
+}
+
+.nx-design-editor [hidden] { display: none !important; }
+.nx-design-toolbar, .nx-design-preview-bar, .nx-design-actions, .nx-design-item > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+.nx-design-toolbar, .nx-design-preview-bar { justify-content: space-between; }
+.nx-design-toolbar { margin-bottom: 14px; }
+.nx-design-toolbar h1 { margin: 0; }
+.nx-design-editor-grid {
+    display: grid;
+    grid-template-columns: minmax(240px, 30%) minmax(0, 1fr);
+    min-width: 0;
+    overflow: clip;
+    border: 1px solid var(--design-line);
+    border-radius: 10px;
+    background: #fff;
+}
+.nx-design-controls, .nx-design-preview { min-width: 0; }
+.nx-design-controls { border-inline-end: 1px solid var(--design-line); }
+.nx-design-nav, .nx-design-panel { padding: 14px; }
+.nx-design-nav { display: grid; gap: 9px; background: #f4f7fc; border-bottom: 1px solid var(--design-line); }
+.nx-design-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.nx-design-tabs button, .nx-design-switch button, .nx-design-small {
+    padding: 5px 8px;
+    border: 1px solid var(--design-line);
+    border-radius: 6px;
+    background: #fff;
+    color: #17263c;
+    font: inherit;
+    line-height: 1.4;
+    cursor: pointer;
+}
+.nx-design-tabs button { text-align: start; }
+.nx-design-editor button[aria-pressed="true"] { background: var(--design-tint); color: var(--design-blue); border-color: #c5d4f6; }
+.nx-design-editor button:disabled { opacity: .48; cursor: default; }
+.nx-design-editor button:focus-visible, .nx-design-editor :is(input, select, textarea):focus-visible { outline: 2px solid var(--design-blue); outline-offset: 2px; }
+.nx-design-panel { margin: 0; min-width: 0; border: 0; display: grid; gap: 11px; }
+.nx-design-panel h2, .nx-design-panel h3, .nx-design-note { margin: 0; }
+.nx-design-panel h2 { font-size: 1.1rem; }
+.nx-design-panel h3 { font-size: 1rem; }
+.nx-design-note, #nx-design-status { color: var(--design-muted); font-size: .88rem; overflow-wrap: anywhere; }
+.nx-design-tabs, .nx-design-switch, .nx-design-panel label { font-size: .9rem; }
+.nx-design-controls label:not(.nx-design-check) { display: grid; gap: 5px; min-width: 0; }
+.nx-design-controls :is(select, textarea, input:not([type="checkbox"])) {
+    width: 100%;
+    min-width: 0;
+    min-height: 34px;
+    margin: 0;
+    padding: 6px 8px;
+    border: 1px solid var(--design-line);
+    border-radius: 6px;
+    font: inherit;
+}
+.nx-design-check { display: flex; align-items: center; gap: 8px; }
+.nx-design-check input { width: 1rem; height: 1rem; }
+.nx-design-switch { display: inline-flex; flex-wrap: wrap; gap: 3px; }
+.nx-design-item-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--design-line); }
+.nx-design-item { display: grid; gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--design-line); overflow-wrap: anywhere; }
+.nx-design-item > div:first-child { justify-content: space-between; }
+.nx-design-item > div:last-child { gap: 4px; }
+.nx-design-danger { color: #a12639; }
+.nx-design-form { display: grid; gap: 9px; }
+.nx-design-preview { background: #e9eff7; }
+.nx-design-preview-bar { padding: 9px 12px; background: #fff; border-bottom: 1px solid var(--design-line); }
+.nx-design-stage { min-height: 380px; max-height: 70vh; overflow: auto; padding: 12px; }
+#nx-design-canvas { position: relative; margin: 0 auto; overflow: clip; background: #fff; box-shadow: 0 6px 20px #18294b22; }
+#nx-design-frame { display: block; position: absolute; top: 0; left: 0; border: 0; transform-origin: top left; pointer-events: none; }
+
+@media (max-width: 860px) {
+    .nx-design-editor-grid { grid-template-columns: minmax(0, 1fr); }
+    .nx-design-controls { border-inline-end: 0; border-bottom: 1px solid var(--design-line); }
+    .nx-design-tabs { display: flex; flex-wrap: wrap; }
+}

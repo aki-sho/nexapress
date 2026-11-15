@@ -187,6 +187,9 @@ class Permission
             $adminPrefix . 'ThemeController' =>
                 'themes.manage',
 
+            $adminPrefix . 'DesignController' =>
+                'themes.manage',
+
             $adminPrefix . 'SettingController' =>
                 'settings.manage',
         ];

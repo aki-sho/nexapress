@@ -41,11 +41,28 @@ function nx_text_length(string $value): int
     return function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
 }
 
-function nx_navigation(): void
+function nx_navigation(string $menu = 'header'): void
 {
-    foreach (\app\Models\Navigation::links() as $link) {
+    foreach (\app\Core\Design::menuLinks($menu) as $link) {
         echo '<a href="' . e($link['url']) . '">' . e($link['label']) . '</a>';
     }
+}
+
+function nx_design_settings(): array
+{
+    return \app\Core\Design::settings();
+}
+
+function nx_design_widgets(string $area): void
+{
+    $widgets = nx_design_settings()['widgets'][$area] ?? [];
+    require BASE_PATH . '/app/Views/design/widgets.php';
+}
+
+function nx_design_footer(): void
+{
+    $columns = nx_design_settings()['footer'];
+    require BASE_PATH . '/app/Views/design/footer.php';
 }
 
 function nx_archive_page_url(int $page, string $path = '', string $query = ''): string
@@ -288,7 +305,7 @@ function nx_head(?string $title = null): void
 function nexapress_admin_header(): void
 {
     // ログイン中の管理者だけに、本体側の管理者用ヘッダーを表示する
-    if (!\app\Core\Auth::check()) {
+    if (\app\Core\Design::isPreview() || !\app\Core\Auth::check()) {
         return;
     }
 

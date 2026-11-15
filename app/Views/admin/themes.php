@@ -1,6 +1,7 @@
 <?php $title = 'テーマ設定'; ?>
 
 <h1>テーマ設定</h1>
+<p><a href="<?= e(url('admin/design')) ?>">デザイン編集に戻る</a></p>
 
 <div class="card">
     <p>公開サイトで使用するテーマを選択できます。</p>
@@ -28,6 +29,7 @@
                     <p class="theme-active">現在使用中</p>
                 <?php else: ?>
                     <form action="<?= url('admin/themes/update') ?>" method="post">
+                        <input type="hidden" name="_csrf_token" value="<?= e(\app\Core\Csrf::token()) ?>">
                         <input type="hidden" name="theme" value="<?= e($theme['id']) ?>">
                         <button type="submit">このテーマを使う</button>
                     </form>

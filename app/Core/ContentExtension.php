@@ -31,8 +31,10 @@ final class ContentExtension
         }
         $document = $data[$type];
         $action = $_POST['_nx_content_action'] ?? null;
-        $post = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST';
-        $preview = !empty($data['isPreview']);
+        // The authenticated design editor uses POST to carry its draft, not to submit a public form.
+        $designPreview = Design::isPreview();
+        $post = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && !$designPreview;
+        $preview = $designPreview || !empty($data['isPreview']);
         $path = $type === 'post' ? post_url($document) : (!empty($data['isHomepage']) ? url() : page_url($document));
         $path = self::relativeUrl($path);
         if ($path === null || ($post && ($preview || !self::handlesPost($action) || !self::matchesPath($path)))) {

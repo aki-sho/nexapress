@@ -139,7 +139,7 @@ class Extension
         $cache = '\\NxNitroCache\\CacheManager';
         if (class_exists($cache, false) && is_callable([$cache, 'clear'])) {
             foreach (['navigation_saved', 'page_saved', 'page_trashed', 'page_restored',
-                'page_deleted', 'site_settings_saved', 'profile_saved', 'extension_updated'] as $event) {
+                'page_deleted', 'site_settings_saved', 'profile_saved', 'extension_updated', 'design_published'] as $event) {
                 Hook::addAction($event, static function () use ($cache): void { $cache::clear(); });
             }
         }
