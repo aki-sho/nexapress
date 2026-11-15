@@ -8,7 +8,7 @@
 .admin-preview-header-inner {
     max-width: 1080px;
     margin: 0 auto;
-    padding: 12px 24px;
+    padding: 10px 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -34,17 +34,52 @@
 
 .admin-preview-nav {
     display: flex;
-    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px 12px;
+}
+
+.admin-preview-nav .logout-form {
+    display: flex;
+    margin: 0;
 }
 
 .admin-preview-nav a,
 .admin-preview-nav .logout-form button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
     color: #e5e7eb;
     font-size: 14px;
+    line-height: 1.4;
     text-decoration: none;
+    white-space: nowrap;
 }
 
-.admin-preview-nav a:hover,
-.admin-preview-nav .logout-form button:hover {
+.admin-preview-nav .logout-form button {
+    padding: 0 14px;
+    background: #2563eb;
     color: #ffffff;
+    font-weight: 600;
+}
+
+.admin-preview-nav a:hover {
+    color: #ffffff;
+}
+
+.admin-preview-nav .logout-form button:hover {
+    background: #1d4ed8;
+}
+
+@media (max-width: 600px) {
+    .admin-preview-header-inner {
+        flex-wrap: wrap;
+        padding-inline: 16px;
+        gap: 8px;
+    }
+
+    .admin-preview-nav {
+        margin-inline-start: auto;
+    }
 }

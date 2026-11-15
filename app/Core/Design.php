@@ -45,14 +45,15 @@ final class Design
         return self::$preview['layout'] ?? self::layout($theme, self::stored());
     }
 
-    public static function menuLinks(string $menu): array
+    public static function menuLinks(string $menu, bool $includeHomeFallback = true): array
     {
         if ($menu === 'footer') {
             return Navigation::resolve(self::$preview['menus']['footer'] ?? self::stored()['footerMenu'] ?? []);
         }
 
         $items = self::$preview['menus']['header'] ?? Navigation::all();
-        return Navigation::resolve($items) ?: [['label' => 'トップ', 'url' => url('')]];
+        $links = Navigation::resolve($items);
+        return !$links && $includeHomeFallback ? [['label' => 'トップ', 'url' => url('')]] : $links;
     }
 
     public static function snapshot(string $theme): array

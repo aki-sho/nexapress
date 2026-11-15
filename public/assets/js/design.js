@@ -63,9 +63,6 @@
 
     function renderRows(list, forMenu) {
         if (!list.length) {
-            if (forMenu && menuName === 'header') {
-                return '<p class="nx-design-note">項目がない場合は「トップ」が表示されます。</p>';
-            }
             return `<p class="nx-design-note">${forMenu ? 'メニュー項目' : 'ウィジェット'}はまだありません。</p>`;
         }
         return `<ol class="nx-design-item-list">${list.map((item, index) => {

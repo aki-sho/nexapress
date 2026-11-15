@@ -5,6 +5,32 @@
     gap: 12px;
 }
 
+.site-header-inner > .public-search {
+    flex-wrap: nowrap;
+    align-items: center;
+    width: min(100%, 316px);
+    min-width: 0;
+    gap: 8px;
+    margin-block: 0;
+}
+
+.site-header-inner > .public-search input {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+    height: 38px;
+    padding: 0 11px;
+    border-color: #aeb7c3;
+    border-radius: 6px;
+}
+
+.site-header-inner > .public-search button {
+    flex: 0 0 auto;
+    height: 38px;
+    padding: 0 14px;
+    white-space: nowrap;
+}
+
 .nx-design-main {
     display: grid;
     align-items: start;

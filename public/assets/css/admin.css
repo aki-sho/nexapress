@@ -240,18 +240,6 @@
     background: #1d4ed8;
 }
 
-/* スマホ幅で管理バーを縦並びにする */
-@media (max-width: 700px) {
-    .admin-preview-header-inner {
-        display: block;
-        padding: 12px 18px;
-    }
-
-    .admin-preview-nav {
-        margin-top: 10px;
-        flex-wrap: wrap;
-    }
-}
 /* 拡張機能一覧の操作ボタン */
 .admin-table td form {
     display: inline-block;

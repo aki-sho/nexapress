@@ -1,1 +1,1 @@
-<?php require BASE_PATH . '/app/Views/design/header.php'; ?>
+<?php nx_design_header($searchQuery ?? '', false); ?>

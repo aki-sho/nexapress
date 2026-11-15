@@ -1,10 +1,15 @@
 /* default テーマの本文レイアウト */
 
+:root {
+    --theme-content-width: 1080px;
+    --theme-gutter: 24px;
+}
+
 .site-main {
-    max-width: 1080px;
+    max-width: var(--theme-content-width);
     min-height: 64vh;
     margin: 48px auto;
-    padding: 0 24px;
+    padding-inline: var(--theme-gutter);
 }
 
 .page-title {

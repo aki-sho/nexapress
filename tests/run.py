@@ -166,6 +166,15 @@ def main():
             checks += 1
             print('PASS:', label, flush=True)
         check(admin.login('admin')[2].endswith('/admin'), 'administrator login')
+        guest_home = guest.request('/')[1]
+        default_header = guest_home.split('<header class="site-header">', 1)[1].split('</header>', 1)[0]
+        check('>トップ</a>' not in default_header and 'class="site-nav"' not in default_header
+              and 'class="public-search"' in default_header and 'class="admin-preview-header"' not in guest_home,
+              'default header omits the automatic top item and retains public search')
+        signed_in_home = admin.request('/')[1]
+        admin_bar = signed_in_home.split('<nav class="admin-preview-nav">', 1)[1].split('</nav>', 1)[0]
+        check('>トップ</a>' in admin_bar and '>管理画面</a>' in admin_bar and 'method="post"' in admin_bar
+              and 'ログアウト' in admin_bar, 'signed-in toolbar retains top, dashboard, and POST logout')
         if nitro:
             cache_token = admin.csrf('/admin/extensions')
             admin.request('/admin/extensions/enable/nx_nitro_cache', {'_csrf_token': cache_token})

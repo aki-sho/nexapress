@@ -53,6 +53,21 @@ function nx_design_settings(): array
     return \app\Core\Design::settings();
 }
 
+function nx_design_header(string $searchQuery = '', bool $includeHomeFallback = true): void
+{
+    $header = nx_design_settings()['header'];
+    $links = $header['menu'] ? \app\Core\Design::menuLinks('header', $includeHomeFallback) : [];
+    $logo = $header['logo'] ? site_icon() : '';
+    if ($logo !== '' || $header['name'] || $links || $header['search']) {
+        require BASE_PATH . '/app/Views/design/header.php';
+    }
+}
+
+function nx_design_main(string $content): void
+{
+    require BASE_PATH . '/app/Views/design/main.php';
+}
+
 function nx_design_widgets(string $area): void
 {
     $widgets = nx_design_settings()['widgets'][$area] ?? [];
