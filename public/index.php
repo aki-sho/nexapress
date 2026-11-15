@@ -89,7 +89,7 @@ Debug::log('Request start', [
 ]);
 
 // 公開サイト
-$router->get('/', 'app\Controllers\HomeController@index');
+$router->getContent('/', 'app\Controllers\HomeController@index');
 $router->get('/posts', 'app\Controllers\ArchiveController@index');
 $router->get('/search', 'app\Controllers\ArchiveController@search');
 $router->get('/category/{slug}', 'app\Controllers\ArchiveController@category');
@@ -108,7 +108,7 @@ $router->post('/admin/pages/revisions/{id}/restore/{revision}', 'app\Controllers
 $router->post('/admin/pages/restore/{id}', 'app\Controllers\Admin\PageController@restore');
 $router->post('/admin/pages/destroy/{id}', 'app\Controllers\Admin\PageController@destroy');
 $router->post('/admin/extensions/update/{extensionKey}', 'app\Controllers\Admin\ExtensionController@update');
-$router->get('/post/{slug}', 'app\Controllers\PostController@show');
+$router->getContent('/post/{slug}', 'app\Controllers\PostController@show');
 
 // インストール
 $router->get(
@@ -340,7 +340,7 @@ $router->get('/admin/settings/debug', 'app\Controllers\Admin\SettingController@d
 $router->post('/admin/settings/debug/update', 'app\Controllers\Admin\SettingController@updateDebug');
 
 // 固定ページ表示
-$router->get('/page/{slug}', 'app\Controllers\PageController@show');
+$router->getContent('/page/{slug}', 'app\Controllers\PageController@show');
 
 // 有効な拡張機能を読み込む
 \app\Core\Extension::bootEnabled($router, $guardRequired);
@@ -348,7 +348,7 @@ $router->get('/admin/logout', 'app\Controllers\Admin\AuthController@logout');
 
 // 投稿URL設定用
 // 固定URLとぶつからないように、必ず最後に置く
-$router->get('/{slug}', 'app\Controllers\PostController@showPlain');
-$router->get('/{category}/{slug}', 'app\Controllers\PostController@showByCategory');
+$router->getContent('/{slug}', 'app\Controllers\PostController@showPlain');
+$router->getContent('/{category}/{slug}', 'app\Controllers\PostController@showByCategory');
 
 $router->dispatch();

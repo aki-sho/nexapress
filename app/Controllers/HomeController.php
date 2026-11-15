@@ -22,9 +22,15 @@ class HomeController extends Controller
         if (($config['homepage_mode'] ?? 'posts') === 'page') {
             $page = \app\Models\Page::find((int)($config['homepage_page_id'] ?? 0));
             if ($page && $page['status'] === 'published' && $page['deleted_at'] === null) {
-                $this->view('page-detail', ['page' => $page]);
+                $this->view('page-detail', ['page' => $page, 'isHomepage' => true]);
                 return;
             }
+        }
+
+        if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+            http_response_code(404);
+            echo '固定ページが見つかりません。';
+            return;
         }
 
         $requestedPage = max(

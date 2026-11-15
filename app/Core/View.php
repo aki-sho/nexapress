@@ -73,17 +73,19 @@ class View
             return;
         }
 
-        ob_start();
-        require $viewPath;
-        $content = ob_get_clean();
-
-        $themeLayoutPath = Theme::template('layout');
-
-        if ($themeLayoutPath) {
-            require $themeLayoutPath;
-            return;
+        try {
+            if (!ContentExtension::begin($view, $data)) {
+                http_response_code(404);
+                echo '固定ページまたは投稿が見つかりません。';
+                return;
+            }
+            ob_start();
+            require $viewPath;
+            $content = ob_get_clean();
+            $themeLayoutPath = Theme::template('layout');
+            require $themeLayoutPath ?: BASE_PATH . '/app/Views/layout.php';
+        } finally {
+            ContentExtension::end();
         }
-
-        require BASE_PATH . '/app/Views/layout.php';
     }
 }

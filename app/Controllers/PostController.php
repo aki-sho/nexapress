@@ -73,9 +73,9 @@ class PostController extends Controller
              * カテゴリ名が違う場合も
              * ここで正規URLへ転送される。
              */
-            $this->redirectToCanonical(
-                $post
-            );
+            if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+                $this->redirectToCanonical($post);
+            }
 
             $this->view(
                 'post-detail',

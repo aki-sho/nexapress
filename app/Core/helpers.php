@@ -327,14 +327,16 @@ function nx_logout_form(): void
  * 公開時に再度安全化する。
  */
 function nx_post_content(
-    array $post
+    array $post,
+    bool $expand = true
 ): string {
-    return \app\Core\HtmlSanitizer::sanitize(
+    $content = \app\Core\HtmlSanitizer::sanitize(
         (string)(
             $post['content']
             ?? ''
         )
     );
+    return $expand ? \app\Core\ContentExtension::render($content, $post) : $content;
 }
 
 /*
@@ -363,7 +365,7 @@ function nx_post_excerpt(
     if ($excerpt === '') {
         $excerpt = html_entity_decode(
             strip_tags(
-                nx_post_content($post)
+                nx_post_content($post, false)
             ),
             ENT_QUOTES |
             ENT_HTML5,

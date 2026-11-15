@@ -5,10 +5,18 @@ namespace app\Core;
 class Router
 {
     private array $routes = [];
+    private array $contentRoutes = [];
 
     public function get(string $path, string $action): void
     {
         $this->routes['GET'][$path] = $action;
+        unset($this->contentRoutes[$path]);
+    }
+
+    public function getContent(string $path, string $action): void
+    {
+        $this->get($path, $action);
+        $this->contentRoutes[$path] = true;
     }
 
     public function post(string $path, string $action): void
@@ -31,32 +39,25 @@ class Router
             $uri = '/';
         }
 
-        $routes = $this->routes[$method] ?? [];
-
-        foreach ($routes as $path => $action) {
-            $pattern = $this->convertToPattern($path);
-
-            if (preg_match($pattern, $uri, $matches)) {
-                array_shift($matches);
-                /*
-                * 日本語を含むURLパラメータを元の文字へ戻す
-                */
-                $matches = array_map(
-                    'rawurldecode',
-                    $matches
-                );
-
-                Debug::log('Route matched', [
-                    'method' => $method,
-                    'uri' => $uri,
-                    'route' => $path,
-                    'action' => $action,
-                    'params' => $matches,
-                ]);
-
-                $this->runAction($action, $matches);
-                return;
+        $route = $this->match($this->routes[$method] ?? [], $uri);
+        if ($route === null && $method === 'POST' && ContentExtension::handlesPost($_POST['_nx_content_action'] ?? null)) {
+            // Resolve with the complete GET table so reserved and extension URLs are not shadowed.
+            $candidate = $this->match($this->routes['GET'] ?? [], $uri);
+            if ($candidate !== null && isset($this->contentRoutes[$candidate[0]])) {
+                $route = $candidate;
             }
+        }
+        if ($route !== null) {
+            [$path, $action, $matches] = $route;
+            Debug::log('Route matched', [
+                'method' => $method,
+                'uri' => $uri,
+                'route' => $path,
+                'action' => $action,
+                'params' => $matches,
+            ]);
+            $this->runAction($action, $matches);
+            return;
         }
 
         Debug::log('Route not found', [
@@ -66,6 +67,16 @@ class Router
 
         http_response_code(404);
         echo '404 Not Found';
+    }
+
+    private function match(array $routes, string $uri): ?array
+    {
+        foreach ($routes as $path => $action) {
+            if (preg_match($this->convertToPattern($path), $uri, $matches)) {
+                return [$path, $action, array_map('rawurldecode', array_slice($matches, 1))];
+            }
+        }
+        return null;
     }
 
     private function convertToPattern(string $path): string
