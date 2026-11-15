@@ -26,7 +26,7 @@
             <nav class="site-nav">
                 <a href="<?= url('') ?>">トップ</a>
                 <a href="<?= url('admin') ?>">管理画面</a>
-                <a href="<?= url('admin/logout') ?>">ログアウト</a>
+                <?php if (function_exists('nx_logout_form')) { nx_logout_form(); } ?>
             </nav>
         <?php endif; ?>
     </div>

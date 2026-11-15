@@ -8,10 +8,16 @@ class User
 {
     public static function verifyPassword(int $id, string $password): bool
     {
+        $hash = self::passwordHash($id);
+        return $hash !== null && password_verify($password, $hash);
+    }
+
+    public static function passwordHash(int $id): ?string
+    {
         $stmt = Database::connect()->prepare('SELECT password_hash FROM ' . Database::table('users') . ' WHERE id = ?');
         $stmt->execute([$id]);
         $hash = $stmt->fetchColumn();
-        return is_string($hash) && password_verify($password, $hash);
+        return is_string($hash) ? $hash : null;
     }
 
     /*

@@ -37,12 +37,14 @@
     gap: 16px;
 }
 
-.admin-preview-nav a {
+.admin-preview-nav a,
+.admin-preview-nav .logout-form button {
     color: #e5e7eb;
     font-size: 14px;
     text-decoration: none;
 }
 
-.admin-preview-nav a:hover {
+.admin-preview-nav a:hover,
+.admin-preview-nav .logout-form button:hover {
     color: #ffffff;
 }

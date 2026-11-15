@@ -20,6 +20,15 @@ a:hover {
     text-decoration: underline;
 }
 
+.logout-form button {
+    background: none;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+}
+
 /* フォーム部品 */
 .form-group {
     margin-bottom: 16px;
