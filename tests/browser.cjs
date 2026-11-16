@@ -151,9 +151,11 @@ const assert = require('assert/strict');
         assert.equal(await page.locator('[data-page-color]').count(), 15);
         await page.locator('[data-page-color="#101827"]').click();
         assert.equal(await hex.inputValue(), '#101827');
-        await page.waitForFunction(() =>
-            document.querySelector('#nx-design-frame').contentDocument.querySelector('[data-layout-section]')?.style
-                .getPropertyValue('--nx-section-background') === '#101827');
+        await page.waitForFunction(() => {
+            const frame = document.querySelector('#nx-design-frame');
+            const section = frame.contentDocument.querySelector('[data-layout-section]');
+            return section && frame.contentWindow.getComputedStyle(section, '::before').backgroundColor === 'rgb(16, 24, 39)';
+        });
         await hex.fill('#abc');
         await hex.press('Tab');
         assert.equal(await hex.inputValue(), '#AABBCC');
@@ -161,8 +163,11 @@ const assert = require('assert/strict');
         await page.locator('[data-page-field="columns"]').selectOption('2');
         await page.locator('[data-page-details="elements"] > summary').click();
         await page.locator('[data-device="desktop"]').click();
-        await page.waitForFunction(() =>
-            document.querySelector('#nx-design-frame').contentDocument.querySelector('[data-layout-section][data-columns="2"]'));
+        await page.waitForFunction(() => {
+            const frame = document.querySelector('#nx-design-frame');
+            const section = frame.contentDocument.querySelector('[data-layout-section][data-columns="2"]');
+            return section && frame.contentWindow.getComputedStyle(section, '::before').backgroundColor === 'rgb(170, 187, 204)';
+        });
         const geometry = await renderedSection.evaluate(section => {
             const grid = section.querySelector('.nx-page-section-inner');
             return [grid.clientWidth / section.clientWidth, grid.firstElementChild.clientWidth / grid.clientWidth];
@@ -175,6 +180,39 @@ const assert = require('assert/strict');
         });
         await page.screenshot({ path: path.join(output, 'page-layout.png') });
         console.log('PASS: color presets and HEX entry update the section, and the preview stays visible while scrolling the editor');
+
+        const [published] = await Promise.all([
+            page.waitForResponse(base + '/admin/design/publish'),
+            page.getByRole('button', {name: '公開', exact: true}).click(),
+        ]);
+        assert(published.ok());
+        const guestContext = await browser.newContext({ viewport: { width: 1440, height: 1000 }, javaScriptEnabled: false });
+        for (const [visitor, signedIn] of [[context, true], [guestContext, false]]) {
+            const publicUrl = base + '/page/legacy';
+            await visitor.route(publicUrl, async route => {
+                const response = await route.fetch();
+                await route.fulfill({
+                    response,
+                    headers: {...response.headers(), 'content-security-policy': "default-src 'self'"},
+                });
+            });
+            const publicPage = await visitor.newPage();
+            await publicPage.goto(publicUrl);
+            const section = publicPage.locator('[data-layout-section="0"]');
+            const [color, width, column] = await section.evaluate(element => {
+                const grid = element.querySelector('.nx-page-section-inner');
+                return [getComputedStyle(element, '::before').backgroundColor,
+                    grid.clientWidth / element.clientWidth, grid.firstElementChild.clientWidth / grid.clientWidth];
+            });
+            assert.equal(color, 'rgb(170, 187, 204)');
+            assert(Math.abs(width - .8) < .01 && Math.abs(column - .45) < .01);
+            assert.equal(await publicPage.locator('.admin-preview-header').count(), signedIn ? 1 : 0);
+            await publicPage.screenshot({path: path.join(output, signedIn ? 'strict-csp-signed-in.png' : 'strict-csp-guest.png')});
+            await publicPage.close();
+            await visitor.unroute(publicUrl);
+        }
+        await guestContext.close();
+        console.log('PASS: the published colors and column widths are visible with strict Content Security Policy');
         assert.deepEqual(errors, []);
         console.log('PASS: browser warning, menu editing, profile, desktop/mobile layout, and no JavaScript exceptions');
     } finally {

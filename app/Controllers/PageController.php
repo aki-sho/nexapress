@@ -4,10 +4,23 @@ namespace app\Controllers;
 
 use app\Core\Controller;
 use app\Core\Installer;
+use app\Core\PageLayout;
 use app\Models\Page;
+use InvalidArgumentException;
 
 class PageController extends Controller
 {
+    public function layoutStylesheet(): void
+    {
+        header('Content-Type: text/css; charset=UTF-8');
+        header('X-Content-Type-Options: nosniff');
+        try {
+            echo PageLayout::stylesheet($_GET);
+        } catch (InvalidArgumentException) {
+            http_response_code(400);
+        }
+    }
+
     public function show(string $slug): void
     {
         if (!Installer::isInstalled()) {

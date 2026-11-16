@@ -6,27 +6,17 @@ use app\Models\Media;
 use app\Models\Navigation;
 
 $title = $page['title'];
-$width = $pageDesign['width'] === 'inherit' ? nx_design_settings()['width'] : $pageDesign['width'];
-$defaultWidth = match ($width) {
-    'wide' => '1440px',
-    'full' => '100%',
-    default => 'var(--theme-content-width, 1080px)',
-};
 $body = null;
 $images = [];
 ?>
+<link rel="stylesheet" href="<?= e(PageLayout::stylesheetUrl($pageDesign, nx_design_settings()['width'])) ?>">
 <?php if (!empty($isPreview)): ?><p class="preview-notice">固定ページのプレビューです。未公開の内容を表示しています。</p><?php endif; ?>
 <?php foreach ($pageDesign['sections'] as $index => $section): ?>
     <?php
-    $width = $section['widthMode'] === 'percent' ? $section['percent'] . '%' : $defaultWidth;
     $groups = $section['columns'] === 2 ? $section['groups'] : [array_merge(...$section['groups'])];
-    $layoutStyle = '--nx-section-width:' . $width . ';--nx-section-background:' . $section['color'] .
-        ';--nx-section-foreground:' . PageLayout::foreground($section['color']) .
-        ';--nx-section-left:' . $section['share'] . 'fr;--nx-section-right:' . (100 - $section['share']) . 'fr' .
-        ';--nx-section-gap:' . $section['gap'] . '%';
     ?>
     <section class="nx-page-section" data-layout-section="<?= $index ?>" data-background="<?= e($section['background']) ?>"
-        data-columns="<?= $section['columns'] ?>" style="<?= e($layoutStyle) ?>">
+        data-columns="<?= $section['columns'] ?>">
         <div class="nx-page-section-inner">
             <?php foreach ($groups as $elements): ?>
                 <div class="nx-page-section-column">

@@ -19,6 +19,57 @@ final class PageLayout
     public const MAX_SECTIONS = 24;
     public const MAX_ELEMENTS = 120;
 
+    public static function stylesheetUrl(array $layout, string $themeWidth): string
+    {
+        $width = $layout['width'] === 'inherit' ? $themeWidth : $layout['width'];
+        // Include only appearance settings so the same stylesheet works in the draft preview.
+        $sections = array_map(static fn(array $section): array => [
+            'color' => $section['color'],
+            'percent' => $section['widthMode'] === 'percent' ? $section['percent'] : null,
+            'share' => $section['share'],
+            'gap' => $section['gap'],
+        ], $layout['sections']);
+
+        return url('nexapress/assets/page-layout') . '?' . http_build_query([
+            'width' => $width, 'sections' => $sections,
+        ], '', '&', PHP_QUERY_RFC3986);
+    }
+
+    public static function stylesheet(array $query): string
+    {
+        $width = $query['width'] ?? null;
+        $sections = $query['sections'] ?? null;
+        if (!is_string($width) || !isset(self::WIDTHS[$width]) ||
+            !is_array($sections) || !$sections || count($sections) > self::MAX_SECTIONS) {
+            throw new InvalidArgumentException('固定ページのレイアウトを確認してください。');
+        }
+        $defaultWidth = match ($width) {
+            'wide' => '1440px',
+            'full' => '100%',
+            default => 'var(--theme-content-width, 1080px)',
+        };
+
+        $rules = [];
+        foreach (array_values($sections) as $index => $section) {
+            $color = $section['color'] ?? null;
+            if (!is_string($color) || !preg_match('/^#[0-9A-F]{6}$/iD', $color)) {
+                throw new InvalidArgumentException('セクションの背景色を確認してください。');
+            }
+            $sectionWidth = isset($section['percent'])
+                ? self::range(filter_var($section['percent'], FILTER_VALIDATE_INT), 40, 100) . '%'
+                : $defaultWidth;
+            $share = self::range(filter_var($section['share'] ?? null, FILTER_VALIDATE_INT), 20, 80);
+            $gap = self::range(filter_var($section['gap'] ?? null, FILTER_VALIDATE_INT), 0, 30);
+            $foreground = self::foreground($color);
+            $right = 100 - $share;
+            $rules[] = ".nx-page-section[data-layout-section=\"$index\"] {" .
+                "--nx-section-width:$sectionWidth;--nx-section-background:$color;--nx-section-foreground:$foreground;" .
+                "--nx-section-left:{$share}fr;--nx-section-right:{$right}fr;--nx-section-gap:$gap%;}";
+        }
+
+        return implode("\n", $rules);
+    }
+
     public static function foreground(string $hex): string
     {
         $channels = array_map(static function (string $part): float {

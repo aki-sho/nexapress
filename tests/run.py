@@ -2,6 +2,7 @@
 import argparse
 import copy
 import functools
+from html import unescape
 import http.cookiejar
 import http.server
 import json
@@ -296,9 +297,14 @@ def main():
                     'revision': settings['revision'], 'page_id': page_id, **extra}
 
         draft_page = admin.request('/admin/design/preview', page_request(page_design))[1]
-        check('幅を調整した固定ページ' in draft_page and '--nx-section-width:80%' in draft_page
-              and '--nx-section-background:#AABBCC' in draft_page and '--nx-section-gap:10%' in draft_page
+        style_link = re.search(r'<link rel="stylesheet" href="([^"]*/nexapress/assets/page-layout\?[^"]+)">', draft_page)
+        assert style_link is not None
+        status, draft_css, _ = guest.request(unescape(style_link[1]))
+        check('幅を調整した固定ページ' in draft_page and status == 200 and '--nx-section-width:80%' in draft_css
+              and '--nx-section-background:#AABBCC' in draft_css and '--nx-section-gap:10%' in draft_css
               and '初稿の本文' in draft_page and '案内を見る' in draft_page, 'fixed page preview uses the real sections, content, width, and color')
+        check(guest.request(unescape(style_link[1]).replace('%23AABBCC', 'blue'))[:2] == (400, ''),
+              'the stylesheet rejects invalid color settings')
         check('幅を調整した固定ページ' not in guest.request('/page/welcome')[1]
               and '幅を調整した固定ページ' not in admin.request('/admin/design/preview', page_request(page_design, mode='published'))[1],
               'fixed page drafts stay out of the public page and published preview')
