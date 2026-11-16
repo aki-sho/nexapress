@@ -267,6 +267,45 @@ def main():
               and '非公開のメニューリンク' not in public_design and '非公開のウィジェットリンク' not in public_design,
               'new regions render all four link types in order and hide unpublished article links')
         check(admin.request('/admin/design/publish', design_request)[0] == 409, 'stale design edits cannot overwrite a newer publication')
+        page_state = json.loads(admin.request(f'/admin/design/page-layout/{page_id}')[1])
+        check(page_state['layout'] == {'enabled': False, 'width': 'inherit', 'sections': []},
+              'existing fixed pages begin with the theme layout')
+        page_editor = json.loads(re.search(r'<script type="application/json" id="nx-design-data">(.*?)</script>',
+                                          admin.request('/admin/design')[1], re.S)[1])
+        page_design = page_editor['themes']['default']['state']
+        page_design['layout']['width'] = 'wide'
+        page_state['layout'] = {
+            'enabled': True, 'width': 'full', 'sections': [{
+                'background': 'full', 'color': '#abc', 'widthMode': 'percent', 'percent': 80,
+                'columns': 2, 'share': 50, 'gap': 10,
+                'groups': [[{'type': 'page_title'}, {'type': 'heading', 'text': '幅を調整した固定ページ'}],
+                           [{'type': 'page_content'}, {'type': 'button', 'text': '案内を見る', 'url': '/posts'}]],
+            }],
+        }
+        page_design['page'] = page_state
+
+        def page_request(settings, **extra):
+            return {'_csrf_token': page_editor['token'], 'design': json.dumps(settings),
+                    'revision': settings['revision'], 'page_id': page_id, **extra}
+
+        draft_page = admin.request('/admin/design/preview', page_request(page_design))[1]
+        check('幅を調整した固定ページ' in draft_page and '--nx-section-width:80%' in draft_page
+              and '--nx-section-background:#AABBCC' in draft_page and '--nx-section-gap:10%' in draft_page
+              and '初稿の本文' in draft_page and '案内を見る' in draft_page, 'fixed page preview uses the real sections, content, width, and color')
+        check('幅を調整した固定ページ' not in guest.request('/page/welcome')[1]
+              and '幅を調整した固定ページ' not in admin.request('/admin/design/preview', page_request(page_design, mode='published'))[1],
+              'fixed page drafts stay out of the public page and published preview')
+        page_state['layout']['sections'][0]['color'] = 'blue'
+        check(admin.request('/admin/design/publish', page_request(page_design))[0] == 422, 'page layouts validate color codes on the server')
+        page_state['layout']['sections'][0]['color'] = '#abc'
+        saved_code, saved_json, _ = admin.request('/admin/design/publish', page_request(page_design))
+        check(saved_code == 200 and json.loads(saved_json)['page']['layout']['sections'][0]['color'] == '#AABBCC',
+              'publication normalizes color codes and stores the page layout')
+        check('幅を調整した固定ページ' in guest.request('/page/welcome')[1] and 'data-content-width="wide"' in guest.request('/posts')[1]
+              and '幅を調整した固定ページ' not in guest.request('/page/legacy')[1], 'page layout is local to the page and the theme width applies to articles')
+        conflict = json.loads(saved_json)['states']['default']
+        conflict['page'] = page_state
+        check(admin.request('/admin/design/publish', page_request(conflict))[0] == 409, 'stale page layouts cannot overwrite a newer publication')
         theme_token = admin.csrf('/admin/themes')
         admin.request('/admin/themes/update', {'_csrf_token': theme_token, 'theme': 'monoedge'})
         alternate = guest.request('/')[1]
@@ -330,7 +369,8 @@ def main():
         viewer = Client(base)
         viewer.login('viewer')
         check(viewer.request('/admin/navigation')[0] == 403 and viewer.request('/admin/pages')[0] == 403, 'viewer cannot manage content or menus')
-        check(viewer.request('/admin/design')[0] == 403, 'viewer cannot edit the site design')
+        check(viewer.request('/admin/design')[0] == 403 and viewer.request(f'/admin/design/page-layout/{page_id}')[0] == 403,
+              'viewer cannot edit the site design or load page layout settings')
         second_viewer = Client(base)
         check(second_viewer.login('viewer')[2].endswith('/admin'), 'second session is active before password change')
         profile_token = viewer.csrf('/admin/profile')

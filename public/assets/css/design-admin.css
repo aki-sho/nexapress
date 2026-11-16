@@ -70,15 +70,35 @@
 .nx-design-item > div:last-child { gap: 4px; }
 .nx-design-danger { color: #a12639; }
 .nx-design-form { display: grid; gap: 9px; }
-.nx-design-preview { background: #e9eff7; }
+.nx-design-preview {
+    position: sticky;
+    top: 12px;
+    align-self: start;
+    background: #e9eff7;
+}
 .nx-design-preview-bar { padding: 9px 12px; background: #fff; border-bottom: 1px solid var(--design-line); }
-.nx-design-stage { height: max(380px, 70vh); overflow: clip; padding: 12px; }
+.nx-design-stage { height: min(70vh, calc(100vh - 96px)); overflow: clip; padding: 12px; }
 #nx-design-canvas { position: relative; height: 100%; margin: 0 auto; overflow: clip; background: #fff; box-shadow: 0 6px 20px #18294b22; }
 #nx-design-frame { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; transform-origin: top left; }
 .nx-design-stage[aria-busy="true"] iframe { pointer-events: none; }
+
+.nx-page-color-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+.nx-page-color-fields input[type="color"] { height: 34px; padding: 3px 5px; cursor: pointer; }
+.nx-page-details { border-block-start: 1px solid var(--design-line); padding-block-start: 8px; }
+.nx-page-details summary { font-size: .9rem; font-weight: 600; cursor: pointer; }
+.nx-page-palettes, .nx-page-fields { display: grid; gap: 8px; margin-top: 8px; }
+.nx-page-swatches { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.nx-design-small.nx-page-swatch { display: inline-flex; gap: 4px; align-items: center; font-size: .8rem; padding: 4px; }
+.nx-page-swatch > span { width: .9rem; height: .9rem; border: 1px solid #abb5c4; border-radius: 3px; }
+.nx-page-ratio { font-variant-numeric: tabular-nums; }
 
 @media (max-width: 860px) {
     .nx-design-editor-grid { grid-template-columns: minmax(0, 1fr); }
     .nx-design-controls { border-inline-end: 0; border-bottom: 1px solid var(--design-line); }
     .nx-design-tabs { display: flex; flex-wrap: wrap; }
+    .nx-design-preview { position: static; }
 }

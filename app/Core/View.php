@@ -67,6 +67,13 @@ class View
 
         $themeViewPath = Theme::template($view);
         $viewPath = $themeViewPath ?: $appViewPath;
+        $pageDesign = null;
+        if ($view === 'page-detail' && isset($page['id']) && in_array('page_layout', Theme::designAreas(Theme::active()), true)) {
+            $pageDesign = Design::pageLayout((int)$page['id']);
+            if ($pageDesign['enabled'] && $pageDesign['sections']) {
+                $viewPath = BASE_PATH . '/app/Views/design/page-layout.php';
+            }
+        }
 
         if (!file_exists($viewPath)) {
             echo 'View not found: ' . htmlspecialchars($view, ENT_QUOTES, 'UTF-8');

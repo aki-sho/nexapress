@@ -112,6 +112,7 @@ class Installer
 
             SiteSchema::ensure($pdo);
             SiteSchema::ensureDesign($pdo);
+            SiteSchema::ensurePageLayouts($pdo);
 
             self::createAdministrator(
                 $pdo,

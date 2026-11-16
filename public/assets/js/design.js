@@ -16,7 +16,7 @@
     const linkTypeIds = Object.keys(linkTypes);
     const areas = {...regions, sidebar: 'サイドバー', footer1: 'フッター 1', footer2: 'フッター 2', footer3: 'フッター 3'};
     const menus = {header: 'ヘッダー用', footer: 'フッター用'};
-    const labels = {header: 'ヘッダー', columns: '本文カラム', footer: 'フッター', ...regions};
+    const labels = {header: 'ヘッダー', columns: '本文カラム', footer: 'フッター', page_layout: '固定ページのレイアウト', ...regions};
     const clone = value => JSON.parse(JSON.stringify(value));
     const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
     const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
@@ -39,8 +39,11 @@
     let previewTimer;
     let previewRequest;
 
-    const state = () => ({theme, layout: layouts[theme], menus: menuItems});
     const supports = feature => data.themes[theme].areas.includes(feature);
+    const state = () => ({
+        theme, layout: layouts[theme], menus: menuItems,
+        page: supports('page_layout') ? pageEditor.payload() : null,
+    });
     const supportsWidgets = () => supports('columns') || supports('footer') || regionIds.some(supports);
     const activeAreas = () => Object.keys(areas).filter(key => {
         if (regionIds.includes(key)) return supports(key);
@@ -53,6 +56,13 @@
         `<button type="button" class="nx-design-small" data-action="${action}" ${attributes}>${label}</button>`;
     const field = (label, name, pairs, current, attributes = '') =>
         `<label>${label}<select name="${name}" ${attributes}>${options(pairs, current)}</select></label>`;
+    const pageEditor = window.NexaPressPageEditor({
+        panel, data, field, escape, changed, showError, checkResponse,
+        redraw: focus => pane === 'page_layout' ? renderPanel(focus) : renderStatus(),
+        preview: updatePreview, reveal: revealPreviewArea,
+    });
+    const pageChanges = () => supports('page_layout') && pageEditor.hasChanges();
+    const currentChanges = () => hasChanges(theme) || pageChanges();
 
     function showError(message = '') {
         error.textContent = message;
@@ -60,8 +70,9 @@
     }
 
     function renderStatus() {
-        publishButton.disabled = publishing || editor !== null || !hasChanges(theme);
-        status.textContent = publishing ? '公開中…' : (hasChanges(theme) ? '未公開の変更' : '公開済み');
+        publishButton.disabled = publishing || editor !== null || !currentChanges();
+        status.textContent = publishing ? '公開中…' : currentChanges() ? '未公開の変更'
+            : pageEditor.hasAnyChanges() ? '別の固定ページに未公開の変更' : '公開済み';
         panel.disabled = publishing;
         root.querySelector('[data-setting="theme"]').disabled = publishing;
     }
@@ -161,10 +172,13 @@
                 Object.entries({logo: 'サイトアイコン', name: 'サイト名', menu: 'メニュー', search: '検索欄'}).map(([key, label]) =>
                     `<label class="nx-design-check"><input type="checkbox" data-header="${key}" ${layout.header[key] ? 'checked' : ''}> ${label}を表示</label>`).join('');
         } else if (pane === 'columns') {
-            panel.innerHTML = '<h2>本文カラム</h2>' + field('レイアウト', 'columns',
+            panel.innerHTML = '<h2>本文カラム</h2>' + (supports('page_layout')
+                ? field('テーマの本文幅', 'width', pageEditor.widths, layout.width, 'data-setting="width"') : '') + field('レイアウト', 'columns',
                 [['none', '1カラム・本文のみ'], ['left', '2カラム・左サイドバー'], ['right', '2カラム・右サイドバー']],
                 layout.columns, 'data-setting="columns"') +
                 (layout.columns === 'none' ? '' : `<div>${button('area', 'サイドバーの中身を編集', 'data-area="sidebar"')}</div>`);
+        } else if (pane === 'page_layout') {
+            panel.innerHTML = pageEditor.render();
         } else if (pane === 'footer') {
             panel.innerHTML = '<h2>フッター</h2>' + field('カラム数', 'footer',
                 [[1, '1カラム'], [2, '2カラム'], [3, '3カラム']], layout.footer, 'data-setting="footer"') +
@@ -176,7 +190,7 @@
     }
 
     function resizePreview() {
-        const width = device === 'mobile' ? 390 : 1080;
+        const width = device === 'mobile' ? 390 : supports('page_layout') ? 1600 : 1080;
         const style = getComputedStyle(stage);
         const available = stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
         if (available <= 0) return;
@@ -201,7 +215,8 @@
         const body = pane === 'columns' || (pane === 'widgets' && area === 'sidebar');
         const document = frame.contentDocument;
         const region = pane === 'widgets' && regionIds.includes(area)
-            ? document?.querySelector(`[data-design-area="${area}"]`) : null;
+            ? document?.querySelector(`[data-design-area="${area}"]`)
+            : pane === 'page_layout' ? document?.querySelector(`[data-layout-section="${pageEditor.sectionIndex()}"]`) : null;
         const anchor = region || (footer ? (document?.querySelector('.site-footer') || document?.querySelector('footer'))
             : body ? document?.querySelector('.site-main, main') : (document?.querySelector('.site-header') || document?.querySelector('header')));
         const scroller = document?.scrollingElement;
@@ -211,7 +226,10 @@
     }
 
     function body(extra) {
-        return new URLSearchParams({_csrf_token: data.token, design: JSON.stringify(state()), ...extra});
+        return new URLSearchParams({
+            _csrf_token: data.token, design: JSON.stringify(state()),
+            page_id: supports('page_layout') ? pageEditor.pageId() : '', ...extra,
+        });
     }
 
     async function checkResponse(response) {
@@ -239,21 +257,26 @@
             } catch (cause) {
                 if (controller.signal.aborted) return;
                 stage.setAttribute('aria-busy', 'false');
+                if (mode === 'published') {
+                    frame.srcdoc = `<!doctype html><html lang="ja"><meta charset="UTF-8">
+                        <p style="font:24px sans-serif;margin:2rem">${escape(cause.message)}</p></html>`;
+                }
                 showError(cause.message);
             }
         }, 180);
     }
 
-    function changed(focus) {
+    function changed(focus, redraw = true) {
         mode = 'draft';
         showError();
-        renderPanel(focus);
+        if (redraw) renderPanel(focus);
+        else renderStatus();
         syncPreviewButtons();
         updatePreview();
     }
 
     async function publish() {
-        if (publishing || !hasChanges(theme)) return;
+        if (publishing || !currentChanges()) return;
         if (conflicts.has(theme)) {
             showError('別の操作でこのテーマの設定が更新されました。画面を開き直してください。');
             return;
@@ -276,6 +299,7 @@
             }
             published = nextStates;
             menuItems = clone(published[theme].menus);
+            pageEditor.saved(result.page);
             editor = null;
             updatePreview();
         } catch (cause) {
@@ -294,6 +318,7 @@
             pane = target.pane || pane;
             menuName = target.menu || menuName;
             editor = null;
+            if (pane === 'page_layout') pageEditor.open();
             renderPanel(target.menu ? `[data-menu="${menuName}"]` : undefined);
             revealPreviewArea();
         } else if (target.mode || target.device) {
@@ -358,7 +383,7 @@
         } else if (setting === 'placement' || header) {
             layouts[theme].header[header || setting] = header ? input.checked : input.value;
             changed(header ? `[data-header="${header}"]` : '[data-setting="placement"]');
-        } else if (setting === 'columns' || setting === 'footer') {
+        } else if (setting === 'columns' || setting === 'footer' || setting === 'width') {
             layouts[theme][setting] = setting === 'footer' ? Number(input.value) : input.value;
             changed(`[data-setting="${setting}"]`);
         } else if (formSetting === 'type' && editor) {
@@ -414,7 +439,7 @@
     });
 
     window.addEventListener('beforeunload', event => {
-        if (!editor && !Object.keys(layouts).some(hasChanges)) return;
+        if (!editor && !Object.keys(layouts).some(hasChanges) && !pageEditor.hasAnyChanges()) return;
         event.preventDefault();
         event.returnValue = '';
     });

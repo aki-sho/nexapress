@@ -57,7 +57,7 @@ class Theme
         $path = BASE_PATH . '/public/themes/' . $theme . '/theme.php';
         $info = is_file($path) ? require $path : [];
         $areas = $info['design_areas'] ?? [];
-        $supportedAreas = ['header', 'columns', 'footer', ...array_keys(Design::REGIONS)];
+        $supportedAreas = ['header', 'columns', 'footer', 'page_layout', ...array_keys(Design::REGIONS)];
         return is_array($areas)
             ? array_values(array_filter($supportedAreas, static fn(string $area): bool => in_array($area, $areas, true)))
             : [];

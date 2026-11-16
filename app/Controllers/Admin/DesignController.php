@@ -6,8 +6,10 @@ use app\Controllers\HomeController;
 use app\Core\Controller;
 use app\Core\Csrf;
 use app\Core\Design;
+use app\Core\PageLayout;
 use app\Core\Theme;
 use app\Models\Category;
+use app\Models\Media;
 use app\Models\Navigation;
 use app\Models\Page;
 use app\Models\Post;
@@ -36,10 +38,12 @@ final class DesignController extends Controller
             'label' => $item['title'] . ($item['status'] === 'published' ? '' : '（非公開）'),
         ];
 
+        $general = general_config();
+        $pages = array_map($contentChoices, Page::all());
         $this->view('admin/design', ['designData' => [
             'active' => $active, 'themes' => $catalog,
             'targets' => [
-                'page' => array_map($contentChoices, Page::all()),
+                'page' => $pages,
                 'category' => array_map(static fn(array $category): array => [
                     'id' => (int)$category['id'], 'label' => $category['name'],
                 ], Category::all()),
@@ -48,7 +52,27 @@ final class DesignController extends Controller
             'linkTypes' => Navigation::TYPES, 'widgets' => Design::WIDGETS,
             'regions' => Design::REGIONS, 'token' => Csrf::token(),
             'preview' => url('admin/design/preview'), 'publish' => url('admin/design/publish'),
+            'pageLayout' => [
+                'url' => url('admin/design/page-layout'),
+                'home' => ($general['homepage_mode'] ?? '') === 'page' ? (int)($general['homepage_page_id'] ?? 0) : 0,
+                'widths' => PageLayout::WIDTHS, 'elements' => PageLayout::ELEMENTS,
+                'sectionLimit' => PageLayout::MAX_SECTIONS, 'elementLimit' => PageLayout::MAX_ELEMENTS,
+            ],
         ]]);
+    }
+
+    public function pageLayout(string $id): void
+    {
+        header('Cache-Control: no-store, private');
+        $page = ctype_digit($id) ? PageLayout::snapshot((int)$id) : null;
+        if ($page === null) {
+            $this->respond(['error' => '固定ページが見つかりません。'], 404);
+            return;
+        }
+        $page['images'] = array_map(static fn(array $image): array => [
+            'id' => (int)$image['id'], 'label' => $image['title'],
+        ], Media::images());
+        $this->respond($page);
     }
 
     public function preview(): void
@@ -65,6 +89,21 @@ final class DesignController extends Controller
         Theme::preview($state['theme']);
         Design::preview($state, $draft);
         header('Content-Type: text/html; charset=UTF-8');
+        $pageId = $state['page']['id'] ?? filter_var($_POST['page_id'] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($pageId) {
+            $page = Page::find($pageId);
+            if (!$page || $page['deleted_at'] !== null || (!$draft && $page['status'] !== 'published')) {
+                $this->respond(['error' => '表示できる公開ページがありません。編集中の表示で確認できます。'], 404);
+                return;
+            }
+            $settings = general_config();
+            $this->view('page-detail', [
+                'page' => $page,
+                'isHomepage' => ($settings['homepage_mode'] ?? '') === 'page'
+                    && (int)($settings['homepage_page_id'] ?? 0) === $pageId,
+            ]);
+            return;
+        }
         (new HomeController())->index();
     }
 
@@ -90,13 +129,16 @@ final class DesignController extends Controller
             $this->respond(['error' => '別の操作でデザインが更新されました。画面を開き直してください。'], 409);
             return;
         }
-        $this->respond(['states' => Design::snapshots(array_column(Theme::all(), 'id'))]);
+        $this->respond([
+            'states' => Design::snapshots(array_column(Theme::all(), 'id')),
+            'page' => $state['page'] === null ? null : PageLayout::snapshot($state['page']['id']),
+        ]);
     }
 
     private function readDesign(): array
     {
         $json = $_POST['design'] ?? null;
-        if (!is_string($json) || strlen($json) > 900000) {
+        if (!is_string($json) || strlen($json) > 2097152) {
             throw new InvalidArgumentException('デザインの入力内容を確認してください。');
         }
         $data = json_decode($json, true, 32, JSON_THROW_ON_ERROR);

@@ -21,7 +21,8 @@ if (!\app\Core\Installer::configureDatabase($db) || !\app\Core\Installer::instal
 }
 if (!\app\Core\Installer::isInstalled() || \app\Models\Navigation::all() !== [] ||
     \app\Models\Page::all() !== [] || \app\Models\PageRevision::allForPage(1) !== [] ||
-    \app\Core\Design::snapshot('default')['layout']['columns'] !== 'none') {
+    \app\Core\Design::snapshot('default')['layout']['columns'] !== 'none' ||
+    \app\Core\PageLayout::settings(1) !== ['enabled' => false, 'width' => 'inherit', 'sections' => []]) {
     throw new RuntimeException('Fresh install schema is incomplete.');
 }
 echo "PASS: real fresh installation creates all core feature tables\n";

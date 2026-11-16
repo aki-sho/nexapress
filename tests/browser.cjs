@@ -118,6 +118,38 @@ const assert = require('assert/strict');
             });
         }
         console.log('PASS: desktop and mobile preview scroll one short page all the way to the footer');
+        await page.locator('[data-pane="page_layout"]').click();
+        await page.locator('[data-page-field="page"]').selectOption({label: '既存ページ'});
+        await page.locator('[data-page-field="enabled"]').check();
+        const renderedSection = page.frameLocator('#nx-design-frame').locator('[data-layout-section="0"]');
+        const hex = page.locator('[data-page-field="hex"]');
+        assert.equal(await page.locator('[data-page-color]').count(), 15);
+        await page.locator('[data-page-color="#101827"]').click();
+        assert.equal(await hex.inputValue(), '#101827');
+        await page.waitForFunction(() =>
+            document.querySelector('#nx-design-frame').contentDocument.querySelector('[data-layout-section]')?.style
+                .getPropertyValue('--nx-section-background') === '#101827');
+        await hex.fill('#abc');
+        await hex.press('Tab');
+        assert.equal(await hex.inputValue(), '#AABBCC');
+        await page.locator('[data-page-field="widthMode"]').selectOption('percent');
+        await page.locator('[data-page-field="columns"]').selectOption('2');
+        await page.locator('[data-page-details="elements"] > summary').click();
+        await page.locator('[data-device="desktop"]').click();
+        await page.waitForFunction(() =>
+            document.querySelector('#nx-design-frame').contentDocument.querySelector('[data-layout-section][data-columns="2"]'));
+        const geometry = await renderedSection.evaluate(section => {
+            const grid = section.querySelector('.nx-page-section-inner');
+            return [grid.clientWidth / section.clientWidth, grid.firstElementChild.clientWidth / grid.clientWidth];
+        });
+        assert(geometry.every((value, i) => Math.abs(value - [.8, .45][i]) < .01), '80% section and 45% column preview widths');
+        await page.locator('[data-page-field="elementType"]').scrollIntoViewIfNeeded();
+        await page.waitForFunction(() => {
+            const box = document.querySelector('.nx-design-preview').getBoundingClientRect();
+            return scrollY > 0 && box.top >= 0 && box.bottom <= innerHeight;
+        });
+        await page.screenshot({ path: path.join(output, 'page-layout.png') });
+        console.log('PASS: color presets and HEX entry update the section, and the preview stays visible while scrolling the editor');
         assert.deepEqual(errors, []);
         console.log('PASS: browser warning, menu editing, profile, desktop/mobile layout, and no JavaScript exceptions');
     } finally {

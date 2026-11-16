@@ -23,7 +23,7 @@ $footerPart = Theme::part('footer');
     <?php nexapress_admin_header(); ?>
     <?php if ($headerPart !== null) { require $headerPart; } ?>
     <?php nx_design_region('header_after'); ?>
-    <?php nx_design_main($content ?? ''); ?>
+    <?php nx_design_main($content ?? '', $pageDesign ?? null); ?>
     <?php nx_design_region('footer_before'); ?>
     <?php if ($footerPart !== null) { require $footerPart; } ?>
 </body>

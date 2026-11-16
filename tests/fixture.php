@@ -67,13 +67,14 @@ if ($from22) {
 foreach ($from22 ? ['1.7.0', '2.0.0', '2.2.0'] : ['1.7.0', '2.0.0', '2.2.0', '2.3.0'] as $version) {
     $pdo->prepare('INSERT INTO nx_nexapress_migrations (migration) VALUES (?)')->execute([$version]);
 }
-check(\app\Core\Migrator::run($fixture . '/database/migrations') === ($from22 ? ['2.3.0', '2.4.0', '2.5.0'] : ['2.4.0', '2.5.0']), $from22 ? 'upgrade from 2.2.0' : 'upgrade from 2.3.0');
+check(\app\Core\Migrator::run($fixture . '/database/migrations') === ($from22 ? ['2.3.0', '2.4.0', '2.5.0', '2.7.0'] : ['2.4.0', '2.5.0', '2.7.0']), $from22 ? 'upgrade from 2.2.0' : 'upgrade from 2.3.0');
 check(\app\Models\Page::find(1)['content'] === '<p>既存の内容</p>', 'migration preserves existing content');
 check(\app\Models\Post::findBySlug('legacy-post')['content'] === '<p>既存投稿の本文</p>', 'migration preserves existing posts');
 check(\app\Core\Migrator::run($fixture . '/database/migrations') === [], 'migration is idempotent');
 \app\Core\SiteSchema::ensure($pdo);
 check(count(\app\Models\Page::published()) === 1, 'fresh-install schema helper is idempotent');
 $previousDesign = \app\Core\Design::settings();
+unset($previousDesign['width']);
 unset($previousDesign['widgets']['header_after'], $previousDesign['widgets']['footer_before']);
 $previousDesign['widgets']['footer1'] = [];
 $pdo->prepare('UPDATE nx_site_design SET settings = ? WHERE id = 1')

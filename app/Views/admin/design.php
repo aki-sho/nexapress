@@ -22,7 +22,7 @@
                 </label>
                 <a href="<?= e(url('admin/themes')) ?>">使用するテーマを変更</a>
                 <div class="nx-design-tabs" role="group" aria-label="編集する項目">
-                    <?php foreach (['menus' => 'メニュー', 'widgets' => 'ウィジェット', 'header' => 'ヘッダー', 'columns' => '本文カラム', 'footer' => 'フッター'] as $key => $label): ?>
+                    <?php foreach (['menus' => 'メニュー', 'widgets' => 'ウィジェット', 'header' => 'ヘッダー', 'columns' => '本文カラム', 'footer' => 'フッター', 'page_layout' => '固定ページのレイアウト'] as $key => $label): ?>
                         <button type="button" data-pane="<?= e($key) ?>" aria-pressed="<?= $key === 'menus' ? 'true' : 'false' ?>"><?= e($label) ?></button>
                     <?php endforeach; ?>
                 </div>
@@ -54,4 +54,5 @@
     <noscript><p>デザイン編集にはJavaScriptを有効にしてください。</p></noscript>
 </section>
 <script type="application/json" id="nx-design-data"><?= json_encode($designData, JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
+<script src="<?= e(nx_asset_url('assets/js/design-page.js')) ?>" defer></script>
 <script src="<?= e(nx_asset_url('assets/js/design.js')) ?>" defer></script>

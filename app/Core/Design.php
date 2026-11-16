@@ -48,6 +48,12 @@ final class Design
         return self::$preview['layout'] ?? self::layout($theme, self::stored());
     }
 
+    public static function pageLayout(int $id): array
+    {
+        $preview = self::$preview['page'] ?? null;
+        return ($preview['id'] ?? null) === $id ? $preview['layout'] : PageLayout::settings($id);
+    }
+
     public static function menuLinks(string $menu, bool $includeHomeFallback = true): array
     {
         if ($menu === 'footer') {
@@ -121,6 +127,25 @@ final class Design
                 $defaults['widgets'][$area] = self::widgets($layout['widgets'][$area] ?? []);
             }
         }
+        $page = null;
+        if (in_array('page_layout', $caps, true)) {
+            $width = $layout['width'] ?? 'standard';
+            if (!is_string($width) || !isset(PageLayout::WIDTHS[$width])) {
+                throw new InvalidArgumentException('本文の幅を選択してください。');
+            }
+            $defaults['width'] = $width;
+            $inputPage = $input['page'] ?? null;
+            if ($inputPage !== null) {
+                $id = $inputPage['id'] ?? null;
+                $settings = $inputPage['layout'] ?? null;
+                $pageRevision = $inputPage['revision'] ?? null;
+                if (!is_int($id) || $id < 1 || !is_array($settings) ||
+                    !is_string($pageRevision) || !preg_match('/^[a-f0-9]{64}$/D', $pageRevision)) {
+                    throw new InvalidArgumentException('固定ページを選び直してください。');
+                }
+                $page = ['id' => $id, 'layout' => PageLayout::validate($settings), 'revision' => $pageRevision];
+            }
+        }
         return [
             'theme' => $theme,
             'layout' => $defaults,
@@ -128,6 +153,7 @@ final class Design
                 'header' => self::menu($input['menus']['header'] ?? null, 100),
                 'footer' => self::menu($input['menus']['footer'] ?? null, 100),
             ],
+            'page' => $page,
         ];
     }
 
@@ -142,6 +168,18 @@ final class Design
             if (!hash_equals($current['revision'], $revision)) {
                 $pdo->rollBack();
                 return null;
+            }
+
+            $page = $state['page'] ?? null;
+            if ($page !== null) {
+                $currentPage = PageLayout::snapshot($page['id'], true);
+                if ($currentPage === null || !hash_equals($currentPage['revision'], $page['revision'])) {
+                    $pdo->rollBack();
+                    return null;
+                }
+                if ($page['layout'] !== $currentPage['layout']) {
+                    PageLayout::save($page['id'], $page['layout']);
+                }
             }
 
             if ($current['menus']['header'] !== $state['menus']['header']) {
@@ -215,6 +253,7 @@ final class Design
         return [
             'header' => ['placement' => 'row', 'logo' => true, 'name' => true, 'menu' => true, 'search' => true],
             'columns' => 'none',
+            'width' => 'standard',
             'footer' => 1,
             'widgets' => [
                 'header_after' => [],

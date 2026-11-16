@@ -63,7 +63,7 @@ function nx_design_header(string $searchQuery = '', bool $includeHomeFallback = 
     }
 }
 
-function nx_design_main(string $content): void
+function nx_design_main(string $content, ?array $pageDesign = null): void
 {
     require BASE_PATH . '/app/Views/design/main.php';
 }

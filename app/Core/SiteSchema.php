@@ -45,4 +45,14 @@ class SiteSchema
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         $pdo->exec("INSERT IGNORE INTO {$table} (id, settings) VALUES (1, '{}')");
     }
+
+    public static function ensurePageLayouts(PDO $pdo): void
+    {
+        $table = Database::table('page_layouts');
+        $pages = Database::table('pages');
+        $pdo->exec("CREATE TABLE IF NOT EXISTS {$table} (
+            page_id INT PRIMARY KEY, settings MEDIUMTEXT NOT NULL,
+            FOREIGN KEY (page_id) REFERENCES {$pages}(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
 }
