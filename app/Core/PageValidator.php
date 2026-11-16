@@ -25,8 +25,8 @@ class PageValidator
         } elseif (Page::slugExists($slug, $id)) {
             $errors[] = '同じスラッグの固定ページが存在します（ゴミ箱を含みます）。';
         }
-        if ($content === '' || strlen($content) > 65000) {
-            $errors[] = '本文を入力してください。本文は65KB以内で保存できます。';
+        if (strlen($content) > 65000) {
+            $errors[] = '本文は65KB以内で入力してください。';
         }
         if (!in_array($status, ['draft', 'published'], true)) {
             $errors[] = '公開状態が正しくありません。';

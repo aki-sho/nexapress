@@ -201,6 +201,13 @@ def main():
         revision_id = re.search(r'/restore/(\d+)', history)[1]
         admin.request(f'/admin/pages/revisions/{page_id}/restore/{revision_id}', {'_csrf_token': token})
         check('初稿の本文' in guest.request('/page/welcome')[1], 'page revision restoration')
+        for state in ('draft', 'published'):
+            short_page = dict(page_data, title='本文なし ' + state, slug='empty-' + state, content='', status=state)
+            code, body, location = admin.request('/admin/pages/store', short_page)
+            check(code == 200 and '/admin/pages/edit/' in location and '固定ページを保存しました。' in body,
+                  f'fixed pages with an empty body can be saved as {state}')
+            check(guest.request('/page/' + short_page['slug'])[0] == (200 if state == 'published' else 404),
+                  f'empty {state} pages obey their publication status')
         nav_token = admin.csrf('/admin/navigation')
         for label, kind, ref, url in [('ホーム', 'custom', 0, '/'), ('案内', 'page', page_id, ''), ('ニュース', 'category', 1, '')]:
             admin.request('/admin/navigation/save', {'_csrf_token': nav_token, 'label': label, 'type': kind, 'reference_id': ref, 'url': url})

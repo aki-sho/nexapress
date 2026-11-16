@@ -39,8 +39,33 @@ const assert = require('assert/strict');
             await page.screenshot({ path: path.join(output, kind + '-editor.png'), fullPage: true });
             await Promise.all([page.waitForURL(url => !url.pathname.endsWith('/create')), form.locator('button[type="submit"]').last().click()]);
             assert.equal(await page.evaluate(key => localStorage.getItem(key), draftKey), null);
+            if (kind === 'page') {
+                assert((await form.locator('[name="content"]').inputValue()).includes('復元対象の本文 ' + kind));
+            }
             console.log('PASS: browser ' + kind + ' draft recovery and successful-save cleanup');
         }
+        for (const status of ['draft', 'published']) {
+            await page.goto(base + '/admin/pages/create');
+            const form = page.locator('form[data-editor-kind="page"]');
+            if (process.env.NEXAPRESS_TEST_CLASSIC_EDITOR) {
+                await form.locator('.classic-editor-content').waitFor({ timeout: 8000 });
+            }
+            if (process.env.NEXAPRESS_TEST_MULTI_TOOL_FIXTURE) {
+                await page.getByText('本文を検索・置換', { exact: true }).waitFor({ timeout: 8000 });
+            }
+            await form.locator('[name="title"]').fill('本文なし ' + status);
+            await form.locator('[name="slug"]').fill('browser-empty-' + status);
+            await form.locator('[name="status"]').selectOption(status);
+            assert.equal(await form.locator('[name="content"]').inputValue(), '');
+            await Promise.all([
+                page.waitForURL(url => /\/admin\/pages\/edit\/\d+$/.test(url.pathname), { timeout: 8000 }),
+                form.getByRole('button', {name: '保存', exact: true}).click(),
+            ]);
+            assert.equal(await form.locator('[name="status"]').inputValue(), status);
+            assert.equal(await form.locator('[name="content"]').inputValue(), '');
+            assert(await page.getByText('固定ページを保存しました。', {exact: true}).isVisible());
+        }
+        console.log('PASS: browser saves empty fixed pages as draft and published');
         await page.goto(base + '/admin/pages/create');
         let failedForm = page.locator('form[data-editor-kind]');
         await failedForm.locator('[name="title"]').fill('保存エラー後も保護');

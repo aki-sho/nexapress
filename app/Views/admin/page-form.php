@@ -15,8 +15,8 @@
             <input id="title" name="title" value="<?= e($page['title'] ?? '') ?>" maxlength="255" required></div>
         <div class="form-group"><label for="slug">スラッグ</label>
             <input id="slug" name="slug" value="<?= e($page['slug'] ?? '') ?>" maxlength="255"></div>
-        <div class="form-group"><label for="content">本文</label>
-            <textarea id="content" name="content" rows="18" required><?= e($page['content'] ?? '') ?></textarea></div>
+        <div class="form-group"><label for="content">本文（任意）</label>
+            <textarea id="content" name="content" rows="18"><?= e($page['content'] ?? '') ?></textarea></div>
         <div class="form-group"><label for="status">公開状態</label><select id="status" name="status">
             <option value="draft" <?= ($page['status'] ?? 'draft') === 'draft' ? 'selected' : '' ?>>下書き</option>
             <option value="published" <?= ($page['status'] ?? '') === 'published' ? 'selected' : '' ?>>公開</option>

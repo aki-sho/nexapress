@@ -93,6 +93,8 @@ check(\app\Models\Post::countPublicArchive(null, '%') === 0, 'LIKE wildcards are
 check(nx_public_archive_path('search') === 'post/archive/search', 'existing plain-slug content keeps its URL');
 check(count(\app\Models\Post::publicArchive(1, '', 10, 10)) === 2, 'category pagination');
 $validation = \app\Core\PageValidator::validate(['title' => '安全なページ', 'slug' => 'safe', 'content' => '<p>本文</p><script>alert(1)</script>', 'status' => 'draft']);
+$oversized = \app\Core\PageValidator::validate(['title' => '長い本文', 'slug' => 'oversized-page', 'content' => str_repeat('x', 65001)]);
+check($oversized['errors'] === ['本文は65KB以内で入力してください。'], 'oversized fixed-page content is still rejected');
 check($validation['errors'] === [] && !str_contains($validation['data']['content'], '<script'), 'page content is sanitized');
 $id = \app\Models\Page::create($validation['data'] + ['user_id' => 1]);
 \app\Models\PageRevision::create(\app\Models\Page::find($id), 1);
