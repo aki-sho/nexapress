@@ -3,8 +3,22 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert/strict');
 
+function mediaFolder(page, name) {
+    return page.getByRole('navigation', {name: 'メディアのフォルダ'}).getByRole('link', {name, exact: true});
+}
+
+async function createMediaFolder(page, name) {
+    await page.getByRole('button', {name: '新規フォルダ', exact: true}).click();
+    const dialog = page.getByRole('dialog', {name: '新規フォルダ'});
+    await dialog.getByLabel('フォルダ名').fill(name);
+    await dialog.getByRole('button', {name: '作成', exact: true}).click();
+    await page.getByRole('heading', {name, exact: true}).waitFor();
+    return page.url();
+}
+
 async function checkMediaEditor(page, base, output) {
     await page.goto(base + '/admin/media');
+    const folderUrl = await createMediaFolder(page, '画像の検証');
     const png = await page.evaluate(() => {
         const source = document.createElement('canvas');
         source.width = 1600;
@@ -24,7 +38,8 @@ async function checkMediaEditor(page, base, output) {
     await upload.getByRole('button', {name: 'アップロード', exact: true}).click();
     const card = page.locator('.media-card').filter({has: page.getByText(name, {exact: true})});
     const originalUrl = await card.locator('img').getAttribute('src');
-    await card.locator('button').click();
+    assert.equal(page.url(), folderUrl);
+    await card.locator('.media-thumb-button').click();
     const open = page.locator('.media-modal[open] [data-open-image-editor]');
     const saveUrl = await open.getAttribute('data-save-url');
     await open.click();
@@ -128,6 +143,8 @@ async function checkMediaEditor(page, base, output) {
     await dialog.getByRole('button', {name: '一覧に戻る', exact: true}).click();
     const newCard = page.locator('.media-card').filter({has: page.getByText(name + '（編集済み）', {exact: true})});
     assert.equal(await card.locator('img').getAttribute('src'), originalUrl);
+    const editedUrl = await newCard.locator('img').getAttribute('src');
+    assert.equal(page.url(), folderUrl);
     const actualImage = await newCard.locator('img').evaluate(async image => {
         await image.decode();
         const sample = document.createElement('canvas');
@@ -147,6 +164,89 @@ async function checkMediaEditor(page, base, output) {
         await page.locator('.classic-editor-media-dialog').getByRole('button', {name: '閉じる', exact: true}).click();
     }
     console.log('PASS: media editor resizes, undoes gestures, crops, rotates and saves a WebP copy');
+    return {folderUrl, name, originalUrl, editedUrl};
+}
+
+async function checkMediaFolders(page, base, output, {folderUrl, name, originalUrl, editedUrl}) {
+    const editName = name + '（編集済み）';
+    const card = title => page.locator('.media-card').filter({has: page.getByText(title, {exact: true})});
+    const all = page.getByRole('checkbox', {name: 'すべて選択'});
+    const expectNotice = message => page.getByText(message, {exact: true}).waitFor();
+    const assertFileStatus = async (url, code) =>
+        assert.equal((await page.request.get(new URL(url, base).href)).status(), code);
+
+    async function confirmAction(button, texts, accept = true) {
+        await Promise.all([
+            page.waitForEvent('dialog').then(async dialog => {
+                const message = dialog.message();
+                if (accept) await dialog.accept();
+                else await dialog.dismiss();
+                for (const text of texts) assert(message.includes(text), message);
+            }),
+            button.click(),
+        ]);
+    }
+
+    await page.goto(folderUrl);
+    assert.equal(await page.locator('.media-card').count(), 2);
+    const checkedFolder = await createMediaFolder(page, '移動先 & 確認');
+    await page.goto(folderUrl);
+    assert.equal((await page.request.post(base + '/admin/media/move', {form: {}})).status(), 419);
+    await all.check();
+    await expectNotice('2件選択');
+    await page.getByRole('combobox', {name: '移動先のフォルダ'}).selectOption({label: '移動先 & 確認'});
+    await page.screenshot({path: path.join(output, 'media-library.png')});
+    await page.getByRole('button', {name: '移動', exact: true}).click();
+    await expectNotice('2件のメディアを移動しました。');
+    assert.equal(await page.locator('.media-card').count(), 0);
+
+    await page.goto(checkedFolder);
+    assert.equal(await card(name).locator('img').getAttribute('src'), originalUrl);
+    assert.equal(await card(editName).locator('img').getAttribute('src'), editedUrl);
+    await all.check();
+    await card(name).locator('.media-thumb-button').dragTo(mediaFolder(page, '画像の検証'));
+    await expectNotice('2件のメディアを移動しました。');
+    assert.equal(await page.locator('.media-card').count(), 0);
+
+    await page.goto(folderUrl);
+    await card(editName).getByRole('checkbox').check();
+    assert.equal(await all.evaluate(input => input.indeterminate), true);
+    await card(name).locator('.media-thumb').dragTo(mediaFolder(page, '未分類'));
+    await expectNotice('1件のメディアを移動しました。');
+    assert.equal(await page.locator('.media-card').count(), 1);
+    assert.equal(await card(editName).locator('img').getAttribute('src'), editedUrl);
+
+    await confirmAction(page.getByRole('button', {name: 'フォルダを削除'}), ['画像の検証', '未分類']);
+    await expectNotice('フォルダを削除しました。中のメディアは「未分類」に戻りました。');
+    assert.equal(await mediaFolder(page, '画像の検証').count(), 0);
+    assert.equal(await card(name).locator('img').getAttribute('src'), originalUrl);
+    assert.equal(await card(editName).locator('img').getAttribute('src'), editedUrl);
+    await assertFileStatus(originalUrl, 200);
+    await assertFileStatus(editedUrl, 200);
+    await assertFileStatus('/public/uploads/media/legacy-media.txt', 200);
+
+    const note = 'media-library-note';
+    const upload = page.locator('.media-upload-form');
+    await upload.locator('input[type="file"]').setInputFiles({
+        name: note + '.txt', mimeType: 'text/plain', buffer: Buffer.from('disposable test media'),
+    });
+    await upload.getByRole('button', {name: 'アップロード', exact: true}).click();
+    const deleteNote = card(note).getByRole('button', {name: note + 'を削除'});
+    await confirmAction(deleteNote, [note], false);
+    assert.equal(await card(note).count(), 1);
+    await confirmAction(deleteNote, [note]);
+    await expectNotice('1件のメディアを削除しました。');
+    assert.equal(await card(note).count(), 0);
+
+    await card(name).getByRole('checkbox').check();
+    await card(editName).getByRole('checkbox').check();
+    await confirmAction(page.getByRole('button', {name: '選択した項目を削除'}), ['2件', name, editName]);
+    await expectNotice('2件のメディアを削除しました。');
+    assert.equal(await page.locator('.media-card').count(), 1);
+    await card('既存メディア').waitFor();
+    await assertFileStatus(originalUrl, 404);
+    await assertFileStatus(editedUrl, 404);
+    console.log('PASS: media folders, checked and drag moves, stable URLs, folder and media deletion');
 }
 
 (async () => {
@@ -158,13 +258,14 @@ async function checkMediaEditor(page, base, output) {
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    page.on('dialog', dialog => dialog.accept());
     try {
         await page.goto(base + '/admin/login');
         await page.locator('[name="username"]').fill('admin');
         await page.locator('[name="password"]').fill('Test-Password-2026');
         await Promise.all([page.waitForURL(base + '/admin'), page.locator('button[type="submit"]').click()]);
-        await checkMediaEditor(page, base, output);
+        const media = await checkMediaEditor(page, base, output);
+        await checkMediaFolders(page, base, output, media);
+        page.on('dialog', dialog => dialog.accept());
         for (const kind of ['page', 'post']) {
             const route = kind === 'page' ? '/admin/pages/create' : '/admin/posts/create';
             await page.goto(base + route);

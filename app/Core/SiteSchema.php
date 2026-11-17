@@ -55,4 +55,24 @@ class SiteSchema
             FOREIGN KEY (page_id) REFERENCES {$pages}(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
+
+    public static function ensureMediaFolders(PDO $pdo): void
+    {
+        $folders = Database::table('media_folders');
+        $media = Database::table('media');
+        $pdo->exec("CREATE TABLE IF NOT EXISTS {$folders} (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100) NOT NULL UNIQUE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        $check = $pdo->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?');
+        $check->execute([Database::tablePrefix() . 'media', 'folder_id']);
+        if (!(int)$check->fetchColumn()) {
+            $pdo->exec("ALTER TABLE {$media}
+                ADD COLUMN folder_id INT NULL,
+                ADD INDEX idx_media_folder (folder_id),
+                ADD FOREIGN KEY (folder_id) REFERENCES {$folders}(id) ON DELETE SET NULL");
+        }
+    }
 }

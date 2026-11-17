@@ -49,6 +49,8 @@ if ($mode === 'setup') {
     }
     $pdo->exec("INSERT INTO nx_pages (title,slug,content,status,user_id) VALUES ('Retained page','retained-page','<p>Retained page content</p>','published',1)");
     $pdo->exec("INSERT INTO nx_posts (title,slug,content,status,user_id) VALUES ('Retained post','retained-post','<p>Retained post content</p>','published',1)");
+    $pdo->exec("INSERT INTO nx_media (title, original_name, file_name, file_path, mime_type, file_size, file_type, user_id)
+        VALUES ('Retained media', 'retained.txt', 'retained.txt', 'uploads/retained.txt', 'text/plain', 15, 'document', 1)");
     $pdo->exec("INSERT INTO nx_extension_settings (extension_key,is_enabled) VALUES ('retained-extension',1)");
 }
 if ($mode === 'restore') {
@@ -62,4 +64,5 @@ echo json_encode([
     'pages' => $pdo->query('SELECT id,title,slug,content,status,user_id FROM nx_pages ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
     'users' => $pdo->query('SELECT id,username,email,password_hash,role FROM nx_users ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
     'extensions' => $pdo->query('SELECT extension_key,is_enabled FROM nx_extension_settings ORDER BY extension_key')->fetchAll(PDO::FETCH_ASSOC),
+    'media' => $pdo->query('SELECT id,title,file_path,mime_type,user_id FROM nx_media ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
 ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);

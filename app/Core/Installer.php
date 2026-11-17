@@ -113,6 +113,7 @@ class Installer
             SiteSchema::ensure($pdo);
             SiteSchema::ensureDesign($pdo);
             SiteSchema::ensurePageLayouts($pdo);
+            SiteSchema::ensureMediaFolders($pdo);
 
             self::createAdministrator(
                 $pdo,

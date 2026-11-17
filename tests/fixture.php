@@ -53,6 +53,11 @@ foreach (['administrator' => 'admin', 'editor' => 'editor', 'author' => 'author'
 }
 $pdo->exec("INSERT INTO nx_pages (title, slug, content, status, user_id) VALUES ('既存ページ', 'legacy', '<p>既存の内容</p>', 'published', 1)");
 $pdo->exec("INSERT INTO nx_posts (title, slug, content, status, user_id) VALUES ('既存投稿', 'legacy-post', '<p>既存投稿の本文</p>', 'published', 1)");
+mkdir($fixture . '/public/uploads/media', 0755, true);
+$legacyMediaSize = file_put_contents($fixture . '/public/uploads/media/legacy-media.txt', 'previously uploaded media');
+$pdo->exec("INSERT INTO nx_media (title, original_name, file_name, file_path, mime_type, file_size, file_type, user_id)
+    VALUES ('既存メディア', 'legacy-media.txt', 'legacy-media.txt', 'uploads/media/legacy-media.txt',
+    'text/plain', {$legacyMediaSize}, 'document', 1)");
 $from22 = ($argv[2] ?? '') === '2.2';
 if ($from22) {
     $pdo->exec('DROP TABLE nx_post_revisions');
@@ -67,12 +72,18 @@ if ($from22) {
 foreach ($from22 ? ['1.7.0', '2.0.0', '2.2.0'] : ['1.7.0', '2.0.0', '2.2.0', '2.3.0'] as $version) {
     $pdo->prepare('INSERT INTO nx_nexapress_migrations (migration) VALUES (?)')->execute([$version]);
 }
-check(\app\Core\Migrator::run($fixture . '/database/migrations') === ($from22 ? ['2.3.0', '2.4.0', '2.5.0', '2.7.0'] : ['2.4.0', '2.5.0', '2.7.0']), $from22 ? 'upgrade from 2.2.0' : 'upgrade from 2.3.0');
+$expected = ['2.4.0', '2.5.0', '2.7.0', '2.9.0'];
+check(\app\Core\Migrator::run($fixture . '/database/migrations') === ($from22 ? ['2.3.0', ...$expected] : $expected),
+    $from22 ? 'upgrade from 2.2.0' : 'upgrade from 2.3.0');
 check(\app\Models\Page::find(1)['content'] === '<p>既存の内容</p>', 'migration preserves existing content');
 check(\app\Models\Post::findBySlug('legacy-post')['content'] === '<p>既存投稿の本文</p>', 'migration preserves existing posts');
 check(\app\Core\Migrator::run($fixture . '/database/migrations') === [], 'migration is idempotent');
 \app\Core\SiteSchema::ensure($pdo);
+\app\Core\SiteSchema::ensureMediaFolders($pdo);
 check(count(\app\Models\Page::published()) === 1, 'fresh-install schema helper is idempotent');
+$legacyMedia = \app\Models\Media::all(0);
+check(count($legacyMedia) === 1 && $legacyMedia[0]['file_path'] === 'uploads/media/legacy-media.txt',
+    'existing media is uncategorized and keeps its URL after migration');
 $previousDesign = \app\Core\Design::settings();
 unset($previousDesign['width']);
 unset($previousDesign['widgets']['header_after'], $previousDesign['widgets']['footer_before']);

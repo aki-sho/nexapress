@@ -333,6 +333,10 @@ $router->post('/admin/media/upload', 'app\Controllers\Admin\MediaController@uplo
 $router->post('/admin/media/edit/{id}', 'app\Controllers\Admin\MediaController@saveEdit');
 $router->post('/admin/media/update/{id}', 'app\Controllers\Admin\MediaController@update');
 $router->post('/admin/media/delete/{id}', 'app\Controllers\Admin\MediaController@delete');
+$router->post('/admin/media/folders/create', 'app\Controllers\Admin\MediaController@createFolder');
+$router->post('/admin/media/folders/delete/{id}', 'app\Controllers\Admin\MediaController@deleteFolder');
+$router->post('/admin/media/move', 'app\Controllers\Admin\MediaController@move');
+$router->post('/admin/media/bulk-delete', 'app\Controllers\Admin\MediaController@bulkDelete');
 
 // 設定
 $router->get('/admin/settings/general', 'app\Controllers\Admin\SettingController@general');

@@ -224,6 +224,10 @@ function curl_setopt_array($handle, array $options): bool {
                     check(admin.request('/admin/updates')[2].endswith('/admin/login'), ref + ': legacy session is retired by the update')
                     check(admin.request('/admin/login', credentials)[2].endswith('/admin'), ref + ': administrator can sign in again')
                 check('NexaPressは最新です' in admin.request('/admin/updates')[1], ref + ': admin update page reloads as current')
+                if tuple(map(int, target.split('.'))) >= (2, 9, 0):
+                    status, body, _ = admin.request('/admin/media?folder=0')
+                    check(status == 200 and 'Retained media' in body and '新規フォルダ' in body,
+                          ref + ': migrated media is visible in Unfiled')
                 if not args.public:
                     token = admin.token()
                     next_version = target.rsplit('.', 1)[0] + '.' + str(int(target.rsplit('.', 1)[1]) + 1)
