@@ -162,7 +162,8 @@ class HtmlSanitizer
      * 投稿本文を安全化
      */
     public static function sanitize(
-        ?string $html
+        ?string $html,
+        bool $forDisplay = false
     ): string {
         $html = trim((string)$html);
 
@@ -239,7 +240,7 @@ class HtmlSanitizer
             );
         }
 
-        self::sanitizeChildren($root);
+        self::sanitizeChildren($root, $forDisplay);
 
         /*
          * ラッパー要素の内側だけを返す
@@ -262,7 +263,8 @@ class HtmlSanitizer
      * 子要素を再帰的に検査
      */
     private static function sanitizeChildren(
-        \DOMNode $parent
+        \DOMNode $parent,
+        bool $forDisplay
     ): void {
         /*
          * DOMNodeListは変更中に内容が変わるため
@@ -327,7 +329,7 @@ class HtmlSanitizer
                     self::ALLOWED_ATTRIBUTES
                 )
             ) {
-                self::sanitizeChildren($child);
+                self::sanitizeChildren($child, $forDisplay);
                 self::unwrapElement($child);
 
                 continue;
@@ -350,7 +352,44 @@ class HtmlSanitizer
                 continue;
             }
 
-            self::sanitizeChildren($child);
+            if ($forDisplay && $child->hasAttribute('style')) {
+                self::moveTextAlignmentToClass($child, $tagName);
+            }
+
+            self::sanitizeChildren($child, $forDisplay);
+        }
+    }
+
+    // Accept the existing saved inline alignment while serving it via a same-origin stylesheet.
+    private static function moveTextAlignmentToClass(\DOMElement $element, string $tagName): void
+    {
+        $alignment = null;
+        $otherStyles = [];
+        foreach (explode('; ', $element->getAttribute('style')) as $declaration) {
+            if (str_starts_with($declaration, 'text-align: ')) {
+                $alignment = substr($declaration, strlen('text-align: '));
+            } else {
+                $otherStyles[] = $declaration;
+            }
+        }
+        if ($alignment === null) {
+            return;
+        }
+
+        $classes = preg_split('/\s+/', $element->getAttribute('class'), -1, PREG_SPLIT_NO_EMPTY);
+        $classes = array_filter($classes, static fn(string $class): bool =>
+            !preg_match('/^nx-content-align-(?:left|center|right|justify|start|end)$/D', $class));
+        $classes[] = 'nx-content-align-' . $alignment;
+        $element->setAttribute('class', implode(' ', $classes));
+
+        // Themes that omit the shared stylesheet can still render block alignment.
+        if (in_array('align', self::ALLOWED_ATTRIBUTES[$tagName], true)) {
+            $element->setAttribute('align', $alignment);
+        }
+        if ($otherStyles) {
+            $element->setAttribute('style', implode('; ', $otherStyles));
+        } else {
+            $element->removeAttribute('style');
         }
     }
 

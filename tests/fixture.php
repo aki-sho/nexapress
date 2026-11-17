@@ -96,6 +96,13 @@ $validation = \app\Core\PageValidator::validate(['title' => '安全なページ'
 $oversized = \app\Core\PageValidator::validate(['title' => '長い本文', 'slug' => 'oversized-page', 'content' => str_repeat('x', 65001)]);
 check($oversized['errors'] === ['本文は65KB以内で入力してください。'], 'oversized fixed-page content is still rejected');
 check($validation['errors'] === [] && !str_contains($validation['data']['content'], '<script'), 'page content is sanitized');
+$alignedBody = '<p class="intro" style="text-align: left; color: #112233; text-align: center">中央揃え</p>';
+$storedBody = \app\Core\HtmlSanitizer::sanitize($alignedBody);
+$displayBody = nx_post_content(['content' => $alignedBody], false);
+check(str_contains($storedBody, 'text-align: center') && !str_contains($storedBody, 'nx-content-align-')
+    && str_contains($displayBody, 'class="intro nx-content-align-center"')
+    && str_contains($displayBody, 'style="color: #112233"') && !str_contains($displayBody, 'text-align:'),
+    'public rendering converts saved inline alignment to an external CSS class');
 $id = \app\Models\Page::create($validation['data'] + ['user_id' => 1]);
 \app\Models\PageRevision::create(\app\Models\Page::find($id), 1);
 \app\Models\Page::update($id, array_merge($validation['data'], ['title' => '変更後', 'status' => 'published']));

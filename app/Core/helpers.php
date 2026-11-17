@@ -404,7 +404,8 @@ function nx_post_content(
         (string)(
             $post['content']
             ?? ''
-        )
+        ),
+        true
     );
     return $expand ? \app\Core\ContentExtension::render($content, $post) : $content;
 }
