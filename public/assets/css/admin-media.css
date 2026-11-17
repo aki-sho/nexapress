@@ -117,8 +117,116 @@
     margin-bottom: 16px;
 }
 
+.media-modal-side [data-open-image-editor] { margin-bottom: 16px; }
+
 @media (max-width: 800px) {
     .media-modal-inner {
         grid-template-columns: 1fr;
     }
+}
+
+.media-editor {
+    width: min(1100px, calc(100vw - 24px));
+    max-height: calc(100vh - 24px);
+    padding: 0;
+    border: 1px solid #d8e0ec;
+    border-radius: 12px;
+    color: #172033;
+    background: #fff;
+}
+
+.media-editor::backdrop { background: rgba(15, 23, 42, .62); }
+.media-editor-header,
+.media-editor-layout { padding: 16px 20px; }
+.media-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid #e5e9f1;
+}
+.media-editor-header h2 { margin: 0; font-size: 1.25rem; }
+.media-editor-header p { margin: 4px 0 0; color: #526176; overflow-wrap: anywhere; }
+.media-editor-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 286px);
+    gap: 16px;
+}
+.media-editor-stage {
+    position: relative;
+    height: clamp(220px, 49vh, 530px);
+    overflow: hidden;
+    border: 1px solid #d8e0ec;
+    border-radius: 8px;
+    background: #ecf0f5;
+    background-image: conic-gradient(#dde5ef 25%, #ecf0f5 0 50%, #dde5ef 0 75%, #ecf0f5 0);
+    background-size: 20px 20px;
+    user-select: none;
+}
+.media-editor-stage canvas, .media-editor-frame { position: absolute; display: block; }
+.media-editor-frame {
+    box-sizing: border-box;
+    border: 1px solid #255fce;
+    touch-action: none;
+}
+.media-editor-stage [hidden] { display: none; }
+.media-editor-stage[data-mode="crop"] .media-editor-frame {
+    box-shadow: 0 0 0 100vmax rgba(15, 23, 42, .45);
+    cursor: move;
+}
+.media-editor-stage[data-mode="crop"] :is([data-resize-handle="n"], [data-resize-handle="s"], [data-resize-handle="e"], [data-resize-handle="w"]) {
+    display: none;
+}
+.media-editor .media-editor-handle,
+.media-editor .media-editor-handle:hover {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    transform: translate(-50%, -50%);
+    touch-action: none;
+}
+.media-editor-handle::after {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border: 1px solid #255fce;
+    border-radius: 2px;
+    background: #fff;
+}
+.media-editor-handle[data-resize-handle*="n"] { top: 0; }
+.media-editor-handle[data-resize-handle*="s"] { top: 100%; }
+.media-editor-handle[data-resize-handle*="w"] { left: 0; }
+.media-editor-handle[data-resize-handle*="e"] { left: 100%; }
+.media-editor-handle:is([data-resize-handle="n"], [data-resize-handle="s"]) { left: 50%; cursor: ns-resize; }
+.media-editor-handle:is([data-resize-handle="w"], [data-resize-handle="e"]) { top: 50%; cursor: ew-resize; }
+.media-editor-handle:is([data-resize-handle="nw"], [data-resize-handle="se"]) { cursor: nwse-resize; }
+.media-editor-handle:is([data-resize-handle="ne"], [data-resize-handle="sw"]) { cursor: nesw-resize; }
+.media-editor-hint { margin: 8px 0 0; color: #526176; font-size: .85rem; }
+.media-editor-controls { display: grid; gap: 14px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.media-editor-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.media-editor-actions button { padding: 6px 9px; font-size: .85rem; }
+.media-editor-actions button[aria-pressed="true"] { border-color: #255fce; color: #174994; background: #edf4ff; }
+.media-editor-controls :is(input, select) { width: 100%; margin: 4px 0; }
+.media-editor-sizes { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; margin: 0; font-size: .875rem; }
+.media-editor-sizes dd { margin: 0; overflow-wrap: anywhere; }
+.media-editor-status { margin: 0 20px 16px; color: #526176; }
+.media-editor-status:empty { display: none; }
+.media-editor-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+}
+
+@media (max-width: 700px) {
+    .media-editor-layout { grid-template-columns: minmax(0, 1fr); }
+    .media-editor-layout, .media-editor-header { padding: 12px; }
+    .media-editor-stage { height: clamp(180px, 37vh, 340px); }
 }

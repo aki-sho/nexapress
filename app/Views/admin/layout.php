@@ -15,7 +15,8 @@
     <?php endif; ?>
     <?php $adminStylePath = (string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH); ?>
     <?php if (preg_match('#/admin/media(?:/|$)#', $adminStylePath)): ?>
-    <link rel="stylesheet" href="<?= e(public_url('assets/css/admin-media.css')) ?>">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="<?= e($adminAssetUrl('assets/css/admin-media.css')) ?>">
     <?php endif; ?>
     <!-- 投稿管理画面専用CSS -->
     <?php if (preg_match('#/admin/posts(?:/|$)#', $adminStylePath)): ?>

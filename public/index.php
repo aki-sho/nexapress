@@ -330,6 +330,7 @@ $router->post('/admin/themes/update', 'app\Controllers\Admin\ThemeController@upd
 // メディア管理
 $router->get('/admin/media', 'app\Controllers\Admin\MediaController@index');
 $router->post('/admin/media/upload', 'app\Controllers\Admin\MediaController@upload');
+$router->post('/admin/media/edit/{id}', 'app\Controllers\Admin\MediaController@saveEdit');
 $router->post('/admin/media/update/{id}', 'app\Controllers\Admin\MediaController@update');
 $router->post('/admin/media/delete/{id}', 'app\Controllers\Admin\MediaController@delete');
 

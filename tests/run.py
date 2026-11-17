@@ -152,6 +152,7 @@ def main():
         sessions = work / 'sessions'
         sessions.mkdir()
         server = subprocess.Popen(['php', '-d', 'curl.cainfo=' + cert.as_posix(), '-d', 'session.save_path=' + sessions.as_posix(),
+            '-d', 'upload_tmp_dir=' + sessions.as_posix(),
             '-d', 'session.cache_limiter=',
             '-S', f'127.0.0.1:{http_port}', '-t', str(fixture), str(SOURCE / 'tests/router.php')], cwd=fixture,
             stdout=log, stderr=log, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))

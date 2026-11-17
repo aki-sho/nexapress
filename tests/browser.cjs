@@ -3,6 +3,152 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert/strict');
 
+async function checkMediaEditor(page, base, output) {
+    await page.goto(base + '/admin/media');
+    const png = await page.evaluate(() => {
+        const source = document.createElement('canvas');
+        source.width = 1600;
+        source.height = 800;
+        const ctx = source.getContext('2d');
+        ctx.fillStyle = '#ee2118';
+        ctx.fillRect(0, 0, 800, 800);
+        ctx.fillStyle = '#1b399d';
+        ctx.fillRect(800, 0, 800, 800);
+        return source.toDataURL().split(',')[1];
+    });
+    const name = 'media-editor-fixture';
+    const upload = page.locator('.media-upload-form');
+    await upload.locator('input[type="file"]').setInputFiles({
+        name: name + '.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64'),
+    });
+    await upload.getByRole('button', {name: 'アップロード', exact: true}).click();
+    const card = page.locator('.media-card').filter({has: page.getByText(name, {exact: true})});
+    const originalUrl = await card.locator('img').getAttribute('src');
+    await card.locator('button').click();
+    const open = page.locator('.media-modal[open] [data-open-image-editor]');
+    const saveUrl = await open.getAttribute('data-save-url');
+    await open.click();
+
+    const dialog = page.locator('[data-media-editor]');
+    const size = (width, height) => width + ' × ' + height + ' px';
+    const waitSize = (width, height) => page.waitForFunction(expected =>
+        document.querySelector('[data-editor-output]')?.textContent.startsWith(expected), size(width, height));
+    const readSize = async () => (await dialog.locator('[data-editor-output]').textContent()).match(/^\d+\s×\s\d+/)[0]
+        .split(' × ').map(Number);
+    async function drag(handle, dx, dy, shift = false) {
+        const box = await dialog.locator('[data-resize-handle="' + handle + '"]').boundingBox();
+        const x = box.x + box.width / 2, y = box.y + box.height / 2;
+        if (shift) await page.keyboard.down('Shift');
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        await page.mouse.move(x + dx, y + dy, {steps: 5});
+        await page.mouse.up();
+        if (shift) await page.keyboard.up('Shift');
+    }
+    await waitSize(1600, 800);
+    for (const direction of [-1, 1]) {
+        await drag('se', direction * 45, direction * 8, true);
+        const [width, height] = await readSize();
+        assert(direction * (width - 1600) > 0 && Math.abs(width - 2 * height) <= 1);
+        await page.keyboard.press('Control+z');
+        await waitSize(1600, 800);
+    }
+    await drag('se', -66, -10);
+    const [freeWidth, freeHeight] = await readSize();
+    assert(freeWidth < 1600 && freeHeight < 800 && Math.abs(freeWidth - 2 * freeHeight) > 10);
+    await page.keyboard.press('Control+z');
+    await waitSize(1600, 800);
+    await drag('e', -36, 9, true);
+    const [edgeWidth, edgeHeight] = await readSize();
+    assert(edgeWidth < 1600 && edgeHeight === 800);
+    await page.keyboard.press('Control+z');
+    await waitSize(1600, 800);
+    await dialog.locator('[data-editor-preset="800"]').click();
+    await waitSize(800, 400);
+    await page.keyboard.press('Control+z');
+    await waitSize(1600, 800);
+
+    await dialog.locator('[data-editor-mode="crop"]').click();
+    const ratio = dialog.locator('[data-editor-ratio]');
+    await ratio.selectOption('1');
+    await waitSize(800, 800);
+    await drag('se', -35, -12);
+    const [cropWidth, cropHeight] = await readSize();
+    assert(cropWidth < 800 && cropWidth === cropHeight);
+    await page.keyboard.press('Control+z');
+    await waitSize(800, 800);
+
+    const frame = dialog.locator('[data-editor-frame]');
+    const cropBox = await frame.boundingBox();
+    const cropCenterX = cropBox.x + cropBox.width / 2;
+    const cropCenterY = cropBox.y + cropBox.height / 2;
+    const cropLeft = await frame.evaluate(element => parseFloat(element.style.left));
+    await page.mouse.move(cropCenterX, cropCenterY);
+    await page.mouse.down();
+    await page.mouse.move(cropCenterX + 30, cropCenterY, {steps: 5});
+    await page.mouse.up();
+    await page.waitForFunction(left => parseFloat(document.querySelector('[data-editor-frame]').style.left) > left, cropLeft);
+    await page.keyboard.press('Control+z');
+    await page.waitForFunction(left => parseFloat(document.querySelector('[data-editor-frame]').style.left) === left, cropLeft);
+    await page.keyboard.press('Control+z');
+    await waitSize(1600, 800);
+    await ratio.selectOption('16:9');
+    await waitSize(1422, 800);
+    await dialog.locator('[data-editor-turn="1"]').click();
+    await waitSize(800, 1422);
+    await dialog.locator('[data-editor-mode="resize"]').click();
+    const input = dialog.locator('[data-editor-width]');
+    await input.fill('400');
+    await input.press('Tab');
+    await waitSize(400, 711);
+    await dialog.locator('[data-editor-quality]').selectOption('light');
+    await page.screenshot({path: path.join(output, 'media-editor.png')});
+    await page.setViewportSize({width: 390, height: 844});
+    assert(await dialog.evaluate(editor => editor.scrollWidth <= editor.clientWidth + 1 &&
+        editor.querySelector('[data-editor-stage]').getBoundingClientRect().right <= innerWidth));
+    await page.setViewportSize({width: 1440, height: 1000});
+
+    const save = new URL(saveUrl, base).href;
+    assert.equal((await page.request.post(save, {form: {}})).status(), 419);
+    assert.equal((await page.request.post(save, {
+        multipart: {
+            _csrf_token: await dialog.getAttribute('data-csrf'),
+            media_file: {name: 'invalid.webp', mimeType: 'image/webp', buffer: Buffer.from('not an image')},
+        },
+    })).status(), 422);
+    const [response] = await Promise.all([
+        page.waitForResponse(r => r.url() === save && r.request().method() === 'POST'),
+        dialog.locator('[data-editor-save]').click(),
+    ]);
+    assert.equal(response.status(), 201);
+    const saved = await response.json();
+    assert.deepEqual([saved.width, saved.height, saved.format], [400, 711, 'WEBP']);
+    assert(saved.bytes > 0);
+    await dialog.getByText('別の画像として保存しました。', {exact: true}).waitFor();
+    await dialog.getByRole('button', {name: '一覧に戻る', exact: true}).click();
+    const newCard = page.locator('.media-card').filter({has: page.getByText(name + '（編集済み）', {exact: true})});
+    assert.equal(await card.locator('img').getAttribute('src'), originalUrl);
+    const actualImage = await newCard.locator('img').evaluate(async image => {
+        await image.decode();
+        const sample = document.createElement('canvas');
+        sample.width = image.naturalWidth;
+        sample.height = image.naturalHeight;
+        const ctx = sample.getContext('2d');
+        ctx.drawImage(image, 0, 0);
+        return [sample.width, sample.height, Array.from(ctx.getImageData(10, 10, 1, 1).data),
+            Array.from(ctx.getImageData(10, sample.height - 10, 1, 1).data)];
+    });
+    const [width, height, top, bottom] = actualImage;
+    assert(width === 400 && height === 711 && top[0] > top[2] && bottom[2] > bottom[0]);
+    if (process.env.NEXAPRESS_TEST_CLASSIC_EDITOR) {
+        await page.goto(base + '/admin/pages/create');
+        await page.getByRole('button', {name: 'メディア追加', exact: true}).click();
+        await page.locator('.classic-editor-media-item').filter({hasText: name + '（編集済み）'}).waitFor();
+        await page.locator('.classic-editor-media-dialog').getByRole('button', {name: '閉じる', exact: true}).click();
+    }
+    console.log('PASS: media editor resizes, undoes gestures, crops, rotates and saves a WebP copy');
+}
+
 (async () => {
     const base = process.env.NEXAPRESS_TEST_URL;
     const output = process.env.NEXAPRESS_TEST_OUTPUT;
@@ -18,6 +164,7 @@ const assert = require('assert/strict');
         await page.locator('[name="username"]').fill('admin');
         await page.locator('[name="password"]').fill('Test-Password-2026');
         await Promise.all([page.waitForURL(base + '/admin'), page.locator('button[type="submit"]').click()]);
+        await checkMediaEditor(page, base, output);
         for (const kind of ['page', 'post']) {
             const route = kind === 'page' ? '/admin/pages/create' : '/admin/posts/create';
             await page.goto(base + route);

@@ -6,6 +6,8 @@ use app\Core\Database;
 
 class Media
 {
+    public const EDITABLE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
     public static function all(): array
     {
         $pdo = Database::connect();
