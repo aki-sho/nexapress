@@ -72,7 +72,7 @@ if ($from22) {
 foreach ($from22 ? ['1.7.0', '2.0.0', '2.2.0'] : ['1.7.0', '2.0.0', '2.2.0', '2.3.0'] as $version) {
     $pdo->prepare('INSERT INTO nx_nexapress_migrations (migration) VALUES (?)')->execute([$version]);
 }
-$expected = ['2.4.0', '2.5.0', '2.7.0', '2.9.0'];
+$expected = ['2.4.0', '2.5.0', '2.7.0', '2.9.0', '2.10.0'];
 check(\app\Core\Migrator::run($fixture . '/database/migrations') === ($from22 ? ['2.3.0', ...$expected] : $expected),
     $from22 ? 'upgrade from 2.2.0' : 'upgrade from 2.3.0');
 check(\app\Models\Page::find(1)['content'] === '<p>既存の内容</p>', 'migration preserves existing content');

@@ -52,12 +52,27 @@ if ($mode === 'setup') {
     $pdo->exec("INSERT INTO nx_media (title, original_name, file_name, file_path, mime_type, file_size, file_type, user_id)
         VALUES ('Retained media', 'retained.txt', 'retained.txt', 'uploads/retained.txt', 'text/plain', 15, 'document', 1)");
     $pdo->exec("INSERT INTO nx_extension_settings (extension_key,is_enabled) VALUES ('retained-extension',1)");
+    if ($pdo->query("SHOW TABLES LIKE 'nx_page_layouts'")->fetchColumn()) {
+        \app\Core\PageLayout::save(1, [
+            'enabled' => true, 'width' => 'full', 'sections' => [[
+                'background' => 'full', 'color' => '#654155', 'widthMode' => 'percent', 'percent' => 80,
+                'columns' => 2, 'share' => 50, 'gap' => 10,
+                'groups' => [[['type' => 'page_title'], ['type' => 'page_content']], []],
+            ]],
+        ]);
+    }
 }
 if ($mode === 'restore') {
     \app\Core\UpdateBackup::restore($argv[3]);
 }
 $pdo = \app\Core\Database::connect();
 $version = require $fixture . '/config/version.php';
+$layouts = [];
+foreach (['page', 'post'] as $kind) {
+    $name = 'nx_' . $kind . '_layouts';
+    $layouts[$kind] = $pdo->query("SHOW TABLES LIKE '{$name}'")->fetchColumn()
+        ? $pdo->query("SELECT * FROM {$name} ORDER BY {$kind}_id")->fetchAll(PDO::FETCH_ASSOC) : [];
+}
 echo json_encode([
     'version' => $version['version'],
     'posts' => $pdo->query('SELECT id,title,slug,content,status,user_id FROM nx_posts ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
@@ -65,4 +80,5 @@ echo json_encode([
     'users' => $pdo->query('SELECT id,username,email,password_hash,role FROM nx_users ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
     'extensions' => $pdo->query('SELECT extension_key,is_enabled FROM nx_extension_settings ORDER BY extension_key')->fetchAll(PDO::FETCH_ASSOC),
     'media' => $pdo->query('SELECT id,title,file_path,mime_type,user_id FROM nx_media ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
+    'layouts' => $layouts,
 ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);

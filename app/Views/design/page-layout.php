@@ -5,12 +5,12 @@ use app\Core\PageLayout;
 use app\Models\Media;
 use app\Models\Navigation;
 
-$title = $page['title'];
+$title = $layoutDocument['title'];
 $body = null;
 $images = [];
 ?>
 <link rel="stylesheet" href="<?= e(PageLayout::stylesheetUrl($pageDesign, nx_design_settings()['width'])) ?>">
-<?php if (!empty($isPreview)): ?><p class="preview-notice">固定ページのプレビューです。未公開の内容を表示しています。</p><?php endif; ?>
+<?php if (!empty($isPreview)): ?><p class="preview-notice">未公開の内容を表示しています。</p><?php endif; ?>
 <?php foreach ($pageDesign['sections'] as $index => $section): ?>
     <?php
     $groups = $section['columns'] === 2 ? $section['groups'] : [array_merge(...$section['groups'])];
@@ -26,7 +26,7 @@ $images = [];
                                 <h1><?= e($title) ?></h1>
                                 <?php break;
                             case 'page_content': ?>
-                                <div class="post-content"><?= $body ??= nx_post_content($page) ?></div>
+                                <div class="post-content"><?= $body ??= nx_post_content($layoutDocument) ?></div>
                                 <?php break;
                             case 'heading': ?>
                                 <?php if ($element['text'] !== ''): ?><h2><?= e($element['text']) ?></h2><?php endif; ?>

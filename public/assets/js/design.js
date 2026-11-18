@@ -16,7 +16,7 @@
     const linkTypeIds = Object.keys(linkTypes);
     const areas = {...regions, sidebar: 'サイドバー', footer1: 'フッター 1', footer2: 'フッター 2', footer3: 'フッター 3'};
     const menus = {header: 'ヘッダー用', footer: 'フッター用'};
-    const labels = {header: 'ヘッダー', columns: '本文カラム', footer: 'フッター', page_layout: '固定ページのレイアウト', ...regions};
+    const labels = {header: 'ヘッダー', columns: '本文カラム', footer: 'フッター', page_layout: 'ページ毎のレイアウト', ...regions};
     const clone = value => JSON.parse(JSON.stringify(value));
     const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
     const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
@@ -42,7 +42,8 @@
     const supports = feature => data.themes[theme].areas.includes(feature);
     const state = () => ({
         theme, layout: layouts[theme], menus: menuItems,
-        page: supports('page_layout') ? pageEditor.payload() : null,
+        contentLayouts: pageEditor.commonPayload(),
+        content: pageEditor.payload(),
     });
     const supportsWidgets = () => supports('columns') || supports('footer') || regionIds.some(supports);
     const activeAreas = () => Object.keys(areas).filter(key => {
@@ -60,8 +61,9 @@
         panel, data, field, escape, changed, showError, checkResponse,
         redraw: focus => pane === 'page_layout' ? renderPanel(focus) : renderStatus(),
         preview: updatePreview, reveal: revealPreviewArea,
+        themeWidth: () => layouts[theme].width,
     });
-    const pageChanges = () => supports('page_layout') && pageEditor.hasChanges();
+    const pageChanges = () => pageEditor.hasChanges();
     const currentChanges = () => hasChanges(theme) || pageChanges();
 
     function showError(message = '') {
@@ -72,7 +74,7 @@
     function renderStatus() {
         publishButton.disabled = publishing || editor !== null || !currentChanges();
         status.textContent = publishing ? '公開中…' : currentChanges() ? '未公開の変更'
-            : pageEditor.hasAnyChanges() ? '別の固定ページに未公開の変更' : '公開済み';
+            : pageEditor.hasAnyChanges() ? '別のページに未公開の変更' : '公開済み';
         panel.disabled = publishing;
         root.querySelector('[data-setting="theme"]').disabled = publishing;
     }
@@ -228,7 +230,8 @@
     function body(extra) {
         return new URLSearchParams({
             _csrf_token: data.token, design: JSON.stringify(state()),
-            page_id: supports('page_layout') ? pageEditor.pageId() : '', ...extra,
+            content_kind: pageEditor.target().kind,
+            content_id: supports('page_layout') ? pageEditor.target().id : '', ...extra,
         });
     }
 
@@ -299,7 +302,7 @@
             }
             published = nextStates;
             menuItems = clone(published[theme].menus);
-            pageEditor.saved(result.page);
+            pageEditor.saved(result);
             editor = null;
             updatePreview();
         } catch (cause) {
@@ -318,7 +321,6 @@
             pane = target.pane || pane;
             menuName = target.menu || menuName;
             editor = null;
-            if (pane === 'page_layout') pageEditor.open();
             renderPanel(target.menu ? `[data-menu="${menuName}"]` : undefined);
             revealPreviewArea();
         } else if (target.mode || target.device) {

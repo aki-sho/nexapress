@@ -9,10 +9,8 @@
         ['暗い', ['#101827', '#242831', '#2C233D']],
     ];
     const backgrounds = [['full', '画面いっぱい'], ['content', '中身と同じ'], ['none', '背景なし']];
-    const initialSection = (elements = []) => ({
-        background: 'full', color: '#F4F5F7', widthMode: 'theme',
-        percent: 80, columns: 1, share: 50, gap: 10, groups: [elements, []],
-    });
+    const clone = value => structuredClone(value);
+    const owns = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 
     function hexColor(value) {
         const code = value.trim().replace(/^#/, '').toUpperCase();
@@ -20,20 +18,39 @@
         return /^[0-9A-F]{3}$/.test(code) ? '#' + Array.from(code, digit => digit.repeat(2)).join('') : null;
     }
 
+    function editableRecord(snapshot) {
+        const saved = clone(snapshot);
+        if (saved.overrides.sections) {
+            saved.overrides.sections = saved.overrides.sections.map(section => ({...section}));
+        }
+        return {saved, draft: clone(saved.overrides)};
+    }
+
     window.NexaPressPageEditor = function (options) {
-        const {panel, data, field, escape, changed, showError, redraw, preview, reveal, checkResponse} = options;
+        const {panel, data, field, escape, changed, showError, redraw, preview, reveal, checkResponse, themeWidth} = options;
         const config = data.pageLayout;
+        const initial = data.themes[data.active].state.contentLayouts;
+        const common = Object.fromEntries(Object.keys(config.scopes).map(key => [
+            key, editableRecord({overrides: initial[key]}),
+        ]));
         const existing = new Map();
         const requests = new Set();
         const widths = Object.entries(config.widths);
-        const choices = [['', '現在のトップページ'], ...data.targets.page.map(page => [String(page.id), page.label])];
+        const scopeLabels = {...config.scopes, page_item: '固定ページのレイアウト', post_item: '投稿ページのレイアウト'};
+        const choices = {page: data.targets.page, post: data.targets.post};
+        const home = choices.page.find(page => page.id === config.home);
+        const selected = {
+            page: String(home?.id ?? choices.page[0]?.id ?? ''),
+            post: String(choices.post[0]?.id ?? ''),
+        };
         const newElements = {
             page_title: {type: 'page_title'}, page_content: {type: 'page_content'},
             heading: {type: 'heading', text: '見出し'}, text: {type: 'text', text: ''},
             image: {type: 'image', media_id: null, alt: ''}, button: {type: 'button', text: '詳しく見る', url: ''},
         };
-        let opened = false;
-        let selected = '';
+        const images = config.images;
+        let scope = null;
+        let previewTarget = {kind: 'page', id: ''};
         let sectionIndex = 0;
         let column = 0;
         let elementIndex = 0;
@@ -41,64 +58,142 @@
         let showColors = false;
         let showLayout = false;
         let showElements = false;
-        let images = [];
 
-        const entry = () => existing.get(selected);
-        const section = () => entry()?.draft.sections[sectionIndex];
+        const individual = () => scope === 'page_item' || scope === 'post_item';
+        const kind = () => scope === 'post' || scope === 'post_item' ? 'post' : 'page';
+        const recordKey = (type, id) => type + ':' + id;
+        const entry = () => common[scope] ?? existing.get(recordKey(kind(), selected[kind()]));
+        const dirty = record => JSON.stringify(record.draft) !== JSON.stringify(record.saved.overrides);
+        const records = () => [...Object.values(common), ...existing.values()];
+        const labelForInheritance = () => scope === 'all' ? '初期設定' : '共通設定';
+        const action = (id, text, attributes = '') =>
+            `<button type="button" class="nx-design-small" data-page-action="${id}" ${attributes}>${text}</button>`;
+        const reset = (key, label) =>
+            `<button type="button" class="nx-design-small nx-page-reset" data-page-reset="${key}">${label}</button>`;
+        const select = (label, name, values, value) => field(label, name, values, value, `data-page-field="${name}"`);
+
+        function merge(base, patch) {
+            const result = clone(base);
+            for (const name of ['enabled', 'width']) {
+                if (owns(patch, name)) result[name] = patch[name];
+            }
+            if (owns(patch, 'sectionCount')) {
+                result.sections = result.sections.slice(0, patch.sectionCount);
+                while (result.sections.length < patch.sectionCount) result.sections.push(clone(config.sectionDefaults));
+            }
+            for (const [index, section] of (patch.sections ?? []).entries()) {
+                if (result.sections[index]) Object.assign(result.sections[index], clone(section));
+            }
+            return result;
+        }
+
+        const emptyLayout = () => ({enabled: false, width: 'inherit', sections: []});
+        function inherited() {
+            let result = emptyLayout();
+            if (scope !== 'all') result = merge(result, common.all.draft);
+            if (individual()) result = merge(result, common[kind()].draft);
+            return result;
+        }
+        const effective = () => entry() ? merge(inherited(), entry().draft) : null;
+        const section = () => effective()?.sections[sectionIndex];
         const elements = () => section()?.groups[column] ?? [];
+        const sectionOverrides = () => entry()?.draft.sections?.[sectionIndex] ?? {};
+        const sectionBase = () => inherited().sections[sectionIndex] ?? config.sectionDefaults;
+
+        function editSection() {
+            const patch = entry().draft;
+            patch.sections ??= [];
+            while (patch.sections.length <= sectionIndex) patch.sections.push({});
+            return patch.sections[sectionIndex];
+        }
+
+        function editElements() {
+            const patch = editSection();
+            patch.groups ??= clone(section().groups);
+            return patch.groups[column];
+        }
+
+        function prune() {
+            const sections = entry().draft.sections;
+            if (!sections) return;
+            while (sections.length && Object.keys(sections.at(-1)).length === 0) sections.pop();
+            if (!sections.length) delete entry().draft.sections;
+        }
+
+        function inheritedSelect(label, name, values) {
+            const base = sectionBase()[name];
+            const inheritedLabel = values.find(([value]) => String(value) === String(base))?.[1] ?? base;
+            return select(label, name, [['inherit', labelForInheritance() + 'を使用（' + inheritedLabel + '）'], ...values],
+                sectionOverrides()[name] ?? 'inherit');
+        }
+
+        function integer(label, name, min, max) {
+            const value = sectionOverrides()[name] ?? '';
+            return `<label>${label}<input type="number" data-page-field="${name}" value="${value}"
+                min="${min}" max="${max}" step="1" placeholder="${escape(labelForInheritance() + ' ' + sectionBase()[name])}"></label>`;
+        }
+
         const ratio = item => {
             const space = 100 - item.gap;
             return `左 ${Number((space * item.share / 100).toFixed(2))}% ・ 間隔 ${item.gap}% ・ 右 ${Number((space * (100 - item.share) / 100).toFixed(2))}%`;
         };
-        const dirty = record => JSON.stringify(record.draft) !== JSON.stringify(record.saved.layout);
-        const select = (label, name, values, value) => field(label, name, values, value, `data-page-field="${name}"`);
-        const action = (id, text, attributes = '') =>
-            `<button type="button" class="nx-design-small" data-page-action="${id}" ${attributes}>${text}</button>`;
-        const integer = (label, name, value, min, max) => `<label>${label}
-            <input type="number" data-page-field="${name}" value="${value}" min="${min}" max="${max}" step="1" required></label>`;
         const elementLabel = element => {
             const detail = element.text || images.find(image => image.id === element.media_id)?.label;
             return config.elements[element.type] + (detail ? ' · ' + detail.slice(0, 28) : '');
         };
+        const sectionLabel = (item, index) => {
+            const heading = item.groups.flat().find(element => element.type === 'heading' && element.text.trim());
+            return heading ? heading.text.trim().slice(0, 36) : 'セクション ' + (index + 1);
+        };
 
-        async function choosePage(id) {
-            selected = id;
-            sectionIndex = column = elementIndex = 0;
-            showError();
-            if (!id || existing.has(id) || requests.has(id)) {
-                redraw();
-                preview();
-                return;
-            }
-            requests.add(id);
+        async function loadDocument(type, id) {
+            const key = recordKey(type, id);
+            if (!id || existing.has(key) || requests.has(key)) return;
+            requests.add(key);
             redraw();
-            preview();
             try {
-                const response = await fetch(config.url + '/' + encodeURIComponent(id), {cache: 'no-store'});
+                const base = type === 'post' ? config.postUrl : config.url;
+                const response = await fetch(base + '/' + encodeURIComponent(id), {cache: 'no-store'});
                 await checkResponse(response);
-                const {images: media, ...saved} = await response.json();
-                images = media;
-                existing.set(id, {saved, draft: structuredClone(saved.layout)});
+                const saved = await response.json();
+                existing.set(key, editableRecord(saved));
             } catch (error) {
-                if (id === selected) showError(error.message);
+                if (previewTarget.kind === type && previewTarget.id === id) showError(error.message);
             } finally {
-                requests.delete(id);
-                if (id === selected) redraw();
+                requests.delete(key);
+                if (individual() && recordKey(kind(), selected[kind()]) === key) {
+                    redraw();
+                } else {
+                    const note = panel.querySelector('[data-page-preview-note]');
+                    const target = existing.get(recordKey(previewTarget.kind, previewTarget.id));
+                    if (note) note.hidden = !target || Object.keys(target.draft).length <= 1;
+                }
+                preview();
             }
         }
 
-        function open() {
-            if (opened) return;
-            opened = true;
-            const home = choices.find(([id]) => id === String(config.home));
-            const first = home ?? choices[1];
-            if (first) choosePage(first[0]);
+        function activate(next) {
+            scope = next;
+            sectionIndex = column = elementIndex = 0;
+            showError();
+            const type = kind();
+            if (scope === 'all') {
+                previewTarget = {kind: 'page', id: selected.page};
+                if (!previewTarget.id) previewTarget = {kind: 'post', id: selected.post};
+            } else {
+                previewTarget = {kind: type, id: selected[type]};
+            }
+            loadDocument(previewTarget.kind, previewTarget.id);
+            redraw();
+            preview();
         }
 
         function colorFields(item) {
             return `<details class="nx-page-details" data-page-details="colors" ${showColors ? 'open' : ''}>
                 <summary>背景の色</summary>
                 <div class="nx-page-fields">
+                    <label class="nx-design-check"><input type="checkbox" data-page-inherit="color"
+                        ${owns(sectionOverrides(), 'color') ? '' : 'checked'}>${labelForInheritance()}の色を使用</label>
                     <div class="nx-page-color-fields">
                         <label>カラーコード<input type="text" data-page-field="hex" value="${escape(item.color)}" maxlength="7" spellcheck="false"></label>
                         <label>色を選ぶ<input type="color" data-page-field="color" value="${escape(item.color)}"></label>
@@ -117,11 +212,11 @@
             return `<details class="nx-page-details" data-page-details="layout" ${showLayout ? 'open' : ''}>
                 <summary>中身の幅・カラム数</summary>
                 <div class="nx-page-fields">
-                    ${select('中身の幅', 'widthMode', [['theme', 'ページの本文幅に合わせる'], ['percent', '割合を指定']], item.widthMode)}
-                    ${item.widthMode === 'percent' ? integer('画面幅に対する割合（%）', 'percent', item.percent, 40, 100) : ''}
-                    ${select('カラム数', 'columns', [[1, '1カラム'], [2, '2カラム']], item.columns)}
+                    ${inheritedSelect('中身の幅', 'widthMode', [['theme', 'ページの本文幅に合わせる'], ['percent', '割合を指定']])}
+                    ${item.widthMode === 'percent' ? integer('画面幅に対する割合（%）', 'percent', 40, 100) : ''}
+                    ${inheritedSelect('カラム数', 'columns', [[1, '1カラム'], [2, '2カラム']])}
                     ${item.columns === 2 ? `<div class="nx-page-color-fields">
-                        ${integer('左への配分（%）', 'share', item.share, 20, 80)}${integer('列の間隔（%）', 'gap', item.gap, 0, 30)}</div>
+                        ${integer('左への配分（%）', 'share', 20, 80)}${integer('列の間隔（%）', 'gap', 0, 30)}</div>
                         <p class="nx-design-note nx-page-ratio" data-page-ratio>${ratio(item)}</p>` : ''}
                 </div>
             </details>`;
@@ -152,6 +247,8 @@
             return `<details class="nx-page-details" data-page-details="elements" ${showElements ? 'open' : ''}>
                 <summary>カラムの中身</summary>
                 <div class="nx-page-fields">
+                    ${owns(sectionOverrides(), 'groups') ? reset('groups', labelForInheritance() + 'の中身を使用') :
+                        '<p class="nx-design-note">' + labelForInheritance() + 'の中身を使用しています。</p>'}
                     ${item.columns === 2 || item.groups[1].length ? select('編集するカラム', 'column', slots, column) : ''}
                     ${current ? select('編集する要素', 'element', list.map((element, index) => [index, elementLabel(element)]), elementIndex) + fields +
                         `<div class="nx-design-actions">${action('element-remove', '要素を削除')}</div>` :
@@ -162,29 +259,41 @@
             </details>`;
         }
 
-        function sectionLabel(item, index) {
-            const heading = item.groups.flat().find(element => element.type === 'heading' && element.text.trim());
-            return heading ? heading.text.trim().slice(0, 36) : 'セクション ' + (index + 1);
-        }
-
-        function render() {
-            showColors = panel.querySelector('[data-page-details="colors"]')?.open ?? showColors;
-            showLayout = panel.querySelector('[data-page-details="layout"]')?.open ?? showLayout;
-            showElements = panel.querySelector('[data-page-details="elements"]')?.open ?? showElements;
-            const title = '<h2>固定ページのレイアウト</h2>';
-            if (choices.length === 1) return title + '<p class="nx-design-note">固定ページを作成するとここで編集できます。</p>';
-            const picker = select('編集する固定ページ', 'page', choices, selected);
-            const record = entry();
-            if (!record) {
-                const info = requests.has(selected) ? '<p class="nx-design-note">読み込み中…</p>' : '';
-                return title + picker + info;
+        function editorFields() {
+            const type = kind();
+            let picker;
+            if (individual()) {
+                if (!choices[type].length) return '<p class="nx-design-note">編集する固定ページまたは投稿を作成してください。</p>';
+                picker = select(type === 'page' ? '編集する固定ページ' : '編集する投稿', type,
+                    choices[type].map(item => [String(item.id), item.label]), selected[type]);
+            } else {
+                const types = scope === 'all' ? ['page', 'post'] : [type];
+                const targets = types.flatMap(type => choices[type].map(item =>
+                    [recordKey(type, item.id), (type === 'page' ? '固定ページ · ' : '投稿 · ') + item.label]));
+                picker = targets.length ? select('プレビューするページ', 'previewTarget', targets,
+                    recordKey(previewTarget.kind, previewTarget.id)) :
+                    '<p class="nx-design-note">プレビューする固定ページか投稿を作成してください。</p>';
             }
-            const layout = record.draft;
-            let html = title + picker + select('このページの本文幅', 'width', [['inherit', 'テーマの既定幅'], ...widths], layout.width) +
+            const record = entry();
+            if (!record) return picker + '<p class="nx-design-note">読み込み中…</p>';
+            const targetRecord = existing.get(recordKey(previewTarget.kind, previewTarget.id));
+            if (!individual()) {
+                const overridden = targetRecord && Object.keys(targetRecord.draft).length > 1;
+                picker += '<p class="nx-design-note" data-page-preview-note ' + (overridden ? '' : 'hidden') +
+                    '>このプレビューにはページ個別の指定も適用されます。</p>';
+            }
+            const layout = effective();
+            sectionIndex = Math.max(0, Math.min(sectionIndex, layout.sections.length - 1));
+            const item = layout.sections[sectionIndex];
+            const baseWidth = inherited().width;
+            const inheritedWidth = config.widths[baseWidth === 'inherit' ? themeWidth() : baseWidth];
+            let html = picker + select(individual() ? 'このページの本文幅' : 'この設定の本文幅', 'width',
+                [['inherit', labelForInheritance() + 'を使用（' + inheritedWidth + '）'], ...widths],
+                record.draft.width ?? 'inherit') +
                 `<label class="nx-design-check"><input type="checkbox" data-page-field="enabled" ${layout.enabled ? 'checked' : ''}>
-                    セクションで構成する</label>`;
+                    セクションで構成する</label>` +
+                (owns(record.draft, 'enabled') ? reset('enabled', labelForInheritance() + 'の構成を使用') : '');
             if (!layout.enabled) return html;
-            const item = section();
             html += '<div class="nx-page-section-picker"><h3>セクション</h3>';
             if (item) {
                 html += `<select data-page-field="section" aria-label="編集するセクション">
@@ -193,57 +302,86 @@
                 </select>`;
             }
             html += '</div>';
-            if (!item) {
-                html += '<p class="nx-design-note">セクションが空の場合は固定ページの本文を表示します。</p>';
-            }
+            if (!item) html += '<p class="nx-design-note">セクションが空の場合は本文を表示します。</p>';
             html += `<div class="nx-design-actions">${action('section-add', '＋ セクションを追加')}
-                ${item ? action('section-remove', 'セクションを削除') : ''}</div>`;
+                ${item ? action('section-remove', 'セクションを削除') : ''}
+                ${owns(record.draft, 'sectionCount') ? reset('sections', 'セクション設定を' + labelForInheritance() + 'に戻す') : ''}</div>`;
             if (!item) return html;
-            return html + select('背景の幅', 'background', backgrounds, item.background) +
-                (item.background === 'none' ? '' : colorFields(item)) +
-                layoutFields(item) + elementControls(item);
+            return html + inheritedSelect('背景の幅', 'background', backgrounds) +
+                (item.background === 'none' ? '' : colorFields(item)) + layoutFields(item) + elementControls(item);
         }
 
-        function applyColor(color, updateCode) {
-            if (updateCode) panel.querySelector('[data-page-field="hex"]').value = color;
-            panel.querySelector('[data-page-field="color"]').value = color;
-            panel.querySelectorAll('[data-page-color]').forEach(button =>
-                button.setAttribute('aria-pressed', String(button.dataset.pageColor === color)));
-            if (section().color === color) return;
-            section().color = color;
-            changed(undefined, false);
+        function render() {
+            showColors = panel.querySelector('[data-page-details="colors"]')?.open ?? showColors;
+            showLayout = panel.querySelector('[data-page-details="layout"]')?.open ?? showLayout;
+            showElements = panel.querySelector('[data-page-details="elements"]')?.open ?? showElements;
+            return '<h2>ページ毎のレイアウト</h2><p class="nx-design-note">上の共通設定を引き継ぎ、変更した項目を優先します。</p>' +
+                Object.entries(scopeLabels).map(([id, label]) =>
+                    `<details class="nx-page-scope" data-layout-scope="${id}" name="nx-page-layout-scope" ${scope === id ? 'open' : ''}>
+                        <summary>${escape(label)}</summary>
+                        ${scope === id ? '<div class="nx-page-fields">' + editorFields() + '</div>' : ''}
+                    </details>`).join('');
         }
 
         function refreshValues() {
             const item = section();
             const readout = panel.querySelector('[data-page-ratio]');
-            if (readout) readout.textContent = ratio(item);
+            if (readout && item) readout.textContent = ratio(item);
             const title = panel.querySelector('[data-page-field="section"]')?.selectedOptions[0];
-            if (title) title.textContent = sectionLabel(item, sectionIndex);
+            if (title && item) title.textContent = sectionLabel(item, sectionIndex);
             const label = panel.querySelector('[data-page-field="element"]')?.selectedOptions[0];
             if (label) label.textContent = elementLabel(elements()[elementIndex]);
+            changed(undefined, false);
+        }
+
+        function applyColor(color, updateCode) {
+            editSection().color = color;
+            if (updateCode) panel.querySelector('[data-page-field="hex"]').value = color;
+            panel.querySelector('[data-page-field="color"]').value = color;
+            panel.querySelector('[data-page-inherit="color"]').checked = false;
+            panel.querySelectorAll('[data-page-color]').forEach(button =>
+                button.setAttribute('aria-pressed', String(button.dataset.pageColor === color)));
             changed(undefined, false);
         }
 
         panel.addEventListener('click', event => {
             const control = event.target.closest('button');
             if (!control || control.disabled || !entry()) return;
+            const key = control.dataset.pageReset;
+            if (key) {
+                if (key === 'sections') {
+                    delete entry().draft.sectionCount;
+                    delete entry().draft.sections;
+                    sectionIndex = column = elementIndex = 0;
+                } else if (key === 'enabled') {
+                    delete entry().draft.enabled;
+                } else {
+                    delete editSection()[key];
+                    prune();
+                }
+                changed();
+                return;
+            }
             if (control.dataset.pageColor) {
                 applyColor(control.dataset.pageColor, true);
                 return;
             }
             const command = control.dataset.pageAction;
             if (!command) return;
-            const sections = entry().draft.sections;
+            const sections = effective().sections;
             if (command === 'section-add') {
                 if (sections.length >= config.sectionLimit) {
                     showError('追加できるセクション数の上限に達しました。');
                     return;
                 }
-                sectionIndex = sections.push(initialSection()) - 1;
+                entry().draft.sectionCount = sections.length + 1;
+                sectionIndex = sections.length;
+                editSection();
                 column = elementIndex = 0;
             } else if (command === 'section-remove') {
                 sections.splice(sectionIndex, 1);
+                entry().draft.sectionCount = sections.length;
+                entry().draft.sections = sections;
                 sectionIndex = Math.max(0, Math.min(sectionIndex, sections.length - 1));
                 column = elementIndex = 0;
             } else if (command === 'element-add') {
@@ -252,14 +390,14 @@
                     showError('追加できる要素数の上限に達しました。');
                     return;
                 }
-                elementIndex = elements().push({...newElements[elementType]}) - 1;
+                elementIndex = editElements().push(clone(newElements[elementType])) - 1;
             } else if (command === 'element-remove') {
-                const list = elements();
+                const list = editElements();
                 list.splice(elementIndex, 1);
                 elementIndex = Math.max(0, Math.min(elementIndex, list.length - 1));
             }
             changed(command.startsWith('section') ?
-                (sections.length ? '[data-page-field="section"]' : '[data-page-action="section-add"]') :
+                (effective().sections.length ? '[data-page-field="section"]' : '[data-page-action="section-add"]') :
                 (elements().length ? '[data-page-field="element"]' : '[data-page-field="elementType"]'));
         });
 
@@ -267,21 +405,44 @@
             const input = event.target;
             const name = input.dataset.pageField;
             const value = input.value;
-            if (!name) return;
-            if (name === 'page') {
-                choosePage(value);
+            if (name === 'page' || name === 'post') {
+                selected[name] = value;
+                previewTarget = {kind: name, id: value};
+                sectionIndex = column = elementIndex = 0;
+                loadDocument(name, value);
+                redraw();
+                preview();
                 return;
             }
-            const layout = entry()?.draft;
-            if (!layout) return;
+            if (name === 'previewTarget') {
+                const [type, id] = value.split(':');
+                previewTarget = {kind: type, id};
+                loadDocument(type, id);
+                preview();
+                return;
+            }
+            if (!entry()) return;
+            if (input.dataset.pageInherit === 'color') {
+                if (input.checked) {
+                    delete editSection().color;
+                    prune();
+                } else {
+                    editSection().color = section().color;
+                }
+                changed('[data-page-inherit="color"]');
+                return;
+            }
+            if (!name) return;
             if (name === 'enabled') {
-                layout.enabled = input.checked;
-                if (input.checked && !layout.sections.length) {
-                    layout.sections.push(initialSection([{type: 'page_title'}, {type: 'page_content'}]));
+                entry().draft.enabled = input.checked;
+                if (input.checked && !effective().sections.length) {
+                    entry().draft.sectionCount = 1;
+                    entry().draft.sections = [{groups: [[{type: 'page_title'}, {type: 'page_content'}], []]}];
                     sectionIndex = column = elementIndex = 0;
                 }
             } else if (name === 'width') {
-                layout.width = value;
+                if (value === 'inherit') delete entry().draft.width;
+                else entry().draft.width = value;
             } else if (name === 'section' || name === 'column' || name === 'element' || name === 'elementType') {
                 if (name === 'section') {
                     sectionIndex = Number(value);
@@ -301,12 +462,10 @@
             } else {
                 const item = section();
                 if (!item) return;
-                const element = elements()[elementIndex];
                 if (name === 'hex' || name === 'color') {
                     const color = hexColor(value);
-                    if (color) {
-                        applyColor(color, true);
-                    } else {
+                    if (color) applyColor(color, true);
+                    else {
                         input.value = item.color;
                         showError('背景色は #RRGGBB または #RGB で入力してください。');
                     }
@@ -314,23 +473,27 @@
                 }
                 if (['percent', 'share', 'gap'].includes(name)) {
                     if (!input.validity.valid) {
-                        input.value = item[name];
+                        input.value = sectionOverrides()[name] ?? '';
                         showError('幅・配分・間隔は指定範囲内の整数で入力してください。');
                         return;
                     }
-                    item[name] = Number(value);
-                } else if (name === 'columns' || name === 'background' || name === 'widthMode') {
-                    item[name] = name === 'columns' ? Number(value) : value;
-                    if (item.columns === 1 && column === 1 && !item.groups[1].length) column = elementIndex = 0;
-                } else if (element && name === 'media') {
-                    element.media_id = value ? Number(value) : null;
-                } else if (element && ['text', 'alt', 'url'].includes(name)) {
+                    if (value === '') delete editSection()[name];
+                    else editSection()[name] = Number(value);
+                    prune();
+                } else if (['columns', 'background', 'widthMode'].includes(name)) {
+                    if (value === 'inherit') delete editSection()[name];
+                    else editSection()[name] = name === 'columns' ? Number(value) : value;
+                    prune();
+                    if (section().columns === 1 && column === 1 && !section().groups[1].length) column = elementIndex = 0;
+                } else if (elements()[elementIndex] && name === 'media') {
+                    editElements()[elementIndex].media_id = value ? Number(value) : null;
+                } else if (elements()[elementIndex] && ['text', 'alt', 'url'].includes(name)) {
                     if (name === 'url' && value.trim() && !/^(?:\/(?!\/)|https?:\/\/)[^\s\\]*$/i.test(value.trim())) {
-                        input.value = element.url;
+                        input.value = elements()[elementIndex].url;
                         showError('リンク先は / で始まるパスか、http(s) の URL を入力してください。');
                         return;
                     }
-                    element[name] = value.trim();
+                    editElements()[elementIndex][name] = value.trim();
                 }
             }
             if (['percent', 'share', 'gap', 'text', 'alt', 'url'].includes(name)) {
@@ -343,41 +506,58 @@
         panel.addEventListener('input', event => {
             const input = event.target;
             const name = input.dataset.pageField;
-            const item = section();
-            if (!name || !item) return;
+            if (!name || !section()) return;
             if (name === 'color') {
                 applyColor(input.value.toUpperCase(), true);
             } else if (name === 'hex' && /^#?[0-9a-f]{6}$/i.test(input.value)) {
                 applyColor(hexColor(input.value), false);
             } else if (['percent', 'share', 'gap'].includes(name) && input.validity.valid) {
-                item[name] = Number(input.value);
+                if (input.value === '') delete editSection()[name];
+                else editSection()[name] = Number(input.value);
+                prune();
                 refreshValues();
-            } else if (name === 'text' || name === 'alt') {
-                const element = elements()[elementIndex];
-                if (!element) return;
-                element[name] = input.value.trim();
+            } else if ((name === 'text' || name === 'alt') && elements()[elementIndex]) {
+                editElements()[elementIndex][name] = input.value.trim();
                 refreshValues();
             }
         });
+
         panel.addEventListener('toggle', event => {
-            if (!event.target.isConnected) return;
-            if (event.target.dataset.pageDetails === 'colors') showColors = event.target.open;
-            if (event.target.dataset.pageDetails === 'layout') showLayout = event.target.open;
-            if (event.target.dataset.pageDetails === 'elements') showElements = event.target.open;
+            const details = event.target;
+            if (!details.isConnected) return;
+            const next = details.dataset.layoutScope;
+            if (next) {
+                if (details.open && scope !== next) activate(next);
+                else if (!details.open && scope === next) {
+                    scope = null;
+                    redraw();
+                }
+                return;
+            }
+            if (details.dataset.pageDetails === 'colors') showColors = details.open;
+            if (details.dataset.pageDetails === 'layout') showLayout = details.open;
+            if (details.dataset.pageDetails === 'elements') showElements = details.open;
         }, true);
 
         return {
-            open, render, widths,
-            pageId: () => selected,
+            render, widths,
+            target: () => previewTarget,
             sectionIndex: () => sectionIndex,
-            hasChanges: () => Boolean(entry() && dirty(entry())),
-            hasAnyChanges: () => Array.from(existing.values()).some(dirty),
-            payload: () => entry() && dirty(entry()) ? {...entry().saved, layout: entry().draft} : null,
-            saved: snapshot => {
-                const record = snapshot && existing.get(String(snapshot.id));
-                if (record) {
-                    record.saved = snapshot;
-                    record.draft = structuredClone(snapshot.layout);
+            hasChanges: () => records().some(dirty),
+            hasAnyChanges: () => records().some(dirty),
+            commonPayload: () => Object.fromEntries(Object.entries(common).map(([key, record]) => [key, record.draft])),
+            payload: () => Array.from(existing.values()).filter(dirty).map(record => ({
+                kind: record.saved.kind, id: record.saved.id, revision: record.saved.revision, overrides: record.draft,
+            })),
+            saved: result => {
+                const state = Object.values(result.states)[0];
+                for (const [key, record] of Object.entries(common)) {
+                    Object.assign(record, editableRecord({overrides: state.contentLayouts[key]}));
+                }
+                for (const snapshot of result.content ?? []) {
+                    if (!snapshot) continue;
+                    const key = recordKey(snapshot.kind, snapshot.id);
+                    existing.set(key, editableRecord(snapshot));
                 }
             },
         };

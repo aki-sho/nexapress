@@ -89,6 +89,15 @@
     gap: 8px;
 }
 
+.nx-page-scope {
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--design-line);
+    border-radius: 6px;
+}
+.nx-page-scope > summary { font-size: .95rem; font-weight: 600; cursor: pointer; }
+.nx-page-reset { justify-self: start; }
+
 .nx-page-color-fields {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

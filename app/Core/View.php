@@ -68,8 +68,15 @@ class View
         $themeViewPath = Theme::template($view);
         $viewPath = $themeViewPath ?: $appViewPath;
         $pageDesign = null;
-        if ($view === 'page-detail' && isset($page['id']) && in_array('page_layout', Theme::designAreas(Theme::active()), true)) {
-            $pageDesign = Design::pageLayout((int)$page['id']);
+        $layoutKind = match ($view) {
+            'page-detail' => 'page',
+            'post-detail' => 'post',
+            default => null,
+        };
+        $layoutDocument = $layoutKind === 'page' ? ($page ?? null) : ($post ?? null);
+        if ($layoutKind !== null && isset($layoutDocument['id']) &&
+            in_array('page_layout', Theme::designAreas(Theme::active()), true)) {
+            $pageDesign = Design::pageLayout((int)$layoutDocument['id'], $layoutKind);
             if ($pageDesign['enabled'] && $pageDesign['sections']) {
                 $viewPath = BASE_PATH . '/app/Views/design/page-layout.php';
             }

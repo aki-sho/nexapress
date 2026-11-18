@@ -75,4 +75,14 @@ class SiteSchema
                 ADD FOREIGN KEY (folder_id) REFERENCES {$folders}(id) ON DELETE SET NULL");
         }
     }
+
+    public static function ensurePostLayouts(PDO $pdo): void
+    {
+        $table = Database::table('post_layouts');
+        $posts = Database::table('posts');
+        $pdo->exec("CREATE TABLE IF NOT EXISTS {$table} (
+            post_id INT PRIMARY KEY, settings MEDIUMTEXT NOT NULL,
+            FOREIGN KEY (post_id) REFERENCES {$posts}(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
 }

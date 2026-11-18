@@ -23,7 +23,8 @@ if (!\app\Core\Installer::isInstalled() || \app\Models\Navigation::all() !== [] 
     \app\Models\Page::all() !== [] || \app\Models\PageRevision::allForPage(1) !== [] ||
     \app\Core\Design::snapshot('default')['layout']['columns'] !== 'none' ||
     \app\Core\PageLayout::settings(1) !== ['enabled' => false, 'width' => 'inherit', 'sections' => []] ||
-    \app\Models\Media::folders() !== [] || \app\Models\Media::all(0) !== []) {
+    \app\Models\Media::folders() !== [] || \app\Models\Media::all(0) !== [] ||
+    \app\Core\PageLayout::settings(1, 'post') !== ['enabled' => false, 'width' => 'inherit', 'sections' => []]) {
     throw new RuntimeException('Fresh install schema is incomplete.');
 }
 echo "PASS: real fresh installation creates all core feature tables\n";

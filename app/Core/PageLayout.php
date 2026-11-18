@@ -9,8 +9,8 @@ final class PageLayout
 {
     public const WIDTHS = ['standard' => '標準', 'wide' => 'ワイド（最大1440px）', 'full' => '全幅'];
     public const ELEMENTS = [
-        'page_title' => '固定ページのタイトル',
-        'page_content' => '固定ページの本文',
+        'page_title' => 'ページのタイトル',
+        'page_content' => 'ページの本文',
         'heading' => '見出し',
         'text' => '文章',
         'image' => '画像',
@@ -18,6 +18,12 @@ final class PageLayout
     ];
     public const MAX_SECTIONS = 24;
     public const MAX_ELEMENTS = 120;
+    public const SCOPES = [
+        'all' => '固定と投稿の共通レイアウト',
+        'page' => '固定のみの共通レイアウト',
+        'post' => '投稿のみの共通レイアウト',
+    ];
+    public const EMPTY_OVERRIDES = ['format' => 2];
 
     public static function stylesheetUrl(array $layout, string $themeWidth): string
     {
@@ -41,7 +47,7 @@ final class PageLayout
         $sections = $query['sections'] ?? null;
         if (!is_string($width) || !isset(self::WIDTHS[$width]) ||
             !is_array($sections) || !$sections || count($sections) > self::MAX_SECTIONS) {
-            throw new InvalidArgumentException('固定ページのレイアウトを確認してください。');
+            throw new InvalidArgumentException('ページのレイアウトを確認してください。');
         }
         $defaultWidth = match ($width) {
             'wide' => '1440px',
@@ -80,38 +86,144 @@ final class PageLayout
         return $luminance > 0.179 ? '#000000' : '#FFFFFF';
     }
 
-    public static function settings(int $id): array
+    public static function settings(int $id, string $kind = 'page'): array
     {
-        $table = Database::table('page_layouts');
-        $stmt = Database::connect()->prepare("SELECT settings FROM {$table} WHERE page_id = ?");
+        $table = self::table($kind);
+        $stmt = Database::connect()->prepare("SELECT settings FROM {$table} WHERE {$kind}_id = ?");
         $stmt->execute([$id]);
-        return self::decode($stmt->fetchColumn());
+        return self::resolve([self::decode($stmt->fetchColumn())]);
     }
 
-    public static function snapshot(int $id, bool $lock = false): ?array
+    public static function snapshot(int $id, bool $lock = false, string $kind = 'page'): ?array
     {
-        $pages = Database::table('pages');
-        $layouts = Database::table('page_layouts');
+        $layouts = self::table($kind);
+        $pages = Database::table($kind === 'post' ? 'posts' : 'pages');
         $stmt = Database::connect()->prepare("SELECT l.settings FROM {$pages} p
-            LEFT JOIN {$layouts} l ON l.page_id = p.id WHERE p.id = ? AND p.deleted_at IS NULL" .
+            LEFT JOIN {$layouts} l ON l.{$kind}_id = p.id WHERE p.id = ? AND p.deleted_at IS NULL" .
             ($lock ? ' FOR UPDATE' : ''));
         $stmt->execute([$id]);
         $value = $stmt->fetchColumn();
         if ($value === false) {
             return null;
         }
-        $layout = self::decode($value);
-        return ['id' => $id, 'layout' => $layout, 'revision' => hash('sha256', self::json($layout))];
+        $overrides = self::decode($value);
+        return [
+            'id' => $id, 'kind' => $kind, 'overrides' => $overrides,
+            'layout' => self::resolve([$overrides]),
+            'revision' => hash('sha256', self::json($overrides)),
+        ];
     }
 
     /** Called after locking and checking the page revision in Design::publish. */
-    public static function save(int $id, array $layout): void
+    public static function save(int $id, array $layout, string $kind = 'page'): void
     {
-        $table = Database::table('page_layouts');
-        $json = self::json($layout);
-        $stmt = Database::connect()->prepare("INSERT INTO {$table} (page_id, settings) VALUES (?, ?)
+        $table = self::table($kind);
+        $json = self::json(self::overrides($layout));
+        $stmt = Database::connect()->prepare("INSERT INTO {$table} ({$kind}_id, settings) VALUES (?, ?)
             ON DUPLICATE KEY UPDATE settings = ?");
         $stmt->execute([$id, $json, $json]);
+    }
+
+    private static function table(string $kind): string
+    {
+        if (!in_array($kind, ['page', 'post'], true)) {
+            throw new InvalidArgumentException('固定ページまたは投稿を選択してください。');
+        }
+        return Database::table($kind === 'post' ? 'post_layouts' : 'page_layouts');
+    }
+
+    public static function sectionDefaults(): array
+    {
+        return [
+            'background' => 'full', 'color' => '#F4F5F7', 'widthMode' => 'theme',
+            'percent' => 80, 'columns' => 1, 'share' => 50, 'gap' => 10, 'groups' => [[], []],
+        ];
+    }
+
+    /** Convert saved complete layouts without changing their existing appearance. */
+    public static function overrides(array $layout): array
+    {
+        if (($layout['format'] ?? null) === 2) {
+            return self::validateOverrides($layout);
+        }
+        if ($layout === []) {
+            return self::EMPTY_OVERRIDES;
+        }
+        $layout = self::validate($layout);
+        $layout['format'] = 2;
+        $layout['sectionCount'] = count($layout['sections']);
+        if ($layout['width'] === 'inherit') {
+            unset($layout['width']);
+        }
+        return $layout;
+    }
+
+    public static function validateOverrides(array $input): array
+    {
+        if (($input['format'] ?? null) !== 2 ||
+            array_diff(array_keys($input), ['format', 'enabled', 'width', 'sectionCount', 'sections'])) {
+            throw new InvalidArgumentException('ページのレイアウト設定を確認してください。');
+        }
+        $result = self::EMPTY_OVERRIDES;
+        if (array_key_exists('enabled', $input)) {
+            if (!is_bool($input['enabled'])) {
+                throw new InvalidArgumentException('セクションの表示設定を確認してください。');
+            }
+            $result['enabled'] = $input['enabled'];
+        }
+        if (array_key_exists('width', $input)) {
+            if (!is_string($input['width']) || !isset(self::WIDTHS[$input['width']])) {
+                throw new InvalidArgumentException('ページの本文幅を確認してください。');
+            }
+            $result['width'] = $input['width'];
+        }
+        if (array_key_exists('sectionCount', $input)) {
+            $result['sectionCount'] = self::range($input['sectionCount'], 0, self::MAX_SECTIONS);
+        }
+        if (array_key_exists('sections', $input)) {
+            $sections = $input['sections'];
+            if (!is_array($sections) || count($sections) > self::MAX_SECTIONS ||
+                array_keys($sections) !== array_keys(array_values($sections))) {
+                throw new InvalidArgumentException('セクションの設定を確認してください。');
+            }
+            $result['sections'] = [];
+            $count = 0;
+            $defaults = self::sectionDefaults();
+            foreach ($sections as $section) {
+                if (!is_array($section) || array_diff(array_keys($section), array_keys($defaults))) {
+                    throw new InvalidArgumentException('セクションの設定を確認してください。');
+                }
+                $validated = self::section(array_replace($defaults, $section), $count);
+                $result['sections'][] = array_intersect_key($validated, $section);
+            }
+        }
+        return $result;
+    }
+
+    /** Later layers override only explicitly assigned fields. */
+    public static function resolve(array $layers): array
+    {
+        $result = ['enabled' => false, 'width' => 'inherit', 'sections' => []];
+        foreach ($layers as $layer) {
+            $patch = self::overrides($layer);
+            foreach (['enabled', 'width'] as $field) {
+                if (array_key_exists($field, $patch)) {
+                    $result[$field] = $patch[$field];
+                }
+            }
+            if (isset($patch['sectionCount'])) {
+                $result['sections'] = array_slice($result['sections'], 0, $patch['sectionCount']);
+                while (count($result['sections']) < $patch['sectionCount']) {
+                    $result['sections'][] = self::sectionDefaults();
+                }
+            }
+            foreach ($patch['sections'] ?? [] as $index => $section) {
+                if (isset($result['sections'][$index])) {
+                    $result['sections'][$index] = array_replace($result['sections'][$index], $section);
+                }
+            }
+        }
+        return self::validate($result);
     }
 
     public static function validate(array $layout): array
@@ -121,7 +233,7 @@ final class PageLayout
         $sections = $layout['sections'] ?? null;
         if (!is_bool($enabled) || !is_string($width) || ($width !== 'inherit' && !isset(self::WIDTHS[$width])) ||
             !is_array($sections) || count($sections) > self::MAX_SECTIONS) {
-            throw new InvalidArgumentException('固定ページのレイアウトを確認してください。');
+            throw new InvalidArgumentException('ページのレイアウトを確認してください。');
         }
         $result = [];
         $count = 0;
@@ -149,7 +261,7 @@ final class PageLayout
         }
         $count += count($groups[0]) + count($groups[1]);
         if ($count > self::MAX_ELEMENTS) {
-            throw new InvalidArgumentException('固定ページの要素数が上限を超えました。');
+            throw new InvalidArgumentException('ページの要素数が上限を超えました。');
         }
         if (strlen($color) === 4) {
             $color = '#' . $color[1] . $color[1] . $color[2] . $color[2] . $color[3] . $color[3];
@@ -209,8 +321,9 @@ final class PageLayout
 
     private static function decode(string|false|null $value): array
     {
-        $defaults = ['enabled' => false, 'width' => 'inherit', 'sections' => []];
-        return is_string($value) ? array_replace($defaults, json_decode($value, true, 32, JSON_THROW_ON_ERROR)) : $defaults;
+        return is_string($value)
+            ? self::overrides(json_decode($value, true, 32, JSON_THROW_ON_ERROR))
+            : self::EMPTY_OVERRIDES;
     }
 
     private static function json(array $layout): string

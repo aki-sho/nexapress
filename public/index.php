@@ -99,6 +99,7 @@ $router->get('/post/archive/category/{slug}', 'app\Controllers\ArchiveController
 $router->get('/admin/profile', 'app\Controllers\Admin\ProfileController@index');
 $router->get('/admin/design', 'app\Controllers\Admin\DesignController@index');
 $router->get('/admin/design/page-layout/{id}', 'app\Controllers\Admin\DesignController@pageLayout');
+$router->get('/admin/design/post-layout/{id}', 'app\Controllers\Admin\DesignController@postLayout');
 $router->post('/admin/design/preview', 'app\Controllers\Admin\DesignController@preview');
 $router->post('/admin/design/publish', 'app\Controllers\Admin\DesignController@publish');
 $router->post('/admin/profile', 'app\Controllers\Admin\ProfileController@update');

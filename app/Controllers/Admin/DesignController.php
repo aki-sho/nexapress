@@ -54,8 +54,13 @@ final class DesignController extends Controller
             'preview' => url('admin/design/preview'), 'publish' => url('admin/design/publish'),
             'pageLayout' => [
                 'url' => url('admin/design/page-layout'),
+                'postUrl' => url('admin/design/post-layout'),
                 'home' => ($general['homepage_mode'] ?? '') === 'page' ? (int)($general['homepage_page_id'] ?? 0) : 0,
                 'widths' => PageLayout::WIDTHS, 'elements' => PageLayout::ELEMENTS,
+                'scopes' => PageLayout::SCOPES, 'sectionDefaults' => PageLayout::sectionDefaults(),
+                'images' => array_map(static fn(array $image): array => [
+                    'id' => (int)$image['id'], 'label' => $image['title'],
+                ], Media::images()),
                 'sectionLimit' => PageLayout::MAX_SECTIONS, 'elementLimit' => PageLayout::MAX_ELEMENTS,
             ],
         ]]);
@@ -63,10 +68,20 @@ final class DesignController extends Controller
 
     public function pageLayout(string $id): void
     {
+        $this->layoutSnapshot($id, 'page');
+    }
+
+    public function postLayout(string $id): void
+    {
+        $this->layoutSnapshot($id, 'post');
+    }
+
+    private function layoutSnapshot(string $id, string $kind): void
+    {
         header('Cache-Control: no-store, private');
-        $page = ctype_digit($id) ? PageLayout::snapshot((int)$id) : null;
+        $page = ctype_digit($id) ? PageLayout::snapshot((int)$id, false, $kind) : null;
         if ($page === null) {
-            $this->respond(['error' => '固定ページが見つかりません。'], 404);
+            $this->respond(['error' => '固定ページまたは投稿が見つかりません。'], 404);
             return;
         }
         $page['images'] = array_map(static fn(array $image): array => [
@@ -89,11 +104,21 @@ final class DesignController extends Controller
         Theme::preview($state['theme']);
         Design::preview($state, $draft);
         header('Content-Type: text/html; charset=UTF-8');
-        $pageId = $state['page']['id'] ?? filter_var($_POST['page_id'] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $kind = $_POST['content_kind'] ?? 'page';
+        if (!in_array($kind, ['page', 'post'], true)) {
+            $this->respond(['error' => '表示するページを選択してください。'], 422);
+            return;
+        }
+        $pageId = filter_var($_POST['content_id'] ?? $state['page']['id'] ?? $_POST['page_id'] ?? '',
+            FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         if ($pageId) {
-            $page = Page::find($pageId);
+            $page = $kind === 'post' ? Post::find($pageId) : Page::find($pageId);
             if (!$page || $page['deleted_at'] !== null || (!$draft && $page['status'] !== 'published')) {
                 $this->respond(['error' => '表示できる公開ページがありません。編集中の表示で確認できます。'], 404);
+                return;
+            }
+            if ($kind === 'post') {
+                $this->view('post-detail', ['post' => $page, 'isPreview' => $page['status'] !== 'published']);
                 return;
             }
             $settings = general_config();
@@ -132,6 +157,8 @@ final class DesignController extends Controller
         $this->respond([
             'states' => Design::snapshots(array_column(Theme::all(), 'id')),
             'page' => $state['page'] === null ? null : PageLayout::snapshot($state['page']['id']),
+            'content' => array_map(static fn(array $entry): ?array =>
+                PageLayout::snapshot($entry['id'], false, $entry['kind']), $state['content']),
         ]);
     }
 

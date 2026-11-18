@@ -48,10 +48,17 @@ final class Design
         return self::$preview['layout'] ?? self::layout($theme, self::stored());
     }
 
-    public static function pageLayout(int $id): array
+    public static function pageLayout(int $id, string $kind = 'page'): array
     {
-        $preview = self::$preview['page'] ?? null;
-        return ($preview['id'] ?? null) === $id ? $preview['layout'] : PageLayout::settings($id);
+        $common = self::$preview['contentLayouts'] ?? self::contentLayouts(self::stored());
+        $individual = PageLayout::snapshot($id, false, $kind)['overrides'] ?? PageLayout::EMPTY_OVERRIDES;
+        foreach (self::$preview['content'] ?? [] as $entry) {
+            if ($entry['kind'] === $kind && $entry['id'] === $id) {
+                $individual = $entry['overrides'];
+                break;
+            }
+        }
+        return PageLayout::resolve([$common['all'], $common[$kind], $individual]);
     }
 
     public static function menuLinks(string $menu, bool $includeHomeFallback = true): array
@@ -128,6 +135,43 @@ final class Design
             }
         }
         $page = null;
+        $content = [];
+        $common = self::contentLayouts(self::stored());
+        if (array_key_exists('contentLayouts', $input)) {
+            if (!is_array($input['contentLayouts']) ||
+                array_diff(array_keys($input['contentLayouts']), array_keys(PageLayout::SCOPES))) {
+                throw new InvalidArgumentException('共通レイアウトを確認してください。');
+            }
+            foreach ($input['contentLayouts'] as $scope => $patch) {
+                if (!is_array($patch)) {
+                    throw new InvalidArgumentException('共通レイアウトを確認してください。');
+                }
+                $common[$scope] = PageLayout::validateOverrides($patch);
+            }
+        }
+        foreach (['page', 'post'] as $kind) {
+            PageLayout::resolve([$common['all'], $common[$kind]]);
+        }
+        $entries = $input['content'] ?? [];
+        if (!is_array($entries)) {
+            throw new InvalidArgumentException('ページごとの設定を確認してください。');
+        }
+        foreach ($entries as $entry) {
+            $kind = $entry['kind'] ?? null;
+            $id = $entry['id'] ?? null;
+            $patch = $entry['overrides'] ?? null;
+            $entryRevision = $entry['revision'] ?? null;
+            if (!in_array($kind, ['page', 'post'], true) || !is_int($id) || $id < 1 ||
+                !is_array($patch) || !is_string($entryRevision) ||
+                !preg_match('/^[a-f0-9]{64}$/D', $entryRevision) || isset($content[$kind . ':' . $id])) {
+                throw new InvalidArgumentException('固定ページまたは投稿を選び直してください。');
+            }
+            $patch = PageLayout::validateOverrides($patch);
+            PageLayout::resolve([$common['all'], $common[$kind], $patch]);
+            $content[$kind . ':' . $id] = [
+                'kind' => $kind, 'id' => $id, 'overrides' => $patch, 'revision' => $entryRevision,
+            ];
+        }
         if (in_array('page_layout', $caps, true)) {
             $width = $layout['width'] ?? 'standard';
             if (!is_string($width) || !isset(PageLayout::WIDTHS[$width])) {
@@ -144,6 +188,13 @@ final class Design
                     throw new InvalidArgumentException('固定ページを選び直してください。');
                 }
                 $page = ['id' => $id, 'layout' => PageLayout::validate($settings), 'revision' => $pageRevision];
+                if (isset($content['page:' . $id])) {
+                    throw new InvalidArgumentException('同じページの設定が重複しています。');
+                }
+                $content['page:' . $id] = [
+                    'id' => $id, 'kind' => 'page', 'overrides' => PageLayout::overrides($page['layout']),
+                    'revision' => $pageRevision,
+                ];
             }
         }
         return [
@@ -154,6 +205,8 @@ final class Design
                 'footer' => self::menu($input['menus']['footer'] ?? null, 100),
             ],
             'page' => $page,
+            'contentLayouts' => $common,
+            'content' => array_values($content),
         ];
     }
 
@@ -170,15 +223,17 @@ final class Design
                 return null;
             }
 
-            $page = $state['page'] ?? null;
-            if ($page !== null) {
-                $currentPage = PageLayout::snapshot($page['id'], true);
-                if ($currentPage === null || !hash_equals($currentPage['revision'], $page['revision'])) {
+            $entries = $state['content'] ?? [];
+            usort($entries, static fn(array $a, array $b): int =>
+                [$a['kind'], $a['id']] <=> [$b['kind'], $b['id']]);
+            foreach ($entries as $entry) {
+                $currentPage = PageLayout::snapshot($entry['id'], true, $entry['kind']);
+                if ($currentPage === null || !hash_equals($currentPage['revision'], $entry['revision'])) {
                     $pdo->rollBack();
                     return null;
                 }
-                if ($page['layout'] !== $currentPage['layout']) {
-                    PageLayout::save($page['id'], $page['layout']);
+                if ($entry['overrides'] !== $currentPage['overrides']) {
+                    PageLayout::save($entry['id'], $entry['overrides'], $entry['kind']);
                 }
             }
 
@@ -186,6 +241,7 @@ final class Design
                 Navigation::replace($state['menus']['header'], $current['menus']['header']);
             }
             $saved['footerMenu'] = $state['menus']['footer'];
+            $saved['contentLayouts'] = $state['contentLayouts'];
             if (Theme::designAreas($state['theme'])) {
                 $saved['themes'][$state['theme']] = $state['layout'];
             }
@@ -212,6 +268,7 @@ final class Design
         $state = [
             'theme' => $theme,
             'layout' => self::layout($theme, $stored),
+            'contentLayouts' => self::contentLayouts($stored),
             'menus' => [
                 'header' => array_map(static fn(array $row): array => [
                     'id' => (int)$row['id'], 'label' => $row['label'], 'type' => $row['type'],
@@ -237,6 +294,15 @@ final class Design
             throw new RuntimeException('デザイン設定を読み込めませんでした。');
         }
         return self::$stored = json_decode($json, true, 32, JSON_THROW_ON_ERROR);
+    }
+
+    private static function contentLayouts(array $stored): array
+    {
+        $result = [];
+        foreach (PageLayout::SCOPES as $scope => $label) {
+            $result[$scope] = PageLayout::overrides($stored['contentLayouts'][$scope] ?? []);
+        }
+        return $result;
     }
 
     private static function layout(string $theme, array $stored): array

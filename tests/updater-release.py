@@ -228,6 +228,14 @@ function curl_setopt_array($handle, array $options): bool {
                     status, body, _ = admin.request('/admin/media?folder=0')
                     check(status == 200 and 'Retained media' in body and '新規フォルダ' in body,
                           ref + ': migrated media is visible in Unfiled')
+                if tuple(map(int, target.split('.'))) >= (2, 10, 0):
+                    status, body, _ = admin.request('/admin/design')
+                    data = json.loads(re.search(r'<script type="application/json" id="nx-design-data">(.*?)</script>', body, re.S)[1])
+                    check(status == 200 and 'ページ毎のレイアウト' in body and len(data['pageLayout']['scopes']) == 3,
+                          ref + ': updated design editor offers shared page and post layouts')
+                    status, body, _ = admin.request('/admin/design/post-layout/1')
+                    check(status == 200 and json.loads(body)['kind'] == 'post',
+                          ref + ': updated post layout schema and route work')
                 if not args.public:
                     token = admin.token()
                     next_version = target.rsplit('.', 1)[0] + '.' + str(int(target.rsplit('.', 1)[1]) + 1)

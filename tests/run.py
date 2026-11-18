@@ -70,6 +70,103 @@ def install_access_guard(archive_path, destination):
             output.write_bytes(archive.read(entry))
 
 
+def check_layout_inheritance(admin, guest, check):
+    def editor():
+        body = admin.request('/admin/design')[1]
+        return json.loads(re.search(r'<script type="application/json" id="nx-design-data">(.*?)</script>', body, re.S)[1])
+
+    def snapshot(kind, ident):
+        return json.loads(admin.request(f'/admin/design/{kind}-layout/{ident}')[1])
+
+    def entry(saved, overrides):
+        return {'kind': saved['kind'], 'id': saved['id'], 'revision': saved['revision'], 'overrides': overrides}
+
+    def request(data, **extra):
+        return {'_csrf_token': initial['token'], 'design': json.dumps(data), 'revision': data['revision'], **extra}
+
+    def css(body):
+        link = re.search(r'<link rel="stylesheet" href="([^"]*/nexapress/assets/page-layout\?[^"]+)">', body)
+        assert link, body[-1200:]
+        status, text, _ = guest.request(unescape(link[1]))
+        assert status == 200
+        return text
+
+    initial = editor()
+    state = copy.deepcopy(initial['themes']['default']['state'])
+    original_common = copy.deepcopy(state['contentLayouts'])
+    fixed_id = next(item['id'] for item in initial['targets']['page'] if item['label'] == '既存ページ')
+    post_id = next(item['id'] for item in initial['targets']['post'] if item['label'] == '既存投稿')
+    fixed = snapshot('page', fixed_id)
+    post = snapshot('post', post_id)
+    state['contentLayouts'] = {
+        'all': {'format': 2, 'enabled': True, 'width': 'full', 'sectionCount': 1, 'sections': [{
+            'color': '#EEEEEE', 'widthMode': 'percent', 'percent': 80, 'columns': 2, 'share': 50, 'gap': 10,
+            'groups': [[{'type': 'page_title'}, {'type': 'page_content'}], []],
+        }]},
+        'page': {'format': 2, 'sections': [{'color': '#F6E6E6'}]},
+        'post': {'format': 2, 'width': 'wide', 'sections': [{'color': '#E5F0E7', 'share': 60, 'gap': 6}]},
+    }
+    state['content'] = [
+        entry(fixed, {'format': 2, 'sections': [{'color': '#112233'}]}),
+        entry(post, {'format': 2, 'sections': [{'gap': 4}]}),
+    ]
+    for kind, ident, color, gap in [('page', fixed_id, '#112233', '10%'), ('post', post_id, '#E5F0E7', '4%')]:
+        code, body, _ = admin.request('/admin/design/preview', request(state, content_kind=kind, content_id=ident))
+        styles = css(body)
+        check(code == 200 and '--nx-section-background:' + color in styles and '--nx-section-gap:' + gap in styles
+              and '--nx-section-width:80%' in styles, kind + ' draft resolves all three inheritance layers')
+    check('data-layout-section' not in guest.request('/legacy-post')[1], 'inherited draft stays out of public posts')
+    code, body, _ = admin.request('/admin/design/publish', request(state))
+    check(code == 200 and len(json.loads(body)['content']) == 2, 'common and individual page/post settings publish atomically')
+    fixed_css = css(guest.request('/page/legacy')[1])
+    post_css = css(guest.request('/legacy-post')[1])
+    check('--nx-section-background:#112233' in fixed_css and '--nx-section-background:#E5F0E7' in post_css
+          and '--nx-section-gap:4%' in post_css, 'identical page and post IDs keep separate overrides')
+    check('data-layout-section' not in guest.request('/posts')[1], 'detail layouts preserve the post archive')
+    current = editor()['themes']['default']['state']
+    current['content'] = state['content']
+    check(admin.request('/admin/design/publish', request(current))[0] == 409,
+          'stale individual revisions reject the complete layout publication')
+
+    current = editor()['themes']['default']['state']
+    current['contentLayouts']['all']['sections'][0]['percent'] = 65
+    current['contentLayouts']['all']['sections'][0]['color'] = '#FFF0AD'
+    check(admin.request('/admin/design/publish', request(current))[0] == 200, 'common layout can change after an individual override')
+    fixed_css = css(guest.request('/page/legacy')[1])
+    post_css = css(guest.request('/legacy-post')[1])
+    check('--nx-section-width:65%' in fixed_css and '--nx-section-width:65%' in post_css
+          and '--nx-section-background:#112233' in fixed_css and '--nx-section-background:#E5F0E7' in post_css,
+          'unassigned fields follow later common changes while assigned fields keep priority')
+    preserved = css(guest.request('/page/welcome')[1])
+    check('--nx-section-background:#AABBCC' in preserved and '--nx-section-width:80%' in preserved,
+          'saved complete layouts retain their explicit settings under new common defaults')
+
+    current = editor()['themes']['default']['state']
+    current['content'] = [
+        entry(snapshot('page', fixed_id), {'format': 2}),
+        entry(snapshot('post', post_id), {'format': 2, 'enabled': False}),
+    ]
+    check(admin.request('/admin/design/publish', request(current))[0] == 200, 'individual settings can return to inheritance or disable sections')
+    check('--nx-section-background:#F6E6E6' in css(guest.request('/page/legacy')[1])
+          and 'data-layout-section' not in guest.request('/legacy-post')[1],
+          'reset inherits the fixed-page defaults and explicit false overrides an enabled common layout')
+
+    current = editor()['themes']['default']['state']
+    current['contentLayouts']['all']['sectionCount'] = 2
+    check(admin.request('/admin/design/publish', request(current))[0] == 200, 'common section count can increase')
+    check('data-layout-section="1"' in guest.request('/page/legacy')[1],
+          'individual fields inherit later additions to the common section structure')
+
+    current = editor()['themes']['default']['state']
+    current['contentLayouts'] = original_common
+    current['content'] = [
+        entry(snapshot('page', fixed_id), fixed['overrides']),
+        entry(snapshot('post', post_id), post['overrides']),
+    ]
+    check(admin.request('/admin/design/publish', request(current))[0] == 200,
+          'test common and individual settings restore to their original values')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--browser', action='store_true')
@@ -320,6 +417,7 @@ def main():
         conflict = json.loads(saved_json)['states']['default']
         conflict['page'] = page_state
         check(admin.request('/admin/design/publish', page_request(conflict))[0] == 409, 'stale page layouts cannot overwrite a newer publication')
+        check_layout_inheritance(admin, guest, check)
         theme_token = admin.csrf('/admin/themes')
         admin.request('/admin/themes/update', {'_csrf_token': theme_token, 'theme': 'monoedge'})
         alternate = guest.request('/')[1]
@@ -342,6 +440,19 @@ def main():
         footer_preview = admin.request('/admin/design/preview', {'_csrf_token': custom['token'], 'design': json.dumps(footer_theme['state'])})[1]
         check('nx-design-footer--3' in footer_preview and 'nx-design-main--left' not in footer_preview,
               'a footer-only theme previews its own supported areas')
+        footer_state = footer_theme['state']
+        original_common = copy.deepcopy(footer_state['contentLayouts'])
+        footer_state['contentLayouts']['all'] = {'format': 2, 'width': 'full'}
+        status, body, _ = admin.request('/admin/design/publish', {
+            '_csrf_token': custom['token'], 'design': json.dumps(footer_state), 'revision': footer_state['revision'],
+        })
+        check(status == 200 and json.loads(body)['states']['default']['contentLayouts']['all']['width'] == 'full',
+              'shared layouts publish when switching to a theme with a different supported area')
+        restored = json.loads(body)['states']['test-footer-theme']
+        restored['contentLayouts'] = original_common
+        check(admin.request('/admin/design/publish', {
+            '_csrf_token': custom['token'], 'design': json.dumps(restored), 'revision': restored['revision'],
+        })[0] == 200, 'shared settings restore after switching theme capabilities')
         general_token = admin.csrf('/admin/settings/general')
         admin.request('/admin/settings/general/update', {'_csrf_token': general_token, 'site_title': 'NexaPress Test', 'timezone': 'Asia/Tokyo', 'homepage_mode': 'page', 'homepage_page_id': page_id})
         check('初稿の本文' in guest.request('/')[1] and '記事一覧' in guest.request('/posts')[1], 'static front page with separate post archive')

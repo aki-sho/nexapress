@@ -22,7 +22,7 @@
                 </label>
                 <a href="<?= e(url('admin/themes')) ?>">使用するテーマを変更</a>
                 <div class="nx-design-tabs" role="group" aria-label="編集する項目">
-                    <?php foreach (['menus' => 'メニュー', 'widgets' => 'ウィジェット', 'header' => 'ヘッダー', 'columns' => '本文カラム', 'footer' => 'フッター', 'page_layout' => '固定ページのレイアウト'] as $key => $label): ?>
+                    <?php foreach (['menus' => 'メニュー', 'widgets' => 'ウィジェット', 'header' => 'ヘッダー', 'columns' => '本文カラム', 'footer' => 'フッター', 'page_layout' => 'ページ毎のレイアウト'] as $key => $label): ?>
                         <button type="button" data-pane="<?= e($key) ?>" aria-pressed="<?= $key === 'menus' ? 'true' : 'false' ?>"><?= e($label) ?></button>
                     <?php endforeach; ?>
                 </div>
