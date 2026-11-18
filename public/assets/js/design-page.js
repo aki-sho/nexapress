@@ -38,7 +38,8 @@
         let column = 0;
         let elementIndex = 0;
         let elementType = 'heading';
-        let showColors = true;
+        let showColors = false;
+        let showLayout = false;
         let showElements = false;
         let images = [];
 
@@ -95,18 +96,34 @@
         }
 
         function colorFields(item) {
-            return `<div class="nx-page-color-fields">
-                <label>カラーコード<input type="text" data-page-field="hex" value="${escape(item.color)}" maxlength="7" spellcheck="false"></label>
-                <label>色を選ぶ<input type="color" data-page-field="color" value="${escape(item.color)}"></label>
-            </div>
-            <details class="nx-page-details" data-page-details="colors" ${showColors ? 'open' : ''}>
-                <summary>背景色のサンプル</summary>
-                <div class="nx-page-palettes">${palettes.map(([label, colors]) => `<div>
-                    <span class="nx-design-note">${label}</span>
-                    <div class="nx-page-swatches">${colors.map(color => `<button type="button" class="nx-design-small nx-page-swatch"
-                        data-page-color="${color}" aria-label="${label} ${color}" aria-pressed="${item.color === color}">
-                        <span style="background-color:${color}" aria-hidden="true"></span>${color}</button>`).join('')}</div>
-                </div>`).join('')}</div>
+            return `<details class="nx-page-details" data-page-details="colors" ${showColors ? 'open' : ''}>
+                <summary>背景の色</summary>
+                <div class="nx-page-fields">
+                    <div class="nx-page-color-fields">
+                        <label>カラーコード<input type="text" data-page-field="hex" value="${escape(item.color)}" maxlength="7" spellcheck="false"></label>
+                        <label>色を選ぶ<input type="color" data-page-field="color" value="${escape(item.color)}"></label>
+                    </div>
+                    <div class="nx-page-palettes">${palettes.map(([label, colors]) => `<div>
+                        <span class="nx-design-note">${label}</span>
+                        <div class="nx-page-swatches">${colors.map(color => `<button type="button" class="nx-design-small nx-page-swatch"
+                            data-page-color="${color}" aria-label="${label} ${color}" aria-pressed="${item.color === color}">
+                            <span style="background-color:${color}" aria-hidden="true"></span>${color}</button>`).join('')}</div>
+                    </div>`).join('')}</div>
+                </div>
+            </details>`;
+        }
+
+        function layoutFields(item) {
+            return `<details class="nx-page-details" data-page-details="layout" ${showLayout ? 'open' : ''}>
+                <summary>中身の幅・カラム数</summary>
+                <div class="nx-page-fields">
+                    ${select('中身の幅', 'widthMode', [['theme', 'ページの本文幅に合わせる'], ['percent', '割合を指定']], item.widthMode)}
+                    ${item.widthMode === 'percent' ? integer('画面幅に対する割合（%）', 'percent', item.percent, 40, 100) : ''}
+                    ${select('カラム数', 'columns', [[1, '1カラム'], [2, '2カラム']], item.columns)}
+                    ${item.columns === 2 ? `<div class="nx-page-color-fields">
+                        ${integer('左への配分（%）', 'share', item.share, 20, 80)}${integer('列の間隔（%）', 'gap', item.gap, 0, 30)}</div>
+                        <p class="nx-design-note nx-page-ratio" data-page-ratio>${ratio(item)}</p>` : ''}
+                </div>
             </details>`;
         }
 
@@ -137,9 +154,8 @@
                 <div class="nx-page-fields">
                     ${item.columns === 2 || item.groups[1].length ? select('編集するカラム', 'column', slots, column) : ''}
                     ${current ? select('編集する要素', 'element', list.map((element, index) => [index, elementLabel(element)]), elementIndex) + fields +
-                        `<div class="nx-design-actions">${action('element-up', '上へ', elementIndex === 0 ? 'disabled' : '')}
-                            ${action('element-down', '下へ', elementIndex === list.length - 1 ? 'disabled' : '')}
-                            ${action('element-remove', '要素を削除')}</div>` : '<p class="nx-design-note">このカラムには要素がありません。</p>'}
+                        `<div class="nx-design-actions">${action('element-remove', '要素を削除')}</div>` :
+                        '<p class="nx-design-note">このカラムには要素がありません。</p>'}
                     ${select('追加する要素', 'elementType', Object.entries(config.elements), elementType)}
                     <div>${action('element-add', '＋ 要素を追加')}</div>
                 </div>
@@ -152,6 +168,9 @@
         }
 
         function render() {
+            showColors = panel.querySelector('[data-page-details="colors"]')?.open ?? showColors;
+            showLayout = panel.querySelector('[data-page-details="layout"]')?.open ?? showLayout;
+            showElements = panel.querySelector('[data-page-details="elements"]')?.open ?? showElements;
             const title = '<h2>固定ページのレイアウト</h2>';
             if (choices.length === 1) return title + '<p class="nx-design-note">固定ページを作成するとここで編集できます。</p>';
             const picker = select('編集する固定ページ', 'page', choices, selected);
@@ -166,27 +185,23 @@
                     セクションで構成する</label>`;
             if (!layout.enabled) return html;
             const item = section();
-            html += '<h3>セクション</h3>';
+            html += '<div class="nx-page-section-picker"><h3>セクション</h3>';
             if (item) {
-                html += select('編集するセクション', 'section', layout.sections.map((section, index) => [index, sectionLabel(section, index)]), sectionIndex) +
-                    `<div class="nx-design-actions">${action('section-up', '上へ', sectionIndex === 0 ? 'disabled' : '')}
-                        ${action('section-down', '下へ', sectionIndex === layout.sections.length - 1 ? 'disabled' : '')}
-                        ${action('section-remove', '選択中のセクションを削除')}</div>`;
-            } else {
+                html += `<select data-page-field="section" aria-label="編集するセクション">
+                    ${layout.sections.map((section, index) =>
+                        `<option value="${index}" ${index === sectionIndex ? 'selected' : ''}>${escape(sectionLabel(section, index))}</option>`).join('')}
+                </select>`;
+            }
+            html += '</div>';
+            if (!item) {
                 html += '<p class="nx-design-note">セクションが空の場合は固定ページの本文を表示します。</p>';
             }
-            html += `<div>${action('section-add', '＋ セクションを追加')}</div>`;
+            html += `<div class="nx-design-actions">${action('section-add', '＋ セクションを追加')}
+                ${item ? action('section-remove', 'セクションを削除') : ''}</div>`;
             if (!item) return html;
-            return html + '<h3>選択中のセクション</h3>' +
-                select('背景の幅', 'background', backgrounds, item.background) +
+            return html + select('背景の幅', 'background', backgrounds, item.background) +
                 (item.background === 'none' ? '' : colorFields(item)) +
-                select('中身の幅', 'widthMode', [['theme', 'ページの本文幅に合わせる'], ['percent', '割合を指定']], item.widthMode) +
-                (item.widthMode === 'percent' ? integer('画面幅に対する割合（%）', 'percent', item.percent, 40, 100) : '') +
-                select('カラム数', 'columns', [[1, '1カラム'], [2, '2カラム']], item.columns) +
-                (item.columns === 2 ? `<div class="nx-page-color-fields">
-                    ${integer('左への配分（%）', 'share', item.share, 20, 80)}${integer('列の間隔（%）', 'gap', item.gap, 0, 30)}</div>
-                    <p class="nx-design-note nx-page-ratio" data-page-ratio>${ratio(item)}</p>` : '') +
-                elementControls(item);
+                layoutFields(item) + elementControls(item);
         }
 
         function applyColor(color, updateCode) {
@@ -197,13 +212,6 @@
             if (section().color === color) return;
             section().color = color;
             changed(undefined, false);
-        }
-
-        function swap(list, index, direction) {
-            const after = index + direction;
-            if (after < 0 || after >= list.length) return index;
-            [list[index], list[after]] = [list[after], list[index]];
-            return after;
         }
 
         function refreshValues() {
@@ -238,8 +246,6 @@
                 sections.splice(sectionIndex, 1);
                 sectionIndex = Math.max(0, Math.min(sectionIndex, sections.length - 1));
                 column = elementIndex = 0;
-            } else if (command === 'section-up' || command === 'section-down') {
-                sectionIndex = swap(sections, sectionIndex, command === 'section-up' ? -1 : 1);
             } else if (command === 'element-add') {
                 const total = sections.reduce((sum, item) => sum + item.groups[0].length + item.groups[1].length, 0);
                 if (total >= config.elementLimit) {
@@ -251,8 +257,6 @@
                 const list = elements();
                 list.splice(elementIndex, 1);
                 elementIndex = Math.max(0, Math.min(elementIndex, list.length - 1));
-            } else {
-                elementIndex = swap(elements(), elementIndex, command === 'element-up' ? -1 : 1);
             }
             changed(command.startsWith('section') ?
                 (sections.length ? '[data-page-field="section"]' : '[data-page-action="section-add"]') :
@@ -358,6 +362,7 @@
         panel.addEventListener('toggle', event => {
             if (!event.target.isConnected) return;
             if (event.target.dataset.pageDetails === 'colors') showColors = event.target.open;
+            if (event.target.dataset.pageDetails === 'layout') showLayout = event.target.open;
             if (event.target.dataset.pageDetails === 'elements') showElements = event.target.open;
         }, true);
 

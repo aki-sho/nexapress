@@ -394,9 +394,31 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
         await page.locator('[data-pane="page_layout"]').click();
         await page.locator('[data-page-field="page"]').selectOption({label: '既存ページ'});
         await page.locator('[data-page-field="enabled"]').check();
+        const pagePanel = page.locator('#nx-design-panel');
+        const sectionPicker = page.getByRole('combobox', {name: '編集するセクション'});
+        const colorSettings = page.locator('[data-page-details="colors"]');
+        const layoutSettings = page.locator('[data-page-details="layout"]');
+        assert.equal(await pagePanel.getByRole('heading', {name: '選択中のセクション', exact: true}).count(), 0);
+        assert.equal(await pagePanel.getByRole('button', {name: /^(上へ|下へ)$/}).count(), 0);
+        assert.equal(await sectionPicker.inputValue(), '0');
+        assert(await sectionPicker.evaluate(picker => {
+            const title = picker.previousElementSibling.getBoundingClientRect();
+            const select = picker.getBoundingClientRect();
+            return title.width > 0 && select.left >= title.right && select.left - title.right <= 10 &&
+                Math.abs(select.top + select.height / 2 - title.top - title.height / 2) < 2;
+        }), 'the selected section is immediately to the right of the section heading');
+        assert(await colorSettings.evaluate(details =>
+            details.previousElementSibling.querySelector('[data-page-field="background"]') !== null),
+            'background color directly follows background width');
+        assert.equal(await colorSettings.evaluate(details => details.open), false);
+        assert.equal(await layoutSettings.evaluate(details => details.open), false);
+        assert.equal(await colorSettings.locator('details').count(), 0);
+        await page.screenshot({path: path.join(output, 'page-layout-collapsed.png')});
+        await colorSettings.locator('summary').click();
         const renderedSection = page.frameLocator('#nx-design-frame').locator('[data-layout-section="0"]');
         const hex = page.locator('[data-page-field="hex"]');
-        assert.equal(await page.locator('[data-page-color]').count(), 15);
+        assert(await hex.isVisible());
+        assert.equal(await colorSettings.locator('[data-page-color]:visible').count(), 15);
         await page.locator('[data-page-color="#101827"]').click();
         assert.equal(await hex.inputValue(), '#101827');
         await page.waitForFunction(() => {
@@ -407,8 +429,33 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
         await hex.fill('#abc');
         await hex.press('Tab');
         assert.equal(await hex.inputValue(), '#AABBCC');
-        await page.locator('[data-page-field="widthMode"]').selectOption('percent');
-        await page.locator('[data-page-field="columns"]').selectOption('2');
+        await colorSettings.locator('summary').click();
+        assert.equal(await hex.isVisible(), false);
+        await layoutSettings.locator('summary').click();
+        await layoutSettings.locator('[data-page-field="widthMode"]').selectOption('percent');
+        await layoutSettings.locator('[data-page-field="columns"]').selectOption('2');
+        assert.equal(await layoutSettings.evaluate(details => details.open), true);
+        assert.equal(await colorSettings.evaluate(details => details.open), false);
+        await pagePanel.getByRole('button', {name: '＋ セクションを追加', exact: true}).click();
+        assert.equal(await sectionPicker.inputValue(), '1');
+        await sectionPicker.selectOption('0');
+        assert.equal(await page.locator('[data-page-field="percent"]').inputValue(), '80');
+        assert.equal(await page.locator('[data-page-field="columns"]').inputValue(), '2');
+        await sectionPicker.selectOption('1');
+        await pagePanel.getByRole('button', {name: 'セクションを削除', exact: true}).click();
+        assert.equal(await sectionPicker.inputValue(), '0');
+        assert.equal(await sectionPicker.locator('option').count(), 1);
+        await colorSettings.locator('summary').focus();
+        await page.keyboard.press('Space');
+        assert(await hex.isVisible());
+        assert.equal(await hex.inputValue(), '#AABBCC');
+        await page.locator('[data-page-field="background"]').selectOption('none');
+        assert.equal(await colorSettings.count(), 0);
+        await page.locator('[data-page-field="background"]').selectOption('full');
+        assert.equal(await colorSettings.evaluate(details => details.open), true);
+        await colorSettings.locator('summary').click();
+        assert.equal(await colorSettings.evaluate(details => details.open), false);
+        console.log('PASS: section selection, color and layout disclosures retain settings through redraws');
         await page.locator('[data-page-details="elements"] > summary').click();
         await page.locator('[data-device="desktop"]').click();
         await page.waitForFunction(() => {

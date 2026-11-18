@@ -82,6 +82,13 @@
 #nx-design-frame { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; transform-origin: top left; }
 .nx-design-stage[aria-busy="true"] iframe { pointer-events: none; }
 
+.nx-page-section-picker {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+}
+
 .nx-page-color-fields {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
