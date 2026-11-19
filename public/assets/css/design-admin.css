@@ -106,9 +106,7 @@
     background: #f4f7fc;
     font-size: .85rem;
 }
-.nx-page-preview-status dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 12px; margin: 10px 0; }
-.nx-page-preview-status :is(dt, dd) { margin: 0; overflow-wrap: anywhere; }
-.nx-page-status-source { display: block; color: var(--design-muted); }
+.nx-page-preview-status:empty { display: none; }
 .nx-page-preview-status p { margin: 8px 0; }
 .nx-page-preview-conflict { padding: 8px; border: 1px solid #e6c47e; border-radius: 5px; background: #fff8e8; color: #694610; }
 

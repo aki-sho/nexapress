@@ -217,12 +217,12 @@ async function checkCommonLayoutFeedback(page, base, output) {
     await field('hex').fill('#CBB380');
     await field('hex').press('Tab');
     await conflict.waitFor();
-    assert((await status.textContent()).includes('通常の本文表示'));
-    assert((await status.textContent()).includes('ページ個別'));
-    assert((await status.textContent()).includes('未適用'));
+    assert.equal(await conflict.innerText(), '編集中の「本文なし published」は、このページには適用されていません。\n確認先：固定ページのレイアウト');
+    assert.equal(await status.locator('dl').count(), 0);
     await waitCard();
     await page.screenshot({path: path.join(output, 'shared-layout-blocked.png')});
     await status.getByRole('button', {name: 'このページで共通設定を使用', exact: true}).click();
+    assert((await conflict.innerText()).includes('確認先：固定のみの共通レイアウト'));
     await status.getByRole('button', {name: '固定のみの共通レイアウトを開く', exact: true}).click();
     await page.locator('[data-page-inherit="color"]').check();
     await waitGold();
@@ -231,7 +231,6 @@ async function checkCommonLayoutFeedback(page, base, output) {
     await status.getByRole('button', {name: 'このページで共通設定を使用', exact: true}).click();
     await waitGold();
     assert.equal(await conflict.count(), 0);
-    assert((await status.textContent()).includes('#CBB380'));
     await publish();
     assert.equal(await status.getByRole('button', {name: '元の個別指定に戻す', exact: true}).count(), 0);
     const snapshot = await (await page.request.get(base + '/admin/design/page-layout/' + target.split(':')[1])).json();
@@ -252,7 +251,7 @@ async function checkCommonLayoutFeedback(page, base, output) {
     await waitCard();
     await openScope('all');
     await conflict.waitFor();
-    assert((await status.textContent()).includes('0件'));
+    assert((await conflict.innerText()).includes('確認先：固定ページのレイアウト'));
     await status.getByRole('button', {name: 'このページで共通設定を使用', exact: true}).click();
     await waitGold();
     await page.screenshot({path: path.join(output, 'shared-layout-inherited.png')});

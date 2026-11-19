@@ -155,16 +155,16 @@
             const record = existing.get(key);
             if (!record) return '<p class="nx-design-note">適用される設定を読み込み中…</p>';
 
-            const sources = {enabled: '初期設定', sectionCount: '初期設定', width: 'テーマの本文幅', sections: []};
+            const sources = {enabled: '初期設定', sectionCount: '初期設定', sections: []};
             const layers = [
                 [config.scopes.all, common.all.draft],
                 [config.scopes[previewTarget.kind], common[previewTarget.kind].draft],
-                ['ページ個別', record.draft],
+                [scopeLabels[previewTarget.kind + '_item'], record.draft],
             ];
             let layout = emptyLayout();
             for (const [label, patch] of layers) {
                 layout = merge(layout, patch);
-                for (const name of ['enabled', 'sectionCount', 'width']) {
+                for (const name of ['enabled', 'sectionCount']) {
                     if (owns(patch, name)) sources[name] = label;
                 }
                 sources.sections.length = layout.sections.length;
@@ -178,46 +178,31 @@
             const sectionSources = sources.sections[sectionIndex] ?? {};
             const visible = layout.enabled && layout.sections.length > 0;
             const displaySource = layout.enabled && !layout.sections.length ? sources.sectionCount : sources.enabled;
-            const display = visible ? 'セクション表示' : '通常の本文表示';
-            let color = '未適用（通常の本文表示）';
             let colorSource = displaySource;
             if (visible) {
                 if (!item) {
-                    color = '対象のセクションがありません';
                     colorSource = sources.sectionCount;
                 } else if (item.background === 'none') {
-                    color = '未適用（背景なし）';
                     colorSource = sectionSources.background ?? '初期設定';
                 } else {
-                    color = item.color;
-                    colorSource = sectionSources.color ?? '初期設定';
+                    colorSource = sectionSources.color ?? sources.sectionCount;
                 }
             }
-            const rows = [
-                ['表示方法', display, displaySource],
-                ['セクション数', layout.sections.length + '件', sources.sectionCount],
-                ['本文幅', config.widths[layout.width === 'inherit' ? themeWidth() : layout.width], sources.width],
-                ['背景の色', color, colorSource],
-            ];
-            if (visible && item) rows.push(['カラム数', item.columns + 'カラム', sectionSources.columns ?? '初期設定']);
             const overridden = Object.keys(record.draft).some(name => name !== 'format');
             const kindOverridden = Object.keys(common[previewTarget.kind].draft).some(name => name !== 'format');
             const editedLayout = effective();
             const editedSection = editedLayout?.sections[sectionIndex];
             const colorBlocked = !individual() && editedLayout?.enabled && editedSection &&
                 editedSection.background !== 'none' && (!visible || !item || item.background === 'none' || item.color !== editedSection.color);
-            return `<strong>表示に使われる設定</strong>
-                <dl>${rows.map(([label, value, source]) => `<dt>${label}</dt><dd>${escape(value)}
-                    <small class="nx-page-status-source">${escape(source)}</small></dd>`).join('')}</dl>
-                ${colorBlocked ? '<p class="nx-page-preview-conflict" data-page-preview-conflict>編集中の背景色は、このページには適用されていません。上の「表示方法」「背景の色」の指定元を確認してください。</p>' : ''}
-                ${overridden ? '<p class="nx-design-note">このページには個別指定があります。</p>' : ''}
-                <div class="nx-design-actions">
-                    ${overridden ? action('use-common', 'このページで共通設定を使用') : ''}
-                    ${inheritanceUndo.has(key) ? action('restore-individual', '元の個別指定に戻す') : ''}
-                    ${!individual() ? action('edit-individual', 'このページの個別設定を開く') : ''}
-                    ${kindOverridden && scope !== previewTarget.kind ? action('edit-kind', escape(config.scopes[previewTarget.kind]) + 'を開く') : ''}
-                </div>
-                ${overridden ? '<p class="nx-design-note">共通設定を使用すると、本文幅・色・構成・要素配置を全体共通・種類別共通から引き継ぎます。「公開」で確定します。</p>' : ''}`;
+            const pageName = choices[previewTarget.kind].find(item => String(item.id) === previewTarget.id)?.label ?? '';
+            const actions = [
+                overridden ? action('use-common', 'このページで共通設定を使用') : '',
+                inheritanceUndo.has(key) ? action('restore-individual', '元の個別指定に戻す') : '',
+                !individual() ? action('edit-individual', 'このページの個別設定を開く') : '',
+                kindOverridden && scope !== previewTarget.kind ? action('edit-kind', escape(config.scopes[previewTarget.kind]) + 'を開く') : '',
+            ].join('');
+            return (colorBlocked ? `<p class="nx-page-preview-conflict" data-page-preview-conflict>編集中の「${escape(pageName)}」は、このページには適用されていません。<br>確認先：${escape(colorSource)}</p>` : '') +
+                (actions ? '<div class="nx-design-actions">' + actions + '</div>' : '');
         }
 
         function refreshPreviewStatus() {
