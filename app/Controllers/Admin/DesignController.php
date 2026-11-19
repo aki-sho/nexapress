@@ -52,6 +52,7 @@ final class DesignController extends Controller
             'linkTypes' => Navigation::TYPES, 'widgets' => Design::WIDGETS,
             'regions' => Design::REGIONS, 'token' => Csrf::token(),
             'widgetAreas' => Design::widgetAreas(), 'alignments' => Design::ALIGNMENTS,
+            'categoryLimit' => Design::MAX_CATEGORY_LINKS,
             'chromeDefaults' => [
                 'header' => Design::headerRowDefaults(),
                 'stackedHeader' => Design::headerRowDefaults(true),

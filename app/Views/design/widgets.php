@@ -2,6 +2,26 @@
     <p class="nx-design-empty">ここにウィジェットを配置できます。</p>
 <?php endif; ?>
 <?php foreach ($widgets as $widget): ?>
+    <?php if ($widget['type'] === 'category' && count($widget['reference_ids'] ?? []) > 1): ?>
+        <?php
+        $selectedCategories ??= array_column(\app\Models\Category::all(), null, 'id');
+        $categoryLinks = [];
+        foreach ($widget['reference_ids'] as $id) {
+            if (isset($selectedCategories[$id])) {
+                $categoryLinks[] = $selectedCategories[$id];
+            }
+        }
+        ?>
+        <?php if ($categoryLinks): ?>
+            <section class="nx-design-widget nx-design-widget-categories">
+                <?php if ($widget['title'] !== ''): ?><h2><?= e($widget['title']) ?></h2><?php endif; ?>
+                <ul><?php foreach ($categoryLinks as $category): ?>
+                    <li><a href="<?= e(category_url($category)) ?>"><?= e($category['name']) ?></a></li>
+                <?php endforeach; ?></ul>
+            </section>
+        <?php endif; ?>
+        <?php continue; ?>
+    <?php endif; ?>
     <?php if (isset(\app\Models\Navigation::TYPES[$widget['type']])): ?>
         <?php $link = \app\Models\Navigation::resolveLink(['label' => $widget['title']] + $widget); ?>
         <?php if ($link !== null): ?>

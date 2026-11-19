@@ -65,6 +65,7 @@
     });
     const hasChanges = id => !same(menuItems, published[id].menus) || !same(layouts[id], published[id].layout);
     const currentList = () => pane === 'menus' ? menuItems[menuName] : layouts[theme].widgets[area];
+    const categoryIds = item => item.reference_ids ?? (item.reference_id ? [item.reference_id] : []);
     const button = (action, label, attributes = '') =>
         `<button type="button" class="nx-design-small" data-action="${action}" ${attributes}>${label}</button>`;
     const field = (label, name, pairs, current, attributes = '') =>
@@ -99,7 +100,8 @@
         return `<ol class="nx-design-item-list">${list.map((item, index) => {
             const kind = (forMenu ? linkTypes : data.widgets)[item.type];
             const target = targets[item.type]?.find(choice => choice.id === item.reference_id);
-            const label = escape(item.label || item.title || target?.label || kind);
+            const count = !forMenu && item.type === 'category' ? categoryIds(item).length : 0;
+            const label = escape(item.label || item.title || (count > 1 ? 'カテゴリ（' + count + '件）' : target?.label) || kind);
             const attrs = `data-index="${index}"`;
             return `<li class="nx-design-item">
                 <div><strong>${label}</strong><span class="nx-design-note">${escape(kind)}</span></div>
@@ -125,6 +127,21 @@
         return field('リンク先', 'reference_id', choices, item.reference_id, 'required');
     }
 
+    function categoryField(item) {
+        const selected = categoryIds(item);
+        const choices = [...targets.category];
+        selected.filter(id => !choices.some(choice => choice.id === id)).forEach(id =>
+            choices.push({id, label: '現在のカテゴリ（削除済み）'}));
+        return `<fieldset class="nx-design-category-picker"><legend>カテゴリ（複数選択可）
+            <span class="nx-design-note" data-category-count>${selected.length}件</span></legend>
+            <div class="nx-design-category-choices">${choices.length ? choices.map(choice =>
+                `<label class="nx-design-check"><input type="checkbox" name="reference_ids" value="${choice.id}"
+                    ${selected.includes(choice.id) ? 'checked' : ''}>${escape(choice.label)}</label>`).join('') :
+                '<p class="nx-design-note">カテゴリを作成してください。</p>'}</div></fieldset>`;
+    }
+
+    const categoryTitleLabel = count => count > 1 ? '見出し（任意）' : '表示名（省略するとカテゴリ名）';
+
     function renderForm() {
         const item = editor.item;
         let fields;
@@ -135,7 +152,10 @@
         } else {
             fields = field('種類', 'type', Object.entries(data.widgets), item.type, 'data-form-setting="type"') +
                 field('表示場所', 'area', activeAreas().map(id => [id, areas[id]]), item.area);
-            if (linkTypeIds.includes(item.type)) {
+            if (item.type === 'category') {
+                fields += categoryField(item) + `<label><span data-category-title-label>${categoryTitleLabel(categoryIds(item).length)}</span>
+                    <input name="title" maxlength="80" value="${escape(item.title)}"></label>`;
+            } else if (linkTypeIds.includes(item.type)) {
                 fields += linkField(item) + `<label>${item.type === 'custom' ? '表示名' : '表示名（省略するとリンク先の名前）'}
                     <input name="title" maxlength="80" value="${escape(item.title)}" ${item.type === 'custom' ? 'required' : ''}></label>`;
             } else {
@@ -490,7 +510,12 @@
         } else if (formSetting === 'type' && editor) {
             Object.assign(editor.item, Object.fromEntries(new FormData(input.form)));
             editor.item.reference_id = null;
+            delete editor.item.reference_ids;
             renderPanel('[data-form-setting="type"]');
+        } else if (input.name === 'reference_ids' && editor) {
+            const count = new FormData(input.form).getAll('reference_ids').length;
+            panel.querySelector('[data-category-count]').textContent = count + '件';
+            panel.querySelector('[data-category-title-label]').textContent = categoryTitleLabel(count);
         }
     });
 
@@ -506,13 +531,21 @@
     panel.addEventListener('submit', event => {
         event.preventDefault();
         if (!editor || publishing) return;
-        const values = Object.fromEntries(new FormData(event.target));
+        const formData = new FormData(event.target);
+        const values = Object.fromEntries(formData);
         const list = currentList();
         const index = editor.index;
         const forMenu = pane === 'menus';
         const name = (forMenu ? values.label : values.title).trim();
         const isLink = linkTypeIds.includes(values.type);
-        const link = isLink ? linkDestination(values) : null;
+        const categories = !forMenu && values.type === 'category' ? formData.getAll('reference_ids').map(Number) : null;
+        if (categories && (!categories.length || categories.length > data.categoryLimit ||
+            categories.some(id => !Number.isInteger(id) || id < 1))) {
+            showError('カテゴリは1〜' + data.categoryLimit + '件で選択してください。');
+            return;
+        }
+        const link = categories ? {reference_id: categories[0], reference_ids: categories, url: ''} :
+            isLink ? linkDestination(values) : null;
         if (isLink && (!link || ((forMenu || values.type === 'custom') && !name))) {
             showError('表示名とリンク先を確認してください。');
             return;

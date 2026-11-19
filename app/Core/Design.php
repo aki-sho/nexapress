@@ -9,6 +9,8 @@ use Throwable;
 
 final class Design
 {
+    public const MAX_CATEGORY_LINKS = 100;
+
     public const ALIGNMENTS = [
         'flex-start' => '左寄せ',
         'center' => '中央寄せ',
@@ -471,7 +473,24 @@ final class Design
                 if ($type === 'custom' && $settings['title'] === '') {
                     throw new InvalidArgumentException('任意リンクの表示名を入力してください。');
                 }
-                $settings += self::destination($widget);
+                if ($type === 'category' && array_key_exists('reference_ids', $widget)) {
+                    $ids = $widget['reference_ids'];
+                    if (!is_array($ids) || !$ids || count($ids) > self::MAX_CATEGORY_LINKS ||
+                        array_keys($ids) !== array_keys(array_values($ids))) {
+                        throw new InvalidArgumentException('カテゴリは1〜100件で選択してください。');
+                    }
+                    foreach ($ids as $id) {
+                        if (!is_int($id) || $id < 1) {
+                            throw new InvalidArgumentException('カテゴリを選び直してください。');
+                        }
+                    }
+                    if (count(array_unique($ids)) !== count($ids)) {
+                        throw new InvalidArgumentException('同じカテゴリを重複して選択できません。');
+                    }
+                    $settings += ['reference_id' => $ids[0], 'reference_ids' => $ids, 'url' => ''];
+                } else {
+                    $settings += self::destination($widget);
+                }
             }
             $result[] = $settings;
         }
