@@ -29,7 +29,10 @@
 .nx-design-controls { border-inline-end: 1px solid var(--design-line); }
 .nx-design-nav, .nx-design-panel { padding: 14px; }
 .nx-design-nav { display: grid; gap: 9px; background: #f4f7fc; border-bottom: 1px solid var(--design-line); }
-.nx-design-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.nx-design-tabs { display: grid; gap: 6px; }
+.nx-design-category { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; min-width: 0; }
+.nx-design-category-title { flex: 0 0 120px; color: var(--design-muted); font-size: .75rem; font-weight: 600; line-height: 1.4; }
+.nx-design-category-items { display: flex; flex-wrap: wrap; flex: 1 1 170px; gap: 4px; min-width: 0; }
 .nx-design-tabs button, .nx-design-switch button, .nx-design-small {
     padding: 5px 8px;
     border: 1px solid var(--design-line);
@@ -41,6 +44,7 @@
     cursor: pointer;
 }
 .nx-design-tabs button { text-align: start; }
+.nx-design-category-items > button { flex: 1 1 auto; min-width: 0; padding-inline: 6px; }
 .nx-design-editor button[aria-pressed="true"] { background: var(--design-tint); color: var(--design-blue); border-color: #c5d4f6; }
 .nx-design-editor button:disabled { opacity: .48; cursor: default; }
 .nx-design-editor button:focus-visible, .nx-design-editor :is(input, select, textarea):focus-visible { outline: 2px solid var(--design-blue); outline-offset: 2px; }
@@ -127,6 +131,5 @@
 @media (max-width: 860px) {
     .nx-design-editor-grid { grid-template-columns: minmax(0, 1fr); }
     .nx-design-controls { border-inline-end: 0; border-bottom: 1px solid var(--design-line); }
-    .nx-design-tabs { display: flex; flex-wrap: wrap; }
     .nx-design-preview { position: static; }
 }

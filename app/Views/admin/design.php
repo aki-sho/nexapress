@@ -22,8 +22,19 @@
                 </label>
                 <a href="<?= e(url('admin/themes')) ?>">使用するテーマを変更</a>
                 <div class="nx-design-tabs" role="group" aria-label="編集する項目">
-                    <?php foreach (['menus' => 'メニュー', 'widgets' => 'ウィジェット', 'header' => 'ヘッダー', 'columns' => '本文カラム', 'footer' => 'フッター', 'page_layout' => 'ページ毎のレイアウト'] as $key => $label): ?>
-                        <button type="button" data-pane="<?= e($key) ?>" aria-pressed="<?= $key === 'menus' ? 'true' : 'false' ?>"><?= e($label) ?></button>
+                    <?php foreach ([
+                        'site' => ['label' => 'サイト全体の枠組み', 'items' => ['header' => 'ヘッダー', 'columns' => '本文カラム', 'footer' => 'フッター']],
+                        'parts' => ['label' => 'リンク・パーツの配置', 'items' => ['menus' => 'メニュー', 'widgets' => 'ウィジェット']],
+                        'page' => ['label' => 'ページ内の構成', 'items' => ['page_layout' => 'ページ毎のレイアウト']],
+                    ] as $groupId => $group): ?>
+                        <div class="nx-design-category" role="group" aria-labelledby="nx-design-category-<?= e($groupId) ?>">
+                            <span class="nx-design-category-title" id="nx-design-category-<?= e($groupId) ?>"><?= e($group['label']) ?></span>
+                            <div class="nx-design-category-items">
+                                <?php foreach ($group['items'] as $key => $label): ?>
+                                    <button type="button" data-pane="<?= e($key) ?>" aria-pressed="<?= $key === 'menus' ? 'true' : 'false' ?>"><?= e($label) ?></button>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                     <?php endforeach; ?>
                 </div>
                 <p id="nx-design-theme-note" class="nx-design-note" hidden></p>
