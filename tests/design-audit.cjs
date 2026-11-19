@@ -112,8 +112,7 @@ module.exports = async function checkDesign(page, base, output) {
         await form.locator('[name="url"]').fill('/posts');
         await form.locator('[name="area"]').selectOption('footer_before');
         await form.getByRole('button', {name: '反映', exact: true}).click();
-        await page.locator('[data-pane="menus"]').click();
-        await page.locator('[data-menu="header"]').click();
+        await page.locator('[data-pane="menus"][data-menu="header"]').click();
         const menuCount = await page.locator('.nx-design-item').count();
         await page.locator('[data-action="add"]').click();
         await form.locator('[data-form-setting="type"]').selectOption('post');

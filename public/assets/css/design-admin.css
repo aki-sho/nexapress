@@ -29,10 +29,10 @@
 .nx-design-controls { border-inline-end: 1px solid var(--design-line); }
 .nx-design-nav, .nx-design-panel { padding: 14px; }
 .nx-design-nav { display: grid; gap: 9px; background: #f4f7fc; border-bottom: 1px solid var(--design-line); }
-.nx-design-tabs { display: grid; gap: 6px; }
-.nx-design-category { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; min-width: 0; }
-.nx-design-category-title { flex: 0 0 120px; color: var(--design-muted); font-size: .75rem; font-weight: 600; line-height: 1.4; }
-.nx-design-category-items { display: flex; flex-wrap: wrap; flex: 1 1 170px; gap: 4px; min-width: 0; }
+.nx-design-tabs { display: grid; gap: 10px; }
+.nx-design-category { display: grid; gap: 5px; min-width: 0; }
+.nx-design-category-title { color: var(--design-muted); font-size: .75rem; font-weight: 600; line-height: 1.4; }
+.nx-design-category-items { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; margin-inline-start: 4px; padding-inline-start: 10px; border-inline-start: 2px solid var(--design-line); }
 .nx-design-tabs button, .nx-design-switch button, .nx-design-small {
     padding: 5px 8px;
     border: 1px solid var(--design-line);

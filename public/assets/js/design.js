@@ -15,7 +15,7 @@
     const regionIds = Object.keys(regions);
     const linkTypeIds = Object.keys(linkTypes);
     const areas = data.widgetAreas;
-    const menus = {header: 'ヘッダー用', footer: 'フッター用'};
+    const menus = {header: 'ヘッダー用メニュー', footer: 'フッター用メニュー'};
     const labels = {header: 'ヘッダー', header_rows: 'ヘッダーの上下分割', columns: '本文カラム',
         footer: 'フッター', footer_rows: 'フッターの上下分割', page_layout: 'ページ毎のレイアウト', ...regions};
     const chromeOpen = new Map();
@@ -257,16 +257,13 @@
             const key = control.dataset.pane;
             control.disabled = publishing || (key !== 'menus' && (key === 'widgets'
                 ? !supportsWidgets() : !supports(key)));
-            control.setAttribute('aria-pressed', String(key === pane));
+            control.setAttribute('aria-pressed', String(key === pane && (key !== 'menus' || control.dataset.menu === menuName)));
         });
 
         if (pane === 'menus' || pane === 'widgets') {
             const forMenu = pane === 'menus';
-            const choose = forMenu
-                ? `<div class="nx-design-switch" role="group" aria-label="編集するメニュー">${Object.entries(menus).map(([id, label]) =>
-                    `<button type="button" data-menu="${id}" aria-pressed="${menuName === id}">${label}</button>`).join('')}</div>`
-                : field('表示場所', 'area', usable.map(id => [id, areas[id]]), area, 'data-setting="area"');
-            panel.innerHTML = `<h2>${forMenu ? 'メニュー' : 'ウィジェット'}</h2>` + (forMenu || usable.length
+            const choose = forMenu ? '' : field('表示場所', 'area', usable.map(id => [id, areas[id]]), area, 'data-setting="area"');
+            panel.innerHTML = `<h2>${forMenu ? menus[menuName] : 'ウィジェット'}</h2>` + (forMenu || usable.length
                 ? choose + renderRows(currentList(), forMenu) + (editor
                     ? renderForm() : `<div>${button('add', forMenu ? '＋ 項目を追加' : '＋ ウィジェットを追加')}</div>`)
                 : '<p class="nx-design-note">本文カラムでサイドバーを選ぶと配置できます。</p>');

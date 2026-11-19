@@ -43,13 +43,26 @@ module.exports = async function checkChromeLayouts(page, base, output) {
         }, counts);
     }
     await page.goto(base + '/admin/design');
-    await page.locator('[data-pane="menus"]').click();
+    await page.locator('[data-pane="menus"][data-menu="header"]').click();
     await page.locator('[data-action="add"]').click();
     const menuForm = page.locator('[data-designer-form]');
     await menuForm.locator('[data-form-setting="type"]').selectOption('custom');
     await menuForm.locator('[name="label"]').fill('ヘッダー配置確認');
     await menuForm.locator('[name="url"]').fill('/');
     await menuForm.getByRole('button', {name: '追加', exact: true}).click();
+    await page.locator('[data-pane="menus"][data-menu="footer"]').click();
+    assert.equal(await page.locator('[data-menu="header"]').getAttribute('aria-pressed'), 'false');
+    assert.equal(await page.locator('[data-menu="footer"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('#nx-design-panel > h2').textContent(), 'フッター用メニュー');
+    await page.locator('[data-action="add"]').click();
+    await menuForm.locator('[data-form-setting="type"]').selectOption('custom');
+    await menuForm.locator('[name="label"]').fill('フッター配置確認');
+    await menuForm.locator('[name="url"]').fill('/posts');
+    await menuForm.getByRole('button', {name: '追加', exact: true}).click();
+    await page.locator('[data-menu="header"]').click();
+    assert.equal(await page.locator('#nx-design-panel > h2').textContent(), 'ヘッダー用メニュー');
+    assert((await page.locator('.nx-design-item-list').textContent()).includes('ヘッダー配置確認'));
+    assert(!(await page.locator('.nx-design-item-list').textContent()).includes('フッター配置確認'));
     await open('header');
     for (const section of ['structure', 'top', 'content']) {
         assert.equal(await page.locator('[data-chrome-details="header:' + section + '"]').count(), 1);
@@ -89,6 +102,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     assert.equal(await control('footer', 'top', 'columns').inputValue(), '4');
     assert.equal(await control('footer', 'bottom', 'columns').inputValue(), '5');
     const data = JSON.parse(await page.locator('#nx-design-data').textContent());
+    assert(data.themes.default.state.menus.footer.some(item => item.label === 'フッター配置確認' && item.url === '/posts'));
     assert.deepEqual(data.themes.default.state.layout.headerRows.positions.search, {row: 'top', column: 5});
     const guest = await page.context().browser().newContext({viewport: {width: 1440, height: 1000}, javaScriptEnabled: false});
     const visitor = await guest.newPage();
