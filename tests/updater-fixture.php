@@ -48,6 +48,7 @@ if ($mode === 'setup') {
         $pdo->prepare('INSERT IGNORE INTO nx_nexapress_migrations (migration) VALUES (?)')->execute([basename($file, '.php')]);
     }
     $pdo->exec("INSERT INTO nx_pages (title,slug,content,status,user_id) VALUES ('Retained page','retained-page','<p>Retained page content</p>','published',1)");
+    $pdo->exec("INSERT INTO nx_pages (title,slug,content,status,user_id) VALUES ('Retained shared page','retained-shared-page','<p>Retained shared page content</p>','published',1)");
     $pdo->exec("INSERT INTO nx_posts (title,slug,content,status,user_id) VALUES ('Retained post','retained-post','<p>Retained post content</p>','published',1)");
     $pdo->exec("INSERT INTO nx_media (title, original_name, file_name, file_path, mime_type, file_size, file_type, user_id)
         VALUES ('Retained media', 'retained.txt', 'retained.txt', 'uploads/retained.txt', 'text/plain', 15, 'document', 1)");
@@ -60,6 +61,8 @@ if ($mode === 'setup') {
                 'groups' => [[['type' => 'page_title'], ['type' => 'page_content']], []],
             ]],
         ]);
+        $pdo->prepare('INSERT INTO nx_page_layouts (page_id, settings) VALUES (2, ?)')
+            ->execute([json_encode(['enabled' => false, 'width' => 'inherit', 'sections' => []], JSON_THROW_ON_ERROR)]);
     }
 }
 if ($mode === 'restore') {

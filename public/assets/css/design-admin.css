@@ -98,6 +98,20 @@
 .nx-page-scope > summary { font-size: .95rem; font-weight: 600; cursor: pointer; }
 .nx-page-reset { justify-self: start; }
 
+.nx-page-preview-status {
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--design-line);
+    border-radius: 6px;
+    background: #f4f7fc;
+    font-size: .85rem;
+}
+.nx-page-preview-status dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 12px; margin: 10px 0; }
+.nx-page-preview-status :is(dt, dd) { margin: 0; overflow-wrap: anywhere; }
+.nx-page-status-source { display: block; color: var(--design-muted); }
+.nx-page-preview-status p { margin: 8px 0; }
+.nx-page-preview-conflict { padding: 8px; border: 1px solid #e6c47e; border-radius: 5px; background: #fff8e8; color: #694610; }
+
 .nx-page-color-fields {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

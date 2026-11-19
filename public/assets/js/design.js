@@ -62,6 +62,7 @@
         redraw: focus => pane === 'page_layout' ? renderPanel(focus) : renderStatus(),
         preview: updatePreview, reveal: revealPreviewArea,
         themeWidth: () => layouts[theme].width,
+        previewMode: () => mode,
     });
     const pageChanges = () => pageEditor.hasChanges();
     const currentChanges = () => hasChanges(theme) || pageChanges();
@@ -209,6 +210,7 @@
         root.querySelectorAll('[data-device]').forEach(control =>
             control.setAttribute('aria-pressed', String(control.dataset.device === device)));
         resizePreview();
+        pageEditor.refreshPreviewStatus();
     }
 
     function revealPreviewArea() {

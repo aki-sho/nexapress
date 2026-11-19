@@ -27,7 +27,7 @@
     }
 
     window.NexaPressPageEditor = function (options) {
-        const {panel, data, field, escape, changed, showError, redraw, preview, reveal, checkResponse, themeWidth} = options;
+        const {panel, data, field, escape, changed, showError, redraw, preview, reveal, checkResponse, themeWidth, previewMode} = options;
         const config = data.pageLayout;
         const initial = data.themes[data.active].state.contentLayouts;
         const common = Object.fromEntries(Object.keys(config.scopes).map(key => [
@@ -35,6 +35,7 @@
         ]));
         const existing = new Map();
         const requests = new Set();
+        const inheritanceUndo = new Map();
         const widths = Object.entries(config.widths);
         const scopeLabels = {...config.scopes, page_item: '固定ページのレイアウト', post_item: '投稿ページのレイアウト'};
         const choices = {page: data.targets.page, post: data.targets.post};
@@ -146,6 +147,84 @@
             return heading ? heading.text.trim().slice(0, 36) : 'セクション ' + (index + 1);
         };
 
+        function previewStatus() {
+            if (previewMode() === 'published') {
+                return '<p class="nx-design-note">公開版を表示しています。編集内容は「編集中」で確認できます。</p>';
+            }
+            const key = recordKey(previewTarget.kind, previewTarget.id);
+            const record = existing.get(key);
+            if (!record) return '<p class="nx-design-note">適用される設定を読み込み中…</p>';
+
+            const sources = {enabled: '初期設定', sectionCount: '初期設定', width: 'テーマの本文幅', sections: []};
+            const layers = [
+                [config.scopes.all, common.all.draft],
+                [config.scopes[previewTarget.kind], common[previewTarget.kind].draft],
+                ['ページ個別', record.draft],
+            ];
+            let layout = emptyLayout();
+            for (const [label, patch] of layers) {
+                layout = merge(layout, patch);
+                for (const name of ['enabled', 'sectionCount', 'width']) {
+                    if (owns(patch, name)) sources[name] = label;
+                }
+                sources.sections.length = layout.sections.length;
+                for (const [index, section] of (patch.sections ?? []).entries()) {
+                    if (!layout.sections[index]) continue;
+                    sources.sections[index] ??= {};
+                    for (const name of Object.keys(section)) sources.sections[index][name] = label;
+                }
+            }
+            const item = layout.sections[sectionIndex];
+            const sectionSources = sources.sections[sectionIndex] ?? {};
+            const visible = layout.enabled && layout.sections.length > 0;
+            const displaySource = layout.enabled && !layout.sections.length ? sources.sectionCount : sources.enabled;
+            const display = visible ? 'セクション表示' : '通常の本文表示';
+            let color = '未適用（通常の本文表示）';
+            let colorSource = displaySource;
+            if (visible) {
+                if (!item) {
+                    color = '対象のセクションがありません';
+                    colorSource = sources.sectionCount;
+                } else if (item.background === 'none') {
+                    color = '未適用（背景なし）';
+                    colorSource = sectionSources.background ?? '初期設定';
+                } else {
+                    color = item.color;
+                    colorSource = sectionSources.color ?? '初期設定';
+                }
+            }
+            const rows = [
+                ['表示方法', display, displaySource],
+                ['セクション数', layout.sections.length + '件', sources.sectionCount],
+                ['本文幅', config.widths[layout.width === 'inherit' ? themeWidth() : layout.width], sources.width],
+                ['背景の色', color, colorSource],
+            ];
+            if (visible && item) rows.push(['カラム数', item.columns + 'カラム', sectionSources.columns ?? '初期設定']);
+            const overridden = Object.keys(record.draft).some(name => name !== 'format');
+            const kindOverridden = Object.keys(common[previewTarget.kind].draft).some(name => name !== 'format');
+            const editedLayout = effective();
+            const editedSection = editedLayout?.sections[sectionIndex];
+            const colorBlocked = !individual() && editedLayout?.enabled && editedSection &&
+                editedSection.background !== 'none' && (!visible || !item || item.background === 'none' || item.color !== editedSection.color);
+            return `<strong>表示に使われる設定</strong>
+                <dl>${rows.map(([label, value, source]) => `<dt>${label}</dt><dd>${escape(value)}
+                    <small class="nx-page-status-source">${escape(source)}</small></dd>`).join('')}</dl>
+                ${colorBlocked ? '<p class="nx-page-preview-conflict" data-page-preview-conflict>編集中の背景色は、このページには適用されていません。上の「表示方法」「背景の色」の指定元を確認してください。</p>' : ''}
+                ${overridden ? '<p class="nx-design-note">このページには個別指定があります。</p>' : ''}
+                <div class="nx-design-actions">
+                    ${overridden ? action('use-common', 'このページで共通設定を使用') : ''}
+                    ${inheritanceUndo.has(key) ? action('restore-individual', '元の個別指定に戻す') : ''}
+                    ${!individual() ? action('edit-individual', 'このページの個別設定を開く') : ''}
+                    ${kindOverridden && scope !== previewTarget.kind ? action('edit-kind', escape(config.scopes[previewTarget.kind]) + 'を開く') : ''}
+                </div>
+                ${overridden ? '<p class="nx-design-note">共通設定を使用すると、本文幅・色・構成・要素配置を全体共通・種類別共通から引き継ぎます。「公開」で確定します。</p>' : ''}`;
+        }
+
+        function refreshPreviewStatus() {
+            const status = panel.querySelector('[data-page-preview-status]');
+            if (status) status.innerHTML = previewStatus();
+        }
+
         async function loadDocument(type, id) {
             const key = recordKey(type, id);
             if (!id || existing.has(key) || requests.has(key)) return;
@@ -164,9 +243,7 @@
                 if (individual() && recordKey(kind(), selected[kind()]) === key) {
                     redraw();
                 } else {
-                    const note = panel.querySelector('[data-page-preview-note]');
-                    const target = existing.get(recordKey(previewTarget.kind, previewTarget.id));
-                    if (note) note.hidden = !target || Object.keys(target.draft).length <= 1;
+                    refreshPreviewStatus();
                 }
                 preview();
             }
@@ -276,11 +353,9 @@
             }
             const record = entry();
             if (!record) return picker + '<p class="nx-design-note">読み込み中…</p>';
-            const targetRecord = existing.get(recordKey(previewTarget.kind, previewTarget.id));
-            if (!individual()) {
-                const overridden = targetRecord && Object.keys(targetRecord.draft).length > 1;
-                picker += '<p class="nx-design-note" data-page-preview-note ' + (overridden ? '' : 'hidden') +
-                    '>このプレビューにはページ個別の指定も適用されます。</p>';
+            if (previewTarget.id) {
+                picker += '<div class="nx-page-preview-status" data-page-preview-status role="status" aria-live="polite">' +
+                    previewStatus() + '</div>';
             }
             const layout = effective();
             sectionIndex = Math.max(0, Math.min(sectionIndex, layout.sections.length - 1));
@@ -368,6 +443,32 @@
             }
             const command = control.dataset.pageAction;
             if (!command) return;
+            if (command === 'edit-individual') {
+                selected[previewTarget.kind] = previewTarget.id;
+                activate(previewTarget.kind + '_item');
+                return;
+            }
+            if (command === 'edit-kind') {
+                selected[previewTarget.kind] = previewTarget.id;
+                activate(previewTarget.kind);
+                return;
+            }
+            if (command === 'use-common' || command === 'restore-individual') {
+                const key = recordKey(previewTarget.kind, previewTarget.id);
+                const record = existing.get(key);
+                if (!record) return;
+                if (command === 'use-common') {
+                    if (!inheritanceUndo.has(key)) inheritanceUndo.set(key, clone(record.draft));
+                    record.draft = {format: 2};
+                } else {
+                    if (!inheritanceUndo.has(key)) return;
+                    record.draft = clone(inheritanceUndo.get(key));
+                    inheritanceUndo.delete(key);
+                }
+                sectionIndex = column = elementIndex = 0;
+                changed();
+                return;
+            }
             const sections = effective().sections;
             if (command === 'section-add') {
                 if (sections.length >= config.sectionLimit) {
@@ -540,7 +641,7 @@
         }, true);
 
         return {
-            render, widths,
+            render, widths, refreshPreviewStatus,
             target: () => previewTarget,
             sectionIndex: () => sectionIndex,
             hasChanges: () => records().some(dirty),
@@ -559,6 +660,7 @@
                     const key = recordKey(snapshot.kind, snapshot.id);
                     existing.set(key, editableRecord(snapshot));
                 }
+                inheritanceUndo.clear();
             },
         };
     };

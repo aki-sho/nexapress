@@ -150,6 +150,11 @@ final class PageLayout
             return self::EMPTY_OVERRIDES;
         }
         $layout = self::validate($layout);
+        // Before inheritance existed, an unused layout was saved with false and no sections.
+        if (!$layout['enabled'] && $layout['sections'] === []) {
+            return $layout['width'] === 'inherit' ? self::EMPTY_OVERRIDES
+                : ['format' => 2, 'width' => $layout['width']];
+        }
         $layout['format'] = 2;
         $layout['sectionCount'] = count($layout['sections']);
         if ($layout['width'] === 'inherit') {

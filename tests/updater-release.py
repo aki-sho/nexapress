@@ -6,6 +6,7 @@ import http.server
 import io
 import json
 import os
+from html import unescape
 from pathlib import Path
 import re
 import shutil
@@ -236,6 +237,36 @@ function curl_setopt_array($handle, array $options): bool {
                     status, body, _ = admin.request('/admin/design/post-layout/1')
                     check(status == 200 and json.loads(body)['kind'] == 'post',
                           ref + ': updated post layout schema and route work')
+                if tuple(map(int, target.split('.'))) >= (2, 10, 1):
+                    status, body, _ = admin.request('/admin/design/page-layout/2')
+                    check(status == 200 and json.loads(body)['overrides'] == {'format': 2},
+                          ref + ': unused legacy page inherits common settings after update')
+                    draft = data['themes'][data['active']]['state']
+                    draft['contentLayouts']['all'] = {
+                        'format': 2, 'enabled': True, 'sectionCount': 1, 'sections': [{
+                            'color': '#CBB380',
+                            'groups': [[{'type': 'page_title'}, {'type': 'page_content'}], []],
+                        }],
+                    }
+                    status, body, _ = admin.request('/admin/design/publish', {
+                        '_csrf_token': data['token'], 'revision': draft['revision'], 'design': json.dumps(draft),
+                    })
+                    check(status == 200, ref + ': common layout publishes on the updated site')
+
+                    def public_styles(path):
+                        body = guest.request(path)[1]
+                        link = re.search(r'<link rel="stylesheet" href="([^"]*/nexapress/assets/page-layout\?[^"]+)">', body)
+                        assert link, body[-1000:]
+                        parsed = urllib.parse.urlsplit(unescape(link[1]))
+                        status, styles, _ = guest.request(parsed.path + '?' + parsed.query)
+                        assert status == 200
+                        return styles
+
+                    check('--nx-section-background:#CBB380' in public_styles('/page/retained-shared-page'),
+                          ref + ': shared color appears on the public legacy page after update')
+                    if tuple(map(int, version.split('.'))) >= (2, 7, 0):
+                        check('--nx-section-background:#654155' in public_styles('/page/retained-page'),
+                              ref + ': configured individual color keeps priority after update')
                 if not args.public:
                     token = admin.token()
                     next_version = target.rsplit('.', 1)[0] + '.' + str(int(target.rsplit('.', 1)[1]) + 1)

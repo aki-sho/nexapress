@@ -80,6 +80,20 @@ check(\app\Models\Post::findBySlug('legacy-post')['content'] === '<p>既存投�
 check(\app\Core\Migrator::run($fixture . '/database/migrations') === [], 'migration is idempotent');
 \app\Core\SiteSchema::ensure($pdo);
 \app\Core\SiteSchema::ensureMediaFolders($pdo);
+$legacyLayout = ['enabled' => false, 'width' => 'inherit', 'sections' => []];
+$pdo->prepare('INSERT INTO nx_page_layouts (page_id, settings) VALUES (1, ?)')
+    ->execute([json_encode($legacyLayout, JSON_THROW_ON_ERROR)]);
+check(\app\Core\PageLayout::snapshot(1)['overrides'] === ['format' => 2],
+    'unused layouts saved before inheritance adopt common settings');
+$legacyLayout['width'] = 'wide';
+check(\app\Core\PageLayout::overrides($legacyLayout) === ['format' => 2, 'width' => 'wide'],
+    'unused legacy layouts preserve an explicitly selected body width');
+$explicitDisabled = ['format' => 2, 'enabled' => false, 'sectionCount' => 0];
+check(\app\Core\PageLayout::overrides($explicitDisabled) === $explicitDisabled,
+    'new explicit disabled layouts continue to override common settings');
+$legacyLayout['sections'] = [\app\Core\PageLayout::sectionDefaults()];
+check(\app\Core\PageLayout::overrides($legacyLayout)['enabled'] === false,
+    'configured legacy sections retain an intentional disabled state');
 check(count(\app\Models\Page::published()) === 1, 'fresh-install schema helper is idempotent');
 $legacyMedia = \app\Models\Media::all(0);
 check(count($legacyMedia) === 1 && $legacyMedia[0]['file_path'] === 'uploads/media/legacy-media.txt',

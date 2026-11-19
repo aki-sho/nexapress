@@ -110,6 +110,12 @@ def check_layout_inheritance(admin, guest, check):
         entry(fixed, {'format': 2, 'sections': [{'color': '#112233'}]}),
         entry(post, {'format': 2, 'sections': [{'gap': 4}]}),
     ]
+    inherited_legacy = copy.deepcopy(state)
+    inherited_legacy['content'] = []
+    status, body, _ = admin.request('/admin/design/preview',
+        request(inherited_legacy, content_kind='page', content_id=fixed_id))
+    check(status == 200 and '--nx-section-background:#F6E6E6' in css(body),
+          'an unused layout from an older release inherits shared colors in the real preview')
     for kind, ident, color, gap in [('page', fixed_id, '#112233', '10%'), ('post', post_id, '#E5F0E7', '4%')]:
         code, body, _ = admin.request('/admin/design/preview', request(state, content_kind=kind, content_id=ident))
         styles = css(body)
