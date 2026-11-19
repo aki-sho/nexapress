@@ -215,8 +215,9 @@ foreach (
                         </p>
                     </div>
 
+                    <div class="post-basic-fields">
                     <!-- タイトル -->
-                    <div class="form-group">
+                    <div class="form-group post-basic-title">
                         <label for="title">
                             タイトル
                             <span class="post-required">
@@ -319,12 +320,16 @@ foreach (
                             'category_id'
                         );
                         ?>
+                    </div>
                         <?php if (Permission::can('categories.manage')): ?>
                             <details class="post-category-create" data-post-category-create data-create-url="<?= e(url('admin/categories/inline')) ?>">
                                 <summary>＋ カテゴリを追加</summary>
                                 <div class="post-category-create-fields">
                                     <label for="post-new-category-name">カテゴリ名
                                         <input type="text" id="post-new-category-name" maxlength="100" autocomplete="off" data-new-category-name>
+                                    </label>
+                                    <label for="post-new-category-slug">スラッグ（任意）
+                                        <input type="text" id="post-new-category-slug" maxlength="255" placeholder="空欄なら自動生成" autocomplete="off" spellcheck="false" data-new-category-slug>
                                     </label>
                                     <button type="button" class="button secondary" data-create-category>追加して選択</button>
                                 </div>

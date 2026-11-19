@@ -20,8 +20,9 @@
     <?php endif; ?>
     <!-- 投稿管理画面専用CSS -->
     <?php if (preg_match('#/admin/posts(?:/|$)#', $adminStylePath)): ?>
-    <link rel="stylesheet" href="<?= e(public_url('assets/css/admin-posts.css')) ?>">
+    <link rel="stylesheet" href="<?= e($adminAssetUrl('assets/css/admin-posts.css')) ?>">
     <?php endif; ?>
+    <link rel="stylesheet" href="<?= e($adminAssetUrl('assets/css/admin-compact.css')) ?>">
     <?php if (function_exists('do_action')): ?>
         <?php do_action('admin_head'); ?>
     <?php endif; ?>

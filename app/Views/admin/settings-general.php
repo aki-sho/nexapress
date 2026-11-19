@@ -26,9 +26,10 @@ $discourageSearchEngines = (bool) (
         'admin/settings/general/update'
     ) ?>"
     method="post"
+    class="admin-compact-form general-settings-form"
 >
     <input type="hidden" name="_csrf_token" value="<?= e(\app\Core\Csrf::token()) ?>">
-    <fieldset class="admin-card">
+    <fieldset class="admin-card admin-homepage-settings">
         <legend>トップページの表示</legend>
         <div class="form-group"><label for="homepage-mode">表示内容</label>
             <select id="homepage-mode" name="homepage_mode">
@@ -102,7 +103,7 @@ $discourageSearchEngines = (bool) (
         </select>
     </div>
 
-    <div class="form-group">
+    <div class="form-group admin-field-wide">
         <label for="site_icon">
             サイトアイコン
         </label>
@@ -135,7 +136,7 @@ $discourageSearchEngines = (bool) (
         <?php endif; ?>
     </div>
 
-    <div class="form-group">
+    <div class="form-group admin-field-wide">
         <h2>検索エンジンでの表示</h2>
 
         <label class="admin-checkbox" for="discourage_search_engines">

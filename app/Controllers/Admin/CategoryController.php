@@ -23,17 +23,32 @@ class CategoryController extends Controller
             return;
         }
         $name = trim($name);
+        $slugInput = $_POST['slug'] ?? '';
+        if (!is_string($slugInput) || preg_match('//u', $slugInput) !== 1 || nx_text_length($slugInput) > 255) {
+            $this->categoryResponse(['error' => 'スラッグは255文字以内で入力してください。'], 422);
+            return;
+        }
+        $requestedSlug = trim($slugInput) === '' ? null : PostValidator::normalizeSlug($slugInput);
+        if ($requestedSlug === '' || ($requestedSlug !== null && nx_text_length($requestedSlug) > 255)) {
+            $this->categoryResponse(['error' => 'スラッグには文字・数字を含む255文字以内の値を入力してください。'], 422);
+            return;
+        }
         try {
             $existing = Category::findByName($name);
             if ($existing !== null) {
-                $this->categoryResponse(['category' => $this->categoryData($existing), 'created' => false]);
+                $this->existingCategoryResponse($existing, $requestedSlug);
                 return;
             }
             preg_match('/^.{0,240}/us', PostValidator::normalizeSlug($name), $match);
             $base = trim($match[0] ?? '', '-_') ?: 'category';
-            for ($index = 0; $index < 50; $index++) {
-                $slug = $base . ($index ? '-' . ($index + 1) : '');
+            for ($index = 0; $index < ($requestedSlug === null ? 50 : 1); $index++) {
+                $slug = $requestedSlug ?? $base . ($index ? '-' . ($index + 1) : '');
                 if (Category::findBySlug($slug) !== null) {
+                    $existing = Category::findByName($name);
+                    if ($existing !== null) {
+                        $this->existingCategoryResponse($existing, $requestedSlug);
+                        return;
+                    }
                     continue;
                 }
                 try {
@@ -44,7 +59,7 @@ class CategoryController extends Controller
                     }
                     $existing = Category::findByName($name);
                     if ($existing !== null) {
-                        $this->categoryResponse(['category' => $this->categoryData($existing), 'created' => false]);
+                        $this->existingCategoryResponse($existing, $requestedSlug);
                         return;
                     }
                     continue;
@@ -55,10 +70,21 @@ class CategoryController extends Controller
                 $this->categoryResponse(['category' => ['id' => $id, 'name' => $name, 'slug' => $slug], 'created' => true], 201);
                 return;
             }
-            $this->categoryResponse(['error' => '同じURLのカテゴリが多いため、別のカテゴリ名でお試しください。'], 409);
+            $this->categoryResponse(['error' => $requestedSlug === null
+                ? '同じURLのカテゴリが多いため、別のカテゴリ名でお試しください。'
+                : 'このスラッグは使われています。別のスラッグを入力してください。'], 409);
         } catch (PDOException $exception) {
             $this->categoryResponse(['error' => 'カテゴリを追加できませんでした。もう一度お試しください。'], 500);
         }
+    }
+
+    private function existingCategoryResponse(array $category, ?string $slug): void
+    {
+        if ($slug !== null && $category['slug'] !== $slug) {
+            $this->categoryResponse(['error' => '同名のカテゴリがあります。スラッグの変更はカテゴリ管理から行ってください。'], 409);
+            return;
+        }
+        $this->categoryResponse(['category' => $this->categoryData($category), 'created' => false]);
     }
 
     private function categoryData(array $category): array

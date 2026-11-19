@@ -8,6 +8,7 @@ module.exports = async function checkPostCategories(page, base, output) {
     const select = form.locator('[name="category_id"]');
     const panel = form.locator('[data-post-category-create]');
     const name = panel.locator('[data-new-category-name]');
+    const categorySlug = panel.locator('[data-new-category-slug]');
     const add = panel.locator('[data-create-category]');
     const message = panel.locator('[data-category-message]');
     const title = 'カテゴリ追加の入力保持テスト';
@@ -27,8 +28,17 @@ module.exports = async function checkPostCategories(page, base, output) {
     const collision2 = await (await create({name: 'Inline-category'})).json();
     assert.notEqual(collision1.category.slug, collision2.category.slug);
     assert.notEqual(collision1.category.id, collision2.category.id);
+    const manual = await create({name: '手動スラッグのカテゴリ', slug: 'programming'});
+    assert.equal(manual.status(), 201);
+    assert.equal((await manual.json()).category.slug, 'programming');
+    assert.equal((await create({name: '別名カテゴリ', slug: 'programming'})).status(), 409);
+    assert.equal((await create({name: '手動スラッグのカテゴリ', slug: 'different-slug'})).status(), 409);
+    for (const slug of ['!!!', 'x'.repeat(256)]) {
+        assert.equal((await create({name: 'スラッグ入力エラー', slug})).status(), 422);
+    }
     await panel.locator('> summary').click();
     await name.fill('記事を書きながら追加');
+    await categorySlug.fill('inline-post-category');
     let release;
     const gate = new Promise(resolve => { release = resolve; });
     await page.route(endpoint, async route => { await gate; await route.continue(); });
@@ -47,6 +57,7 @@ module.exports = async function checkPostCategories(page, base, output) {
     await page.unroute(endpoint);
     assert.equal(response.status(), 201);
     const category = (await response.json()).category;
+    assert.equal(category.slug, 'inline-post-category');
     await page.waitForFunction(id => document.querySelector('#category_id').value === String(id), category.id);
     assert.equal(await form.locator('[name="title"]').inputValue(), title);
     assert.equal(await form.locator('[name="content"]').inputValue(), body);
@@ -66,9 +77,11 @@ module.exports = async function checkPostCategories(page, base, output) {
         status: 503, contentType: 'application/json', body: JSON.stringify({error: '通信エラーの確認'}),
     }));
     await name.fill('再試行するカテゴリ');
+    await categorySlug.fill('retry-post-category');
     await add.click();
     await page.waitForFunction(() => document.querySelector('[data-category-message]').textContent.includes('通信エラー'));
     assert.equal(await name.inputValue(), '再試行するカテゴリ');
+    assert.equal(await categorySlug.inputValue(), 'retry-post-category');
     assert.equal(await select.inputValue(), String(category.id));
     assert.equal(await form.locator('[name="content"]').inputValue(), body);
     assert.equal(await add.isEnabled(), true);
@@ -76,8 +89,9 @@ module.exports = async function checkPostCategories(page, base, output) {
     const [retry] = await Promise.all([page.waitForResponse(endpoint), add.click()]);
     assert.equal(retry.status(), 201);
     const retryCategory = (await retry.json()).category;
+    assert.equal(retryCategory.slug, 'retry-post-category');
     await page.waitForFunction(id => document.querySelector('#category_id').value === String(id), retryCategory.id);
-    await select.locator('..').screenshot({path: path.join(output, 'post-inline-category.png')});
+    await form.locator('.post-basic-fields').screenshot({path: path.join(output, 'post-inline-category.png')});
     assert.equal(await message.getAttribute('role'), 'status');
     await Promise.all([
         page.waitForURL(url => !url.pathname.endsWith('/create')),

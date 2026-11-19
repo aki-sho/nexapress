@@ -1,8 +1,10 @@
 <?php $title = $trash ? '固定ページのゴミ箱' : '固定ページ一覧'; $token = \app\Core\Csrf::token(); ?>
 <section class="admin-page">
     <div class="admin-page-header"><h1><?= e($title) ?></h1>
+        <div class="admin-header-actions">
         <a class="button" href="<?= e(url('admin/pages/create')) ?>">新規追加</a>
         <a class="button secondary" href="<?= e(url('admin/pages' . ($trash ? '' : '?trash=1'))) ?>"><?= $trash ? '固定ページ一覧' : 'ゴミ箱' ?></a>
+        </div>
     </div>
     <?php if (!empty($notice)): ?><p role="status"><?= e($notice) ?></p><?php endif; ?>
     <?php if (!$pages): ?><p>固定ページはありません。</p><?php else: ?>

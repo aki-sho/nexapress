@@ -14,7 +14,7 @@ $action = !empty($category['id'])
         <h2><?= e($title) ?></h2>
     </div>
 
-    <form action="<?= e($action) ?>" method="post" class="post-form">
+    <form action="<?= e($action) ?>" method="post" class="post-form admin-inline-form">
         <div class="form-group">
             <label for="name">カテゴリ名</label>
             <input type="text" id="name" name="name" value="<?= e($categoryName) ?>" required>
@@ -25,18 +25,20 @@ $action = !empty($category['id'])
             <input type="text" id="slug" name="slug" value="<?= e($slug) ?>" required>
         </div>
 
+        <div class="admin-form-actions">
         <button type="submit">保存</button>
 
         <?php if (!empty($category['id'])): ?>
             <a class="button secondary" href="<?= url('admin/categories') ?>">新規追加に戻る</a>
         <?php endif; ?>
+        </div>
     </form>
 
-    <hr>
+    <hr class="admin-section-divider">
 
-    <h3>カテゴリ一覧</h3>
+    <h3 class="admin-section-heading">カテゴリ一覧</h3>
 
-    <table class="admin-table">
+    <div class="admin-table-wrap"><table class="admin-table">
         <thead>
             <tr>
                 <th>ID</th>
@@ -67,5 +69,5 @@ $action = !empty($category['id'])
                 <?php endforeach; ?>
             <?php endif; ?>
         </tbody>
-    </table>
+    </table></div>
 </section>

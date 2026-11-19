@@ -1,0 +1,71 @@
+/* Compact spacing for the administration screens. */
+.main { min-width: 0; padding: 24px; }
+.main > h1 { margin: 0 0 16px; }
+.sidebar h2 { margin-bottom: 18px; }
+.sidebar a, .sidebar .logout-form button { padding-block: 6px; }
+.admin-page-header { flex-wrap: wrap; gap: 8px 12px; margin-bottom: 16px; }
+.admin-header-actions, .admin-form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.main .admin-card { padding: 16px; }
+.main .form-group { margin-bottom: 12px; min-width: 0; }
+.main .form-group > label:not(.admin-checkbox) { margin-bottom: 4px; }
+.main .form-group > input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="range"]):not([type="color"]),
+.main .form-group > select {
+    min-height: 36px; padding: 7px 10px; font-size: 15px; line-height: 1.4;
+}
+.main button[type="submit"], .admin-header-actions .button, .post-form-submit-bar .button,
+.post-category-create-fields button { min-height: 36px; padding: 7px 12px; font-size: 15px; line-height: 1.4; }
+.main .form-help { margin-top: 4px; line-height: 1.45; }
+.main .editor-draft-status { padding: 8px 12px; margin-bottom: 12px; font-size: 14px; line-height: 1.45; }
+.main .admin-table :is(th, td) { padding: 8px 10px; }
+.main .admin-table .core-actions { margin: 0; gap: 6px; }
+.main .admin-table :is(button, .button) { min-height: 32px; padding: 6px 10px; font-size: 13px; line-height: 1.4; }
+.admin-section-divider { margin: 12px 0; }
+.admin-section-heading { margin: 12px 0 10px; font-size: 18px; }
+
+.admin-fields-pair, .admin-compact-form {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; min-width: 0;
+}
+.admin-fields-pair { margin-bottom: 12px; }
+.admin-fields-pair > .form-group, .admin-compact-form .form-group, .admin-inline-form .form-group { margin: 0; }
+.admin-compact-form > .admin-field-wide, .admin-compact-form > fieldset,
+.admin-compact-form > button { grid-column: 1 / -1; }
+.admin-compact-form > button { justify-self: start; }
+.admin-homepage-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 12px 16px; min-width: 0; margin: 0; }
+.admin-homepage-settings legend { padding-inline: 4px; font-size: 14px; }
+.admin-homepage-settings > p { grid-column: 1 / -1; margin: 0; font-size: 13px; line-height: 1.5; }
+.general-settings-form small { display: block; margin-top: 4px; font-size: 13px; line-height: 1.45; }
+.general-settings-form .form-group > h2 { margin: 0 0 4px; font-size: 18px; }
+.admin-inline-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+
+.post-form-layout { grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); gap: 16px; }
+.post-form-main, .post-form-sidebar { gap: 16px; }
+.post-form-header p, .posts-page-header p { margin-top: 4px; line-height: 1.5; }
+.post-form-card-header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding-bottom: 10px; margin-bottom: 12px; }
+.post-form-card-header p { margin: 0; }
+.post-basic-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; min-width: 0; }
+.post-basic-title, .post-basic-fields > .post-category-create { grid-column: 1 / -1; }
+.post-basic-fields .form-group { margin: 0; }
+.post-basic-fields > .post-category-create { margin: 0; padding-top: 8px; }
+.post-editor-form input[type="text"], .post-editor-form select { min-height: 36px; padding: 7px 10px; font-size: 15px; line-height: 1.4; }
+.post-editor-form .form-help { margin-top: 4px; line-height: 1.45; }
+.post-category-create-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; }
+.post-form-submit-bar { margin-top: 16px; padding: 10px 12px; }
+.post-form-meta { margin-top: 12px; }
+.post-form-meta > div { padding-block: 7px; gap: 8px; }
+.post-list-tabs { margin-bottom: 12px; }
+.post-list-tabs a { padding: 8px 14px; }
+.post-filter-form { margin-bottom: 12px; }
+.post-filter-grid { gap: 10px; }
+.post-notice { margin-bottom: 12px; padding: 10px 12px; }
+
+@media (max-width: 1050px) {
+    .post-form-layout { grid-template-columns: minmax(0, 1fr); }
+    .admin-inline-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-inline-form .admin-form-actions { grid-column: 1 / -1; }
+}
+@media (max-width: 700px) {
+    .main { padding: 16px; }
+    .admin-fields-pair, .admin-compact-form, .admin-homepage-settings, .admin-inline-form,
+    .post-basic-fields, .post-category-create-fields { grid-template-columns: minmax(0, 1fr); }
+    .post-category-create-fields button { justify-self: start; }
+}

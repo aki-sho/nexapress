@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const form = panel.closest('form');
         const select = form.querySelector('[name="category_id"]');
         const input = panel.querySelector('[data-new-category-name]');
+        const slug = panel.querySelector('[data-new-category-slug]');
         const button = panel.querySelector('[data-create-category]');
         const message = panel.querySelector('[data-category-message]');
         let busy = false;
@@ -22,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             busy = true;
             button.disabled = input.disabled = true;
+            if (slug) slug.disabled = true;
             panel.setAttribute('aria-busy', 'true');
             input.removeAttribute('aria-invalid');
             report('カテゴリを追加しています…');
@@ -31,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch(panel.dataset.createUrl, {
                     method: 'POST', cache: 'no-store', credentials: 'same-origin',
                     headers: {Accept: 'application/json'}, signal: controller.signal,
-                    body: new URLSearchParams({_csrf_token: form.querySelector('[name="_csrf_token"]').value, name}),
+                    body: new URLSearchParams({_csrf_token: form.querySelector('[name="_csrf_token"]').value, name, slug: slug?.value.trim() || ''}),
                 });
                 if (response.redirected || response.status === 419) {
                     throw new Error('ログインの有効期限が切れました。再ログインしてからお試しください。');
@@ -53,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 select.value = String(category.id);
                 select.dispatchEvent(new Event('change', {bubbles: true}));
                 input.value = '';
+                if (slug) slug.value = '';
                 report(result.created ? 'カテゴリを追加し、選択しました。' : '既存のカテゴリを選択しました。');
                 select.focus();
             } catch (error) {
@@ -62,16 +65,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 clearTimeout(timer);
                 busy = false;
                 button.disabled = input.disabled = false;
+                if (slug) slug.disabled = false;
                 panel.removeAttribute('aria-busy');
             }
         }
         button.addEventListener('click', create);
-        input.addEventListener('keydown', event => {
+        [input, slug].filter(Boolean).forEach(field => field.addEventListener('keydown', event => {
             if (event.key === 'Enter' && !event.isComposing) {
                 event.preventDefault();
                 create();
             }
-        });
+        }));
         form.addEventListener('submit', event => {
             if (busy) {
                 event.preventDefault();
