@@ -128,6 +128,13 @@
 .nx-page-swatch > span { width: .9rem; height: .9rem; border: 1px solid #abb5c4; border-radius: 3px; }
 .nx-page-ratio { font-variant-numeric: tabular-nums; }
 
+.nx-chrome-settings { border-top: 1px solid var(--design-line); padding-top: 8px; min-width: 0; }
+.nx-chrome-settings > summary { font-size: .9rem; font-weight: 600; cursor: pointer; }
+.nx-chrome-fields { display: grid; gap: 10px; margin-top: 8px; min-width: 0; }
+.nx-chrome-form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.nx-chrome-part { display: grid; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--design-line); }
+.nx-chrome-fields strong { font-size: .88rem; }
+
 @media (max-width: 860px) {
     .nx-design-editor-grid { grid-template-columns: minmax(0, 1fr); }
     .nx-design-controls { border-inline-end: 0; border-bottom: 1px solid var(--design-line); }

@@ -794,6 +794,7 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
         console.log('PASS: the published colors and column widths are visible with strict Content Security Policy');
         await checkInheritedLayouts(page, base, output);
         await checkCommonLayoutFeedback(page, base, output);
+        await require('./chrome-layouts.cjs')(page, base, output);
         assert.deepEqual(errors, []);
         console.log('PASS: browser warning, menu editing, profile, desktop/mobile layout, and no JavaScript exceptions');
     } finally {

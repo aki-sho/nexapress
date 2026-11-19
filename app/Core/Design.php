@@ -9,6 +9,45 @@ use Throwable;
 
 final class Design
 {
+    public const ALIGNMENTS = [
+        'flex-start' => '左寄せ',
+        'center' => '中央寄せ',
+        'flex-end' => '右寄せ',
+        'space-between' => '両端揃え',
+    ];
+
+    public static function widgetAreas(): array
+    {
+        $areas = self::REGIONS + ['sidebar' => 'サイドバー'];
+        foreach (['header' => 'ヘッダー上段', 'header_bottom' => 'ヘッダー下段',
+            'footer' => 'フッター上段', 'footer_bottom' => 'フッター下段'] as $prefix => $label) {
+            for ($column = 1; $column <= 5; $column++) {
+                $areas[$prefix . $column] = $label . ' ' . $column;
+            }
+        }
+        return $areas;
+    }
+
+    public static function headerRowDefaults(bool $stacked = false): array
+    {
+        return [
+            'split' => $stacked,
+            'top' => ['columns' => $stacked ? 1 : 3, 'align' => 'space-between'],
+            'bottom' => ['columns' => 1, 'align' => 'center'],
+            'positions' => [
+                'brand' => ['row' => 'top', 'column' => 1],
+                'menu' => ['row' => $stacked ? 'bottom' : 'top', 'column' => $stacked ? 1 : 2],
+                'search' => ['row' => $stacked ? 'bottom' : 'top', 'column' => $stacked ? 1 : 3],
+            ],
+        ];
+    }
+
+    public static function footerRowDefaults(): array
+    {
+        return ['split' => false, 'top' => ['align' => 'center'],
+            'bottom' => ['columns' => 1, 'align' => 'center']];
+    }
+
     public const REGIONS = [
         'header_after' => 'ヘッダー直下',
         'footer_before' => 'フッター直前',
@@ -123,12 +162,24 @@ final class Design
                 $defaults['widgets']['sidebar'] = self::widgets($layout['widgets']['sidebar'] ?? []);
             } elseif ($area === 'footer') {
                 $footer = $layout['footer'] ?? null;
-                if (!in_array($footer, [1, 2, 3], true)) {
+                if (!in_array($footer, [1, 2, 3, 4, 5], true)) {
                     throw new InvalidArgumentException('フッターのカラム数が正しくありません。');
                 }
                 $defaults['footer'] = $footer;
-                foreach (['footer1', 'footer2', 'footer3'] as $key) {
+                foreach (['footer1', 'footer2', 'footer3', 'footer4', 'footer5'] as $key) {
                     $defaults['widgets'][$key] = self::widgets($layout['widgets'][$key] ?? []);
+                }
+            } elseif ($area === 'header_rows' || $area === 'footer_rows') {
+                $kind = $area === 'header_rows' ? 'header' : 'footer';
+                $defaults[$kind . 'Rows'] = self::rows($layout[$kind . 'Rows'] ?? null, $kind);
+                if ($kind === 'header' && $defaults['headerRows'] !== null) {
+                    $defaults['header']['placement'] = $defaults['headerRows']['split'] ? 'stack' : 'row';
+                }
+                foreach (array_keys(self::widgetAreas()) as $key) {
+                    if (($kind === 'header' && preg_match('/^header(?:_bottom)?[1-5]$/D', $key)) ||
+                        ($kind === 'footer' && preg_match('/^footer_bottom[1-5]$/D', $key))) {
+                        $defaults['widgets'][$key] = self::widgets($layout['widgets'][$key] ?? []);
+                    }
                 }
             } elseif (isset(self::REGIONS[$area])) {
                 $defaults['widgets'][$area] = self::widgets($layout['widgets'][$area] ?? []);
@@ -316,25 +367,63 @@ final class Design
 
     private static function defaults(string $theme): array
     {
+        $widgets = array_fill_keys(array_keys(self::widgetAreas()), []);
+        $widgets['footer1'] = [[
+            'type' => 'copyright', 'title' => '',
+            'text' => $theme === 'monoedge' ? 'NexaPress. Powered by MonoEdge.' : 'NexaPress. All rights reserved.',
+            'menu' => 'footer',
+        ]];
         return [
             'header' => ['placement' => 'row', 'logo' => true, 'name' => true, 'menu' => true, 'search' => true],
+            'headerRows' => null,
             'columns' => 'none',
             'width' => 'standard',
             'footer' => 1,
-            'widgets' => [
-                'header_after' => [],
-                'sidebar' => [],
-                'footer_before' => [],
-                'footer1' => [[
-                    'type' => 'copyright',
-                    'title' => '',
-                    'text' => $theme === 'monoedge' ? 'NexaPress. Powered by MonoEdge.' : 'NexaPress. All rights reserved.',
-                    'menu' => 'footer',
-                ]],
-                'footer2' => [],
-                'footer3' => [],
-            ],
+            'footerRows' => null,
+            'widgets' => $widgets,
         ];
+    }
+
+    private static function rows(mixed $input, string $kind): ?array
+    {
+        if ($input === null) {
+            return null;
+        }
+        $keys = $kind === 'header' ? ['split', 'top', 'bottom', 'positions'] : ['split', 'top', 'bottom'];
+        if (!is_array($input) || array_diff(array_keys($input), $keys) || !is_bool($input['split'] ?? null)) {
+            throw new InvalidArgumentException('ヘッダー・フッターの段構成を確認してください。');
+        }
+        $result = ['split' => $input['split']];
+        foreach (['top', 'bottom'] as $row) {
+            $value = $input[$row] ?? null;
+            $hasColumns = $kind === 'header' || $row === 'bottom';
+            if (!is_array($value) || array_diff(array_keys($value), $hasColumns ? ['columns', 'align'] : ['align']) ||
+                !in_array($value['align'] ?? null, array_keys(self::ALIGNMENTS), true) ||
+                ($hasColumns && !in_array($value['columns'] ?? null, [1, 2, 3, 4, 5], true))) {
+                throw new InvalidArgumentException('各段のカラム数・配置を確認してください。');
+            }
+            $result[$row] = $hasColumns
+                ? ['columns' => $value['columns'], 'align' => $value['align']]
+                : ['align' => $value['align']];
+        }
+        if ($kind === 'header') {
+            $positions = $input['positions'] ?? null;
+            if (!is_array($positions) || array_diff(array_keys($positions), ['brand', 'menu', 'search'])) {
+                throw new InvalidArgumentException('ヘッダーの中身の配置を確認してください。');
+            }
+            foreach (['brand', 'menu', 'search'] as $part) {
+                $position = $positions[$part] ?? null;
+                if (!is_array($position) || array_diff(array_keys($position), ['row', 'column']) ||
+                    !in_array($position['row'] ?? null, ['top', 'bottom'], true) ||
+                    !is_int($position['column'] ?? null) || $position['column'] < 1 ||
+                    $position['column'] > $result[$position['row']]['columns'] ||
+                    ($position['row'] === 'bottom' && !$result['split'])) {
+                    throw new InvalidArgumentException('ヘッダーの表示場所を選び直してください。');
+                }
+                $result['positions'][$part] = $position;
+            }
+        }
+        return $result;
     }
 
     private static function menu(mixed $items, int $limit): array

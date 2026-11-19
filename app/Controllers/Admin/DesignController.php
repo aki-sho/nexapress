@@ -51,6 +51,12 @@ final class DesignController extends Controller
             ],
             'linkTypes' => Navigation::TYPES, 'widgets' => Design::WIDGETS,
             'regions' => Design::REGIONS, 'token' => Csrf::token(),
+            'widgetAreas' => Design::widgetAreas(), 'alignments' => Design::ALIGNMENTS,
+            'chromeDefaults' => [
+                'header' => Design::headerRowDefaults(),
+                'stackedHeader' => Design::headerRowDefaults(true),
+                'footer' => Design::footerRowDefaults(),
+            ],
             'preview' => url('admin/design/preview'), 'publish' => url('admin/design/publish'),
             'pageLayout' => [
                 'url' => url('admin/design/page-layout'),

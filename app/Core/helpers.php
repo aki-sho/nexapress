@@ -55,10 +55,14 @@ function nx_design_settings(): array
 
 function nx_design_header(string $searchQuery = '', bool $includeHomeFallback = true): void
 {
-    $header = nx_design_settings()['header'];
+    $design = nx_design_settings();
+    $header = $design['header'];
+    $rows = $design['headerRows'];
     $links = $header['menu'] ? \app\Core\Design::menuLinks('header', $includeHomeFallback) : [];
     $logo = $header['logo'] ? site_icon() : '';
-    if ($logo !== '' || $header['name'] || $links || $header['search']) {
+    if ($rows !== null) {
+        require BASE_PATH . '/app/Views/design/header-rows.php';
+    } elseif ($logo !== '' || $header['name'] || $links || $header['search']) {
         require BASE_PATH . '/app/Views/design/header.php';
     }
 }
@@ -95,8 +99,10 @@ function nx_design_region(string $area): void
 
 function nx_design_footer(): void
 {
-    $columns = nx_design_settings()['footer'];
-    require BASE_PATH . '/app/Views/design/footer.php';
+    $design = nx_design_settings();
+    $columns = $design['footer'];
+    $rows = $design['footerRows'];
+    require BASE_PATH . ($rows === null ? '/app/Views/design/footer.php' : '/app/Views/design/footer-rows.php');
 }
 
 function nx_archive_page_url(int $page, string $path = '', string $query = ''): string
