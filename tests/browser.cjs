@@ -221,14 +221,14 @@ async function checkCommonLayoutFeedback(page, base, output) {
     assert.equal(await status.locator('dl').count(), 0);
     await waitCard();
     await page.screenshot({path: path.join(output, 'shared-layout-blocked.png')});
-    await status.getByRole('button', {name: 'このページで共通設定を使用', exact: true}).click();
+    await status.getByRole('button', {name: '個別設定を解除', exact: true}).click();
     assert((await conflict.innerText()).includes('確認先：固定のみの共通レイアウト'));
     await status.getByRole('button', {name: '固定のみの共通レイアウトを開く', exact: true}).click();
     await page.locator('[data-page-inherit="color"]').check();
     await waitGold();
     await status.getByRole('button', {name: '元の個別指定に戻す', exact: true}).click();
     await waitCard();
-    await status.getByRole('button', {name: 'このページで共通設定を使用', exact: true}).click();
+    await status.getByRole('button', {name: '個別設定を解除', exact: true}).click();
     await waitGold();
     assert.equal(await conflict.count(), 0);
     await publish();
@@ -252,8 +252,47 @@ async function checkCommonLayoutFeedback(page, base, output) {
     await openScope('all');
     await conflict.waitFor();
     assert((await conflict.innerText()).includes('確認先：固定ページのレイアウト'));
-    await status.getByRole('button', {name: 'このページで共通設定を使用', exact: true}).click();
+    await status.getByRole('button', {name: '個別設定を解除', exact: true}).click();
     await waitGold();
+
+    async function reloadIndividual() {
+        await page.reload();
+        await page.locator('[data-pane="page_layout"]').click();
+        await openScope('page_item');
+        await field('page').selectOption(target.split(':')[1]);
+        await field('enabled').waitFor();
+    }
+    await openScope('page_item');
+    await field('width').selectOption('wide');
+    await page.locator('[data-page-action="section-remove"]').click();
+    await waitCard();
+    assert.equal(await page.locator('[data-page-reset="enabled"]').count(), 1);
+    await field('enabled').uncheck();
+    await publish();
+    await reloadIndividual();
+    assert.equal(await field('enabled').isChecked(), false);
+    let deletion = await (await page.request.get(base + '/admin/design/page-layout/' + target.split(':')[1])).json();
+    assert.equal(deletion.overrides.sectionCount, 0);
+    assert.equal(deletion.overrides.enabled, false);
+    await page.locator('[data-page-reset="enabled"]').click();
+    await waitGold();
+    assert.equal(await field('width').inputValue(), 'wide');
+    await publish();
+    await reloadIndividual();
+    await waitGold();
+    deletion = await (await page.request.get(base + '/admin/design/page-layout/' + target.split(':')[1])).json();
+    assert.deepEqual(deletion.overrides, {format: 2, width: 'wide'});
+    await status.getByRole('button', {name: '個別設定を解除', exact: true}).click();
+    assert.equal(await status.getByText('共通設定を使用中', {exact: true}).count(), 1);
+    await waitGold();
+    await publish();
+    await reloadIndividual();
+    await waitGold();
+    deletion = await (await page.request.get(base + '/admin/design/page-layout/' + target.split(':')[1])).json();
+    assert.deepEqual(deletion.overrides, {format: 2});
+    assert.equal(await status.getByText('共通設定を使用中', {exact: true}).count(), 1);
+    assert.equal(await status.locator('[data-page-action="use-common"]').count(), 0);
+    console.log('PASS: one reset clears disabled/empty overrides, retains body width, and inheritance persists after publish/reload');
     await page.screenshot({path: path.join(output, 'shared-layout-inherited.png')});
     console.log('PASS: blocked shared styles show their source and restore inheritance, undo and published colors');
 }

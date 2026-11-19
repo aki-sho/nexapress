@@ -196,12 +196,13 @@
                 editedSection.background !== 'none' && (!visible || !item || item.background === 'none' || item.color !== editedSection.color);
             const pageName = choices[previewTarget.kind].find(item => String(item.id) === previewTarget.id)?.label ?? '';
             const actions = [
-                overridden ? action('use-common', 'このページで共通設定を使用') : '',
+                overridden ? action('use-common', '個別設定を解除') : '',
                 inheritanceUndo.has(key) ? action('restore-individual', '元の個別指定に戻す') : '',
                 !individual() ? action('edit-individual', 'このページの個別設定を開く') : '',
                 kindOverridden && scope !== previewTarget.kind ? action('edit-kind', escape(config.scopes[previewTarget.kind]) + 'を開く') : '',
             ].join('');
-            return (colorBlocked ? `<p class="nx-page-preview-conflict" data-page-preview-conflict>編集中の「${escape(pageName)}」は、このページには適用されていません。<br>確認先：${escape(colorSource)}</p>` : '') +
+            return (individual() ? '<p class="nx-design-note">' + (overridden ? '個別設定あり' : '共通設定を使用中') + '</p>' : '') +
+                (colorBlocked ? `<p class="nx-page-preview-conflict" data-page-preview-conflict>編集中の「${escape(pageName)}」は、このページには適用されていません。<br>確認先：${escape(colorSource)}</p>` : '') +
                 (actions ? '<div class="nx-design-actions">' + actions + '</div>' : '');
         }
 
@@ -352,7 +353,8 @@
                 record.draft.width ?? 'inherit') +
                 `<label class="nx-design-check"><input type="checkbox" data-page-field="enabled" ${layout.enabled ? 'checked' : ''}>
                     セクションで構成する</label>` +
-                (owns(record.draft, 'enabled') ? reset('enabled', labelForInheritance() + 'の構成を使用') : '');
+                (owns(record.draft, 'enabled') || owns(record.draft, 'sectionCount')
+                    ? reset('enabled', labelForInheritance() + 'の構成を使用') : '');
             if (!layout.enabled) return html;
             html += '<div class="nx-page-section-picker"><h3>セクション</h3>';
             if (item) {
@@ -410,11 +412,15 @@
             const key = control.dataset.pageReset;
             if (key) {
                 if (key === 'sections') {
+                    delete entry().draft.enabled;
                     delete entry().draft.sectionCount;
                     delete entry().draft.sections;
                     sectionIndex = column = elementIndex = 0;
                 } else if (key === 'enabled') {
                     delete entry().draft.enabled;
+                    delete entry().draft.sectionCount;
+                    prune();
+                    sectionIndex = column = elementIndex = 0;
                 } else {
                     delete editSection()[key];
                     prune();
