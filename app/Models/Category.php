@@ -6,6 +6,13 @@ use app\Core\Database;
 
 class Category
 {
+    public static function findByName(string $name): ?array
+    {
+        $stmt = Database::connect()->prepare('SELECT * FROM ' . Database::table('categories') . ' WHERE name = ? ORDER BY id LIMIT 1');
+        $stmt->execute([$name]);
+        return $stmt->fetch() ?: null;
+    }
+
     public static function findBySlug(string $slug): ?array
     {
         $stmt = Database::connect()->prepare('SELECT * FROM ' . Database::table('categories') . ' WHERE slug = ? LIMIT 1');
@@ -55,6 +62,11 @@ class Category
     public static function create(
         array $data
     ): void {
+        self::createWithId($data);
+    }
+
+    public static function createWithId(array $data): int
+    {
         $pdo = Database::connect();
 
         $categories =
@@ -75,6 +87,7 @@ class Category
             ':name' => $data['name'],
             ':slug' => $data['slug'],
         ]);
+        return (int)$pdo->lastInsertId();
     }
 
     public static function update(

@@ -311,6 +311,7 @@ $router->post(
 // カテゴリ管理
 $router->get('/admin/categories', 'app\Controllers\Admin\CategoryController@index');
 $router->post('/admin/categories/store', 'app\Controllers\Admin\CategoryController@store');
+$router->post('/admin/categories/inline', 'app\Controllers\Admin\CategoryController@inlineStore');
 $router->get('/admin/categories/edit/{id}', 'app\Controllers\Admin\CategoryController@edit');
 $router->post('/admin/categories/update/{id}', 'app\Controllers\Admin\CategoryController@update');
 $router->post('/admin/categories/delete/{id}', 'app\Controllers\Admin\CategoryController@delete');

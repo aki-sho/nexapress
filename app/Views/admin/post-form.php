@@ -1,6 +1,7 @@
 <?php
 
 use app\Core\Csrf;
+use app\Core\Permission;
 
 $post = is_array($post ?? null)
     ? $post
@@ -318,6 +319,18 @@ foreach (
                             'category_id'
                         );
                         ?>
+                        <?php if (Permission::can('categories.manage')): ?>
+                            <details class="post-category-create" data-post-category-create data-create-url="<?= e(url('admin/categories/inline')) ?>">
+                                <summary>＋ カテゴリを追加</summary>
+                                <div class="post-category-create-fields">
+                                    <label for="post-new-category-name">カテゴリ名
+                                        <input type="text" id="post-new-category-name" maxlength="100" autocomplete="off" data-new-category-name>
+                                    </label>
+                                    <button type="button" class="button secondary" data-create-category>追加して選択</button>
+                                </div>
+                                <p class="post-category-create-message" data-category-message role="status" aria-live="polite" hidden></p>
+                            </details>
+                        <?php endif; ?>
                     </div>
                 </section>
 
@@ -685,3 +698,6 @@ foreach (
         </div>
     </form>
 </section>
+<?php if (Permission::can('categories.manage')): ?>
+    <script src="<?= e(nx_asset_url('assets/js/post-categories.js')) ?>" defer></script>
+<?php endif; ?>
