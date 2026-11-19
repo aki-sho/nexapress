@@ -510,6 +510,7 @@
                 const [type, id] = value.split(':');
                 previewTarget = {kind: type, id};
                 loadDocument(type, id);
+                refreshPreviewStatus();
                 preview();
                 return;
             }

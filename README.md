@@ -5,7 +5,7 @@
 NexaPressは、PHPとMySQL／MariaDBで動作するWeb CMSです。  
 ブラウザからの初期セットアップに対応し、投稿、固定ページ、メディア、テーマ、ユーザー、拡張機能を管理画面から一元管理できます。
 
-![Version](https://img.shields.io/badge/version-v2.12.1-2563eb)
+![Version](https://img.shields.io/badge/version-v2.12.2-2563eb)
 ![PHP](https://img.shields.io/badge/PHP-8.x-777bb4)
 ![Database](https://img.shields.io/badge/MySQL%20%2F%20MariaDB-supported-f59e0b)
 ![Architecture](https://img.shields.io/badge/Architecture-MVC-111827)
@@ -194,7 +194,7 @@ NexaPressを動作させるには、以下の環境が必要です。
 GitHub Releasesから最新版の本体ZIPをダウンロードします。
 
 ```text
-nexapress-2.12.1.zip
+nexapress-2.12.2.zip
 ```
 
 ### 2. サーバーへ配置
@@ -203,7 +203,7 @@ ZIPを展開し、Webサーバーの公開可能なディレクトリへ配置�
 
 ```text
 htdocs/
-└─ nexapress-2.12.1/
+└─ nexapress-2.12.2/
 ```
 
 ### 3. データベースを作成
@@ -215,7 +215,7 @@ NexaPressで使用するMySQLまたはMariaDBのデータベースを作成し�
 ブラウザからNexaPressのURLへアクセスします。
 
 ```text
-http://localhost/nexapress-2.12.1/
+http://localhost/nexapress-2.12.2/
 ```
 
 未インストールの場合は、自動的にインストーラーへ移動します。
@@ -246,13 +246,13 @@ http://localhost/nexapress-2.12.1/
 
 ```text
 サイト：
-http://localhost/nexapress-2.12.1/
+http://localhost/nexapress-2.12.2/
 
 ログイン画面：
-http://localhost/nexapress-2.12.1/admin/login
+http://localhost/nexapress-2.12.2/admin/login
 
 管理画面：
-http://localhost/nexapress-2.12.1/admin
+http://localhost/nexapress-2.12.2/admin
 ```
 
 ---
@@ -280,10 +280,10 @@ NexaPress 2.2.0以降では、管理画面から本体をアップデートで�
 - バージョン情報の更新
 - 更新失敗時のバックアップ復元
 
-NexaPress 2.12.1の更新用ファイル名は以下です。
+NexaPress 2.12.2の更新用ファイル名は以下です。
 
 ```text
-nexapress-update-2.12.1.zip
+nexapress-update-2.12.2.zip
 ```
 
 ---
@@ -437,6 +437,8 @@ NexaPressには、2つのテーマが同梱されています。
 
 同梱の default と MonoEdge では、「ウィジェット」の表示場所に「ヘッダー直下」と「フッター直前」を選べます。固定ページ・カテゴリ・投稿記事・任意リンクをメニュー項目や単独のリンクウィジェットとして追加できます。
 
+サイドバーは「本文カラム」で左右の2カラムを選び、「ウィジェット」の「サイドバー」に中身を追加します。セクション形式の固定ページ・投稿でも本文の隣に表示され、スマホでは本文の下に並びます。
+
 「ヘッダー」「フッター」は「段構成」「上段のカラム・配置」「下段のカラム・配置」「中身の配置」に分かれています。1段・上下2段を切り替え、上段・下段それぞれ1〜5カラム、左寄せ・中央寄せ・右寄せ・両端揃えを選べます。ヘッダーのサイト情報・メニュー・検索欄は表示場所を指定でき、各段の各カラムにはウィジェットを追加できます。段やカラムを減らしても、非表示になったウィジェットは保持されます。
 
 「本文カラム」でテーマの本文幅を標準・ワイド・全幅から選べます。「ページ毎のレイアウト」には、固定と投稿の共通、固定のみの共通、投稿のみの共通、固定ページ個別、投稿ページ個別の5つの開閉欄があります。共通、種類別、個別の順に適用し、変更した項目を優先します。選択欄の「共通設定を使用」、背景色のチェック、数値欄を空にする操作で継承に戻せます。
@@ -540,13 +542,13 @@ NexaPressを安定して運用するため、以下を推奨します。
 リリースには、用途の異なる2種類のZIPが含まれます。
 
 ```text
-nexapress-2.12.1.zip
+nexapress-2.12.2.zip
 ```
 
 新規インストール用の本体パッケージです。
 
 ```text
-nexapress-update-2.12.1.zip
+nexapress-update-2.12.2.zip
 ```
 
 既存のNexaPress 2.2.0以上を更新するためのパッケージです。
@@ -578,6 +580,6 @@ Apacheの設定が適用される環境が対象です。別のWebサーバー�
 
 ### 2.4.1からの更新用ZIP修正
 
-2.4.1の更新用ZIPは、旧版の更新許可範囲に含まれない保護ファイルを追加していたため、2.4.0以前からの管理画面更新に失敗します。2.12.1へ直接更新できます。
+2.4.1の更新用ZIPは、旧版の更新許可範囲に含まれない保護ファイルを追加していたため、2.4.0以前からの管理画面更新に失敗します。2.12.2へ直接更新できます。
 新規導入用ZIPは各フォルダの保護ファイルを含みます。更新用ZIPは旧版の許可範囲に合わせ、ルートの保護設定でconfig・databaseを含む内部パスを保護します。
 更新ZIPの検証は、バージョン情報だけを変えた現行ソースではなく、公開した旧版ソースから管理画面経由で実行します。実行方法はtests/README.mdを参照してください。

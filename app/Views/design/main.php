@@ -7,13 +7,13 @@ if ($width === 'inherit') {
 }
 $useSections = !empty($pageDesign['enabled']) && !empty($pageDesign['sections']);
 ?>
-<?php if ($useSections): ?>
-    <main class="site-main nx-section-page"><?= $content ?></main>
-<?php elseif ($sidebar): ?>
+<?php if ($sidebar): ?>
     <div class="site-main nx-design-main nx-design-main--<?= e($design['columns']) ?>" data-content-width="<?= e($width) ?>">
-        <main><?= $content ?? '' ?></main>
-        <aside class="nx-design-sidebar" aria-label="サイドバー"><?php nx_design_widgets('sidebar'); ?></aside>
+        <main<?= $useSections ? ' class="nx-section-page"' : '' ?>><?= $content ?? '' ?></main>
+        <aside class="nx-design-sidebar" data-widget-area="sidebar" aria-label="サイドバー"><?php nx_design_widgets('sidebar'); ?></aside>
     </div>
+<?php elseif ($useSections): ?>
+    <main class="site-main nx-section-page"><?= $content ?></main>
 <?php else: ?>
     <main class="site-main" data-content-width="<?= e($width) ?>"><?= $content ?? '' ?></main>
 <?php endif; ?>
