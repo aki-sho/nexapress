@@ -3,6 +3,11 @@ const path = require('path');
 
 module.exports = async function checkDesign(page, base, output) {
     const request = page.request;
+    async function headerLinks() {
+        await page.locator('[data-pane="header"]').click();
+        const details = page.locator('[data-chrome-details="header:links"]');
+        if (!(await details.evaluate(element => element.open))) await details.locator('> summary').click();
+    }
     async function catalog() {
         const response = await request.get(base + '/admin/design');
         assert.equal(response.status(), 200);
@@ -112,7 +117,7 @@ module.exports = async function checkDesign(page, base, output) {
         await form.locator('[name="url"]').fill('/posts');
         await form.locator('[name="area"]').selectOption('footer_before');
         await form.getByRole('button', {name: '反映', exact: true}).click();
-        await page.locator('[data-pane="menus"][data-menu="header"]').click();
+        await headerLinks();
         const menuCount = await page.locator('.nx-design-item').count();
         await page.locator('[data-action="add"]').click();
         await form.locator('[data-form-setting="type"]').selectOption('post');
@@ -132,6 +137,7 @@ module.exports = async function checkDesign(page, base, output) {
         await visitor.goto(base + '/page/legacy');
         assert((await visitor.locator('.site-nav').textContent()).includes('投稿メニュー確認'));
         assert.equal(await visitor.locator('[data-design-area="footer_before"] a').last().getAttribute('href'), '/posts');
+        await headerLinks();
         await page.locator('[data-action="remove"][data-index="' + menuCount + '"]').click();
         await page.locator('[data-pane="widgets"]').click();
         await page.locator('[data-setting="area"]').selectOption('footer_before');

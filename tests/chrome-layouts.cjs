@@ -5,6 +5,11 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     const control = (kind, row, field) => page.locator(
         '[data-chrome="' + kind + '"][data-chrome-row="' + row + '"][data-chrome-field="' + field + '"]');
     async function open(kind) { await page.locator('[data-pane="' + kind + '"]').click(); }
+    async function links(kind) {
+        await open(kind);
+        const details = page.locator('[data-chrome-details="' + kind + ':links"]');
+        if (!(await details.evaluate(element => element.open))) await details.locator('> summary').click();
+    }
     async function content(kind) {
         const details = page.locator('[data-chrome-details="' + kind + ':content"]');
         if (!(await details.evaluate(element => element.open))) await details.locator('> summary').click();
@@ -19,6 +24,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
         ]);
         assert.equal(response.status(), 200, await response.text());
         await page.waitForFunction(() => document.querySelector('[data-action="publish"]').disabled);
+        return response.json();
     }
     async function addWidget(kind, area, text) {
         await open(kind);
@@ -43,31 +49,57 @@ module.exports = async function checkChromeLayouts(page, base, output) {
         }, counts);
     }
     await page.goto(base + '/admin/design');
-    await page.locator('[data-pane="menus"][data-menu="header"]').click();
+    const initial = JSON.parse(await page.locator('#nx-design-data').textContent());
+    assert.equal(await page.locator('.nx-design-tabs [data-pane="menus"]').count(), 0);
+    assert.equal(await page.getByRole('button', {name: /^(ヘッダー用メニュー|フッター用メニュー)$/}).count(), 0);
+    await links('header');
+    assert.equal(await page.locator('[data-action="publish"]').isDisabled(), true, 'opening link settings does not change the layout');
     await page.locator('[data-action="add"]').click();
     const menuForm = page.locator('[data-designer-form]');
     await menuForm.locator('[data-form-setting="type"]').selectOption('custom');
     await menuForm.locator('[name="label"]').fill('ヘッダー配置確認');
     await menuForm.locator('[name="url"]').fill('/');
     await menuForm.getByRole('button', {name: '追加', exact: true}).click();
-    await page.locator('[data-pane="menus"][data-menu="footer"]').click();
-    assert.equal(await page.locator('[data-menu="header"]').getAttribute('aria-pressed'), 'false');
-    assert.equal(await page.locator('[data-menu="footer"]').getAttribute('aria-pressed'), 'true');
-    assert.equal(await page.locator('#nx-design-panel > h2').textContent(), 'フッター用メニュー');
+    await links('footer');
+    assert.equal(await page.locator('[data-pane="header"]').getAttribute('aria-pressed'), 'false');
+    assert.equal(await page.locator('[data-pane="footer"]').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('#nx-design-panel > h2').textContent(), 'フッター');
     await page.locator('[data-action="add"]').click();
     await menuForm.locator('[data-form-setting="type"]').selectOption('custom');
     await menuForm.locator('[name="label"]').fill('フッター配置確認');
     await menuForm.locator('[name="url"]').fill('/posts');
     await menuForm.getByRole('button', {name: '追加', exact: true}).click();
-    await page.locator('[data-menu="header"]').click();
-    assert.equal(await page.locator('#nx-design-panel > h2').textContent(), 'ヘッダー用メニュー');
+    await links('header');
+    assert.equal(await page.locator('#nx-design-panel > h2').textContent(), 'ヘッダー');
     assert((await page.locator('.nx-design-item-list').textContent()).includes('ヘッダー配置確認'));
     assert(!(await page.locator('.nx-design-item-list').textContent()).includes('フッター配置確認'));
+    const linkPublication = await publish();
+    for (const [id, saved] of Object.entries(initial.themes)) {
+        assert.deepEqual(linkPublication.states[id].layout, saved.state.layout, id + ': editing links preserves every existing layout and widget setting');
+        assert.deepEqual(linkPublication.states[id].contentLayouts, saved.state.contentLayouts);
+    }
+    assert(linkPublication.states[initial.active].menus.header.some(item => item.label === 'ヘッダー配置確認'));
+    assert(linkPublication.states[initial.active].menus.footer.some(item => item.label === 'フッター配置確認'));
+    for (const kind of ['header', 'footer']) {
+        const previous = initial.themes[initial.active].state.menus[kind];
+        assert.deepEqual(linkPublication.states[initial.active].menus[kind].slice(0, previous.length), previous);
+    }
+    await page.reload();
+    await links('footer');
+    assert((await page.locator('.nx-design-item-list').textContent()).includes('フッター配置確認'));
+    console.log('PASS: integrated header/footer link editing preserves all existing theme layouts, widgets and shared page layouts');
     await open('header');
     for (const section of ['structure', 'top', 'content']) {
         assert.equal(await page.locator('[data-chrome-details="header:' + section + '"]').count(), 1);
     }
+    await links('header');
+    await page.locator('.nx-design-item-list [data-action="edit"]').last().click();
+    await menuForm.locator('[name="url"]').fill('/editing-link');
     await set('header', '', 'split', 2);
+    assert.equal(await menuForm.locator('[name="url"]').inputValue(), '/editing-link',
+        'a layout control redraw retains the unfinished link form');
+    await menuForm.locator('[name="url"]').fill('/');
+    await menuForm.getByRole('button', {name: '反映', exact: true}).click();
     await set('header', 'top', 'columns', 5);
     await set('header', 'bottom', 'columns', 2);
     await set('header', 'top', 'align', 'flex-start');

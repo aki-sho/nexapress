@@ -15,7 +15,7 @@
     const regionIds = Object.keys(regions);
     const linkTypeIds = Object.keys(linkTypes);
     const areas = data.widgetAreas;
-    const menus = {header: 'ヘッダー用メニュー', footer: 'フッター用メニュー'};
+    const menus = {header: 'ヘッダーのリンク', footer: 'フッターのリンク'};
     const labels = {header: 'ヘッダー', header_rows: 'ヘッダーの上下分割', columns: '本文カラム',
         footer: 'フッター', footer_rows: 'フッターの上下分割', page_layout: 'ページ毎のレイアウト', ...regions};
     const chromeOpen = new Map();
@@ -31,8 +31,7 @@
     const layouts = Object.fromEntries(Object.entries(published).map(([id, item]) => [id, clone(item.layout)]));
     const conflicts = new Set();
     let menuItems = clone(published[theme].menus);
-    let pane = 'menus';
-    let menuName = 'header';
+    let pane = 'header';
     let area = 'header_after';
     let mode = 'draft';
     let device = 'desktop';
@@ -64,7 +63,8 @@
             (kind === 'footer' && !bottom ? layouts[theme].footer : rows[bottom ? 'bottom' : 'top'].columns);
     });
     const hasChanges = id => !same(menuItems, published[id].menus) || !same(layouts[id], published[id].layout);
-    const currentList = () => pane === 'menus' ? menuItems[menuName] : layouts[theme].widgets[area];
+    const editingLinks = () => pane === 'header' || pane === 'footer';
+    const currentList = () => editingLinks() ? menuItems[pane] : layouts[theme].widgets[area];
     const categoryIds = item => item.reference_ids ?? (item.reference_id ? [item.reference_id] : []);
     const button = (action, label, attributes = '') =>
         `<button type="button" class="nx-design-small" data-action="${action}" ${attributes}>${label}</button>`;
@@ -145,7 +145,7 @@
     function renderForm() {
         const item = editor.item;
         let fields;
-        if (pane === 'menus') {
+        if (editingLinks()) {
             fields = field('種類', 'type', Object.entries(linkTypes), item.type, 'data-form-setting="type"') +
                 linkField(item) +
                 `<label>表示名<input name="label" maxlength="255" required value="${escape(item.label)}"></label>`;
@@ -164,7 +164,7 @@
             if (['text', 'copyright'].includes(item.type)) {
                 fields += `<label>テキスト<textarea rows="3" name="text" maxlength="1000">${escape(item.text)}</textarea></label>`;
             } else if (item.type === 'menu') {
-                fields += field('表示するメニュー', 'menu', Object.entries(menus), item.menu);
+                fields += field('表示するリンク', 'menu', Object.entries(menus), item.menu);
             }
         }
         return `<form class="nx-design-form" data-designer-form>
@@ -188,7 +188,10 @@
         const control = (label, row, name, choices, value) => field(label, kind + '-' + row + '-' + name, choices, value,
             `data-chrome="${kind}" data-chrome-row="${row}" data-chrome-field="${name}"` +
             (kind === 'footer' && row === 'top' && name === 'columns' ? ' data-setting="footer"' : ''));
-        let html = '<h2>' + title + '</h2>';
+        const links = renderRows(menuItems[kind], true) + (editor ? renderForm() :
+            '<div>' + button('add', '＋ 項目を追加') + '</div>');
+        let html = '<h2>' + title + '</h2>' + chromeGroup(kind, 'links', 'リンク', links);
+        if (!supports(kind)) return html;
         if (capable) {
             html += chromeGroup(kind, 'structure', '段構成', control('段数', '', 'split',
                 [[1, '1段'], [2, '上下2段']], rows.split ? 2 : 1), true);
@@ -255,17 +258,16 @@
         ].filter(Boolean).join(' ');
         root.querySelectorAll('[data-pane]').forEach(control => {
             const key = control.dataset.pane;
-            control.disabled = publishing || (key !== 'menus' && (key === 'widgets'
+            control.disabled = publishing || (!['header', 'footer'].includes(key) && (key === 'widgets'
                 ? !supportsWidgets() : !supports(key)));
-            control.setAttribute('aria-pressed', String(key === pane && (key !== 'menus' || control.dataset.menu === menuName)));
+            control.setAttribute('aria-pressed', String(key === pane));
         });
 
-        if (pane === 'menus' || pane === 'widgets') {
-            const forMenu = pane === 'menus';
-            const choose = forMenu ? '' : field('表示場所', 'area', usable.map(id => [id, areas[id]]), area, 'data-setting="area"');
-            panel.innerHTML = `<h2>${forMenu ? menus[menuName] : 'ウィジェット'}</h2>` + (forMenu || usable.length
-                ? choose + renderRows(currentList(), forMenu) + (editor
-                    ? renderForm() : `<div>${button('add', forMenu ? '＋ 項目を追加' : '＋ ウィジェットを追加')}</div>`)
+        if (pane === 'widgets') {
+            const choose = field('表示場所', 'area', usable.map(id => [id, areas[id]]), area, 'data-setting="area"');
+            panel.innerHTML = '<h2>ウィジェット</h2>' + (usable.length
+                ? choose + renderRows(currentList(), false) + (editor
+                    ? renderForm() : `<div>${button('add', '＋ ウィジェットを追加')}</div>`)
                 : '<p class="nx-design-note">本文カラムでサイドバーを選ぶと配置できます。</p>');
         } else if (pane === 'header') {
             panel.innerHTML = chromePanel('header');
@@ -306,8 +308,7 @@
     }
 
     function revealPreviewArea() {
-        const footer = pane === 'footer' || (pane === 'widgets' && area.startsWith('footer')) ||
-            (pane === 'menus' && menuName === 'footer');
+        const footer = pane === 'footer' || (pane === 'widgets' && area.startsWith('footer'));
         const body = pane === 'columns' || (pane === 'widgets' && area === 'sidebar');
         const document = frame.contentDocument;
         const region = pane === 'widgets'
@@ -364,6 +365,12 @@
     }
 
     function changed(focus, redraw = true) {
+        const form = panel.querySelector('[data-designer-form]');
+        if (redraw && editor && editingLinks() && form) {
+            const draft = Object.fromEntries(new FormData(form));
+            if ('reference_id' in draft) draft.reference_id = Number(draft.reference_id) || null;
+            Object.assign(editor.item, draft);
+        }
         mode = 'draft';
         showError();
         if (redraw) renderPanel(focus);
@@ -411,11 +418,10 @@
         const control = event.target.closest('button');
         if (!control || publishing) return;
         const target = control.dataset;
-        if (target.pane || target.menu) {
-            pane = target.pane || pane;
-            menuName = target.menu || menuName;
+        if (target.pane) {
+            pane = target.pane;
             editor = null;
-            renderPanel(target.menu ? `[data-menu="${menuName}"]` : undefined);
+            renderPanel();
             revealPreviewArea();
         } else if (target.mode || target.device) {
             mode = target.mode || mode;
@@ -441,11 +447,11 @@
             const list = currentList();
             const index = Number(target.index ?? -1);
             if (target.action === 'add' || target.action === 'edit') {
-                if (index < 0 && list.length >= (pane === 'menus' ? 100 : 12)) {
+                if (index < 0 && list.length >= (editingLinks() ? 100 : 12)) {
                     showError('登録できる項目数の上限に達しました。');
                     return;
                 }
-                const empty = pane === 'menus'
+                const empty = editingLinks()
                     ? {id: null, type: 'page', label: '', reference_id: null, url: ''}
                     : {type: 'text', title: '', text: '', menu: 'footer', area};
                 editor = {index, item: {...empty, ...list[index]}};
@@ -489,8 +495,8 @@
         } else if (setting === 'theme') {
             theme = input.value;
             editor = null;
-            if (pane !== 'menus' && (pane === 'widgets' ? !supportsWidgets() : !supports(pane))) {
-                pane = 'menus';
+            if (!editingLinks() && (pane === 'widgets' ? !supportsWidgets() : !supports(pane))) {
+                pane = 'header';
             }
             changed('[data-setting="theme"]');
         } else if (setting === 'area') {
@@ -532,7 +538,7 @@
         const values = Object.fromEntries(formData);
         const list = currentList();
         const index = editor.index;
-        const forMenu = pane === 'menus';
+        const forMenu = editingLinks();
         const name = (forMenu ? values.label : values.title).trim();
         const isLink = linkTypeIds.includes(values.type);
         const categories = !forMenu && values.type === 'category' ? formData.getAll('reference_ids').map(Number) : null;

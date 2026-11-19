@@ -120,7 +120,9 @@ module.exports = async function checkCategoryWidgets(page, base, output) {
         await visitor.goto(base + '/posts');
         assert.equal(await visitor.locator('[data-design-area="header_after"] .nx-design-widget-categories li').count(), 2);
         assert.equal(await visitor.locator('[data-design-area="header_after"] .nx-design-widget-categories h2').count(), 0);
-        await page.locator('[data-pane="menus"][data-menu="header"]').click();
+        await page.locator('[data-pane="header"]').click();
+        const headerLinks = page.locator('[data-chrome-details="header:links"]');
+        if (!(await headerLinks.evaluate(element => element.open))) await headerLinks.locator('> summary').click();
         await page.locator('[data-action="add"]').click();
         await form.locator('[data-form-setting="type"]').selectOption('category');
         assert.equal(await form.locator('[name="reference_id"]').count(), 1);
