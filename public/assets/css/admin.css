@@ -434,6 +434,26 @@
     font-size: 13px;
 }
 
+.admin-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    max-width: 100%;
+    line-height: 1.5;
+    cursor: pointer;
+}
+
+.admin-checkbox input[type="checkbox"] {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    accent-color: #2563eb;
+}
+
 .role-badge {
     display: inline-block;
     padding: 5px 9px;

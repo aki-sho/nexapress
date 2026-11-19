@@ -138,21 +138,22 @@ $discourageSearchEngines = (bool) (
     <div class="form-group">
         <h2>検索エンジンでの表示</h2>
 
-        <label>
+        <label class="admin-checkbox" for="discourage_search_engines">
             <input
                 type="checkbox"
+                id="discourage_search_engines"
                 name="discourage_search_engines"
+                aria-describedby="search-engine-help"
                 value="1"
                 <?= $discourageSearchEngines
                     ? 'checked'
                     : '' ?>
             >
 
-            検索エンジンがサイトを
-            インデックスしないようにする
+            <span>検索エンジンがサイトをインデックスしないようにする</span>
         </label>
 
-        <small>
+        <small id="search-engine-help">
             この設定は検索エンジンへのお願いであり、
             完全な非公開を保証するものではありません。
         </small>
