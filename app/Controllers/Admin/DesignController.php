@@ -35,6 +35,7 @@ final class DesignController extends Controller
         }
         $contentChoices = static fn(array $item): array => [
             'id' => (int)$item['id'],
+            'name' => $item['title'],
             'label' => $item['title'] . ($item['status'] === 'published' ? '' : '（非公開）'),
         ];
 

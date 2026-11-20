@@ -20,6 +20,7 @@
     const labels = {header: 'ヘッダー', header_rows: 'ヘッダーの上下分割', columns: '本文カラム',
         footer: 'フッター', footer_rows: 'フッターの上下分割', page_layout: 'ページ毎のレイアウト', ...regions};
     const chromeOpen = new Map();
+    const selectedWidgetAreas = {header: 'header_after', columns: 'sidebar', footer: 'footer_before'};
     const clone = value => JSON.parse(JSON.stringify(value));
     const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
     const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
@@ -33,7 +34,6 @@
     const conflicts = new Set();
     let menuItems = clone(published[theme].menus);
     let pane = 'header';
-    let area = 'header_after';
     let mode = 'draft';
     let device = 'desktop';
     let editor = null;
@@ -49,7 +49,6 @@
         contentLayouts: pageEditor.commonPayload(),
         content: pageEditor.payload(),
     });
-    const supportsWidgets = () => supports('columns') || supports('header_rows') || supports('footer') || regionIds.some(supports);
     const chromeRows = kind => layouts[theme][kind + 'Rows'] ??
         data.chromeDefaults[kind === 'header' && layouts[theme].header.placement === 'stack' ? 'stackedHeader' : kind];
     const ensureChrome = kind => layouts[theme][kind + 'Rows'] ??= clone(chromeRows(kind));
@@ -61,13 +60,13 @@
         const [, kind, bottom, number] = match;
         if (!supports(kind === 'header' || bottom ? kind + '_rows' : kind)) return false;
         const rows = chromeRows(kind);
-        if (kind === 'header' && layouts[theme].headerRows === null) return false;
         return (!bottom || rows.split) && Number(number) <=
             (kind === 'footer' && !bottom ? layouts[theme].footer : rows[bottom ? 'bottom' : 'top'].columns);
     });
     const hasChanges = id => !same(menuItems, published[id].menus) || !same(layouts[id], published[id].layout);
-    const editingLinks = () => pane === 'header' || pane === 'footer';
-    const currentList = () => editingLinks() ? menuItems[pane] : layouts[theme].widgets[area];
+    const widgetPane = area => area === 'sidebar' ? 'columns' : area.startsWith('header') ? 'header' : 'footer';
+    const currentList = list => list === 'links' ? menuItems[pane] : layouts[theme].widgets[selectedWidgetAreas[pane]];
+    const itemControl = (list, selector) => '[data-chrome-details="' + pane + ':' + list + '"] ' + selector;
     const categoryIds = item => item.reference_ids ?? (item.reference_id ? [item.reference_id] : []);
     const button = (action, label, attributes = '') =>
         `<button type="button" class="nx-design-small" data-action="${action}" ${attributes}>${label}</button>`;
@@ -101,7 +100,7 @@
 
     function renderRows(list, forMenu) {
         if (!list.length) {
-            return `<p class="nx-design-note">${forMenu ? 'メニュー項目' : 'ウィジェット'}はまだありません。</p>`;
+            return `<p class="nx-design-note">${forMenu ? 'リンク' : 'ウィジェット'}はまだありません。</p>`;
         }
         return `<ol class="nx-design-item-list">${list.map((item, index) => {
             const kind = (forMenu ? linkTypes : data.widgets)[item.type];
@@ -151,13 +150,15 @@
     function renderForm() {
         const item = editor.item;
         let fields;
-        if (editingLinks()) {
+        if (editor.list === 'links') {
             fields = field('種類', 'type', Object.entries(linkTypes), item.type, 'data-form-setting="type"') +
                 linkField(item) +
                 `<label>表示名<input name="label" maxlength="255" required value="${escape(item.label)}"></label>`;
         } else {
+            const destinations = activeAreas();
+            const destination = destinations.includes(item.area) ? item.area : selectedWidgetAreas[pane];
             fields = field('種類', 'type', Object.entries(data.widgets), item.type, 'data-form-setting="type"') +
-                field('表示場所', 'area', activeAreas().map(id => [id, areas[id]]), item.area);
+                field('表示場所', 'area', destinations.map(id => [id, areas[id]]), destination, 'required');
             if (item.type === 'category') {
                 fields += categoryField(item) + `<label><span data-category-title-label>${categoryTitleLabel(categoryIds(item).length)}</span>
                     <input name="title" maxlength="80" value="${escape(item.title)}"></label>`;
@@ -185,6 +186,28 @@
             <summary>${title}</summary><div class="nx-chrome-fields">${content}</div></details>`;
     }
 
+    function renderList(list, kind) {
+        const links = kind === 'links';
+        return renderRows(list, links) + (editor?.list === kind ? renderForm() :
+            '<div>' + button('add', links ? '＋ 項目を追加' : '＋ ウィジェットを追加') + '</div>');
+    }
+
+    function widgetGroup(kind) {
+        const available = activeAreas().filter(area => widgetPane(area) === kind);
+        if (!available.includes(selectedWidgetAreas[kind])) {
+            if (editor?.list === 'widgets') editor = null;
+            selectedWidgetAreas[kind] = available[0];
+        }
+        if (!available.length) return '';
+
+        const area = selectedWidgetAreas[kind];
+        const sidebar = kind === 'columns';
+        const picker = sidebar || editor?.list === 'widgets' ? '' :
+            field('表示場所', 'widget-area', available.map(id => [id, areas[id]]), area, 'data-setting="area"');
+        return chromeGroup(kind, 'widgets', sidebar ? 'サイドバーのウィジェット' : 'ウィジェット',
+            picker + renderList(layouts[theme].widgets[area], 'widgets'));
+    }
+
     function chromePanel(kind) {
         const layout = layouts[theme];
         const rows = chromeRows(kind);
@@ -194,9 +217,8 @@
         const control = (label, row, name, choices, value) => field(label, kind + '-' + row + '-' + name, choices, value,
             `data-chrome="${kind}" data-chrome-row="${row}" data-chrome-field="${name}"` +
             (kind === 'footer' && row === 'top' && name === 'columns' ? ' data-setting="footer"' : ''));
-        const links = renderRows(menuItems[kind], true) + (editor ? renderForm() :
-            '<div>' + button('add', '＋ 項目を追加') + '</div>');
-        let html = '<h2>' + title + '</h2>' + chromeGroup(kind, 'links', 'リンク', links);
+        let html = '<h2>' + title + '</h2>' + chromeGroup(kind, 'links', 'リンク', renderList(menuItems[kind], 'links')) +
+            widgetGroup(kind);
         if (!supports(kind)) return html;
         if (capable) {
             html += chromeGroup(kind, 'structure', '段構成', control('段数', '', 'split',
@@ -231,29 +253,20 @@
                 content += '</div>';
             }
         }
-        for (const row of capable && rows.split ? ['top', 'bottom'] : ['top']) {
-            if (kind === 'header' && !capable) break;
-            const count = kind === 'footer' && row === 'top' ? layout.footer : rows[row].columns;
-            content += '<div><strong>' + (row === 'top' ? '上段' : '下段') + 'のウィジェット</strong><div class="nx-design-actions">' +
-                Array.from({length: count}, (_, index) => {
-                    const id = kind + (row === 'bottom' ? '_bottom' : '') + (index + 1);
-                    return button('area', 'カラム' + (index + 1),
-                        `data-area="${id}" aria-label="${title}${row === 'top' ? '上段' : '下段'}カラム${index + 1}の中身を編集"`);
-                }).join('') + '</div></div>';
-        }
-        return html + chromeGroup(kind, 'content', '中身の配置', content);
+        return kind === 'header' ? html + chromeGroup(kind, 'content', '中身の配置', content) : html;
     }
 
     panel.addEventListener('toggle', event => {
         const id = event.target.dataset.chromeDetails;
-        if (id && event.target.isConnected) chromeOpen.set(id, event.target.open);
+        if (id && event.target.isConnected) {
+            chromeOpen.set(id, event.target.open);
+            if (id === pane + ':widgets' && event.target.open) revealPreviewArea();
+        }
     }, true);
 
     function renderPanel(focus) {
         panel.querySelectorAll('[data-chrome-details]').forEach(details =>
             chromeOpen.set(details.dataset.chromeDetails, details.open));
-        const usable = activeAreas();
-        if (!usable.includes(area)) area = usable[0] ?? '';
         const layout = layouts[theme];
         const supported = data.themes[theme].areas.map(id => labels[id]);
         const partial = supported.length < Object.keys(labels).length;
@@ -264,8 +277,7 @@
         ].filter(Boolean).join(' ');
         root.querySelectorAll('[data-pane]').forEach(control => {
             const key = control.dataset.pane;
-            control.disabled = publishing || Boolean(resetDraft) || (!['header', 'footer'].includes(key) && (key === 'widgets'
-                ? !supportsWidgets() : !supports(key)));
+            control.disabled = publishing || Boolean(resetDraft) || (!['header', 'footer'].includes(key) && !supports(key));
             control.setAttribute('aria-pressed', String(key === pane));
         });
 
@@ -278,24 +290,15 @@
             panel.innerHTML = '<h2>初期状態の確認</h2>' +
                 '<p class="nx-design-note">全テーマのデザイン、リンク、ウィジェット、共通・ページ個別のレイアウトが初期状態に戻ります。「公開」で確定します。</p>' +
                 field('プレビューするページ', 'reset-target', choices, target.id ? target.kind + ':' + target.id : '', 'data-setting="reset-target"');
-        } else if (pane === 'widgets') {
-            const choose = field('表示場所', 'area', usable.map(id => [id, areas[id]]), area, 'data-setting="area"');
-            panel.innerHTML = '<h2>ウィジェット</h2>' + (usable.length
-                ? choose + renderRows(currentList(), false) + (editor
-                    ? renderForm() : `<div>${button('add', '＋ ウィジェットを追加')}</div>`)
-                : '<p class="nx-design-note">本文カラムでサイドバーを選ぶと配置できます。</p>');
-        } else if (pane === 'header') {
-            panel.innerHTML = chromePanel('header');
+        } else if (pane === 'header' || pane === 'footer') {
+            panel.innerHTML = chromePanel(pane);
         } else if (pane === 'columns') {
             panel.innerHTML = '<h2>本文カラム</h2>' + (supports('page_layout')
                 ? field('テーマの本文幅', 'width', pageEditor.widths, layout.width, 'data-setting="width"') : '') + field('レイアウト', 'columns',
                 [['none', '1カラム・本文のみ'], ['left', '2カラム・左サイドバー'], ['right', '2カラム・右サイドバー']],
-                layout.columns, 'data-setting="columns"') +
-                (layout.columns === 'none' ? '' : `<div>${button('area', 'サイドバーの中身を編集', 'data-area="sidebar"')}</div>`);
+                layout.columns, 'data-setting="columns"') + widgetGroup('columns');
         } else if (pane === 'page_layout') {
             panel.innerHTML = pageEditor.render();
-        } else if (pane === 'footer') {
-            panel.innerHTML = chromePanel('footer');
         }
         renderStatus();
         if (focus) root.querySelector(focus)?.focus();
@@ -325,10 +328,12 @@
 
     function revealPreviewArea() {
         if (resetDraft) return;
-        const footer = pane === 'footer' || (pane === 'widgets' && area.startsWith('footer'));
-        const body = pane === 'columns' || (pane === 'widgets' && area === 'sidebar');
+        const footer = pane === 'footer';
+        const body = pane === 'columns';
         const document = frame.contentDocument;
-        const region = pane === 'widgets'
+        const widgetGroupOpen = panel.querySelector('[data-chrome-details="' + pane + ':widgets"][open]');
+        const area = widgetGroupOpen && editor?.list !== 'links' ? selectedWidgetAreas[pane] : null;
+        const region = area
             ? document?.querySelector(regionIds.includes(area) ? `[data-design-area="${area}"]` : `[data-widget-area="${area}"]`)
             : pane === 'page_layout' ? document?.querySelector(`[data-layout-section="${pageEditor.sectionIndex()}"]`) : null;
         const anchor = region || (footer ? (document?.querySelector('.site-footer') || document?.querySelector('footer'))
@@ -390,13 +395,19 @@
         }, 180);
     }
 
-    function changed(focus, redraw = true) {
-        const form = panel.querySelector('[data-designer-form]');
-        if (redraw && editor && editingLinks() && form) {
-            const draft = Object.fromEntries(new FormData(form));
-            if ('reference_id' in draft) draft.reference_id = Number(draft.reference_id) || null;
-            Object.assign(editor.item, draft);
+    function rememberForm(form = panel.querySelector('[data-designer-form]')) {
+        if (!editor || !form) return;
+        const formData = new FormData(form);
+        const draft = Object.fromEntries(formData);
+        if ('reference_id' in draft) draft.reference_id = Number(draft.reference_id) || null;
+        if (editor.list === 'widgets' && draft.type === 'category') {
+            draft.reference_ids = formData.getAll('reference_ids').map(Number);
         }
+        Object.assign(editor.item, draft);
+    }
+
+    function changed(focus, redraw = true) {
+        if (redraw) rememberForm();
         mode = 'draft';
         showError();
         if (redraw) renderPanel(focus);
@@ -487,40 +498,37 @@
             publish();
         } else if (target.action === 'reset') {
             if (!resetButton.disabled) toggleResetPreview();
-        } else if (target.action === 'area') {
-            const initializeHeader = /^header(?:_bottom)?[1-5]$/.test(target.area) && layouts[theme].headerRows === null;
-            if (initializeHeader) ensureChrome('header');
-            pane = 'widgets';
-            area = target.area;
-            editor = null;
-            if (initializeHeader) changed('[data-setting="area"]');
-            else renderPanel('[data-setting="area"]');
-            revealPreviewArea();
-        } else if (target.action === 'cancel') {
-            editor = null;
-            renderPanel('[data-action="add"]');
         } else if (target.action) {
-            const list = currentList();
+            const group = control.closest('[data-chrome-details]');
+            const kind = group?.dataset.chromeDetails.split(':')[1];
+            if (kind !== 'links' && kind !== 'widgets') return;
+            const list = currentList(kind);
+            const forMenu = kind === 'links';
+            const add = itemControl(kind, '[data-action="add"]');
             const index = Number(target.index ?? -1);
-            if (target.action === 'add' || target.action === 'edit') {
-                if (index < 0 && list.length >= (editingLinks() ? 100 : 12)) {
+            if (target.action === 'cancel') {
+                editor = null;
+                showError();
+                renderPanel(add);
+            } else if (target.action === 'add' || target.action === 'edit') {
+                if (index < 0 && list.length >= (forMenu ? 100 : 12)) {
                     showError('登録できる項目数の上限に達しました。');
                     return;
                 }
-                const empty = editingLinks()
+                const empty = forMenu
                     ? {id: null, type: 'page', label: '', reference_id: null, url: ''}
-                    : {type: 'text', title: '', text: '', menu: 'footer', area};
-                editor = {index, item: {...empty, ...list[index]}};
+                    : {type: 'text', title: '', text: '', menu: 'footer', area: selectedWidgetAreas[pane]};
+                editor = {list: kind, index, item: {...empty, ...list[index]}};
                 renderPanel('[data-designer-form] select');
             } else if (target.action === 'remove') {
                 list.splice(index, 1);
                 editor = null;
-                changed('[data-action="add"]');
+                changed(add);
             } else if (target.action === 'up' || target.action === 'down') {
                 const next = index + (target.action === 'up' ? -1 : 1);
                 [list[index], list[next]] = [list[next], list[index]];
                 editor = null;
-                changed(`[data-action="edit"][data-index="${next}"]`);
+                changed(itemControl(kind, `[data-action="edit"][data-index="${next}"]`));
             }
         }
     });
@@ -556,7 +564,7 @@
                 return;
             }
             editor = null;
-            if (!editingLinks() && (pane === 'widgets' ? !supportsWidgets() : !supports(pane))) {
+            if ((pane === 'columns' || pane === 'page_layout') && !supports(pane)) {
                 pane = 'header';
             }
             changed('[data-setting="theme"]');
@@ -566,8 +574,9 @@
             showError();
             updatePreview();
         } else if (setting === 'area') {
-            area = input.value;
-            editor = null;
+            selectedWidgetAreas[pane] = input.value;
+            if (editor?.list === 'widgets') editor = null;
+            rememberForm();
             renderPanel('[data-setting="area"]');
             revealPreviewArea();
         } else if (setting === 'placement' || header) {
@@ -577,10 +586,13 @@
             layouts[theme][setting] = setting === 'footer' ? Number(input.value) : input.value;
             changed(`[data-setting="${setting}"]`);
         } else if (formSetting === 'type' && editor) {
-            Object.assign(editor.item, Object.fromEntries(new FormData(input.form)));
+            rememberForm(input.form);
             editor.item.reference_id = null;
             delete editor.item.reference_ids;
             renderPanel('[data-form-setting="type"]');
+        } else if (input.name === 'reference_id' && editor?.list === 'links') {
+            const choice = targets[editor.item.type]?.find(item => item.id === Number(input.value));
+            if (choice) input.form.elements.namedItem('label').value = choice.name ?? choice.label;
         } else if (input.name === 'reference_ids' && editor) {
             const count = new FormData(input.form).getAll('reference_ids').length;
             panel.querySelector('[data-category-count]').textContent = count + '件';
@@ -602,9 +614,10 @@
         if (!editor || publishing) return;
         const formData = new FormData(event.target);
         const values = Object.fromEntries(formData);
-        const list = currentList();
+        const kind = editor.list;
+        const list = currentList(kind);
         const index = editor.index;
-        const forMenu = editingLinks();
+        const forMenu = kind === 'links';
         const name = (forMenu ? values.label : values.title).trim();
         const isLink = linkTypeIds.includes(values.type);
         const categories = !forMenu && values.type === 'category' ? formData.getAll('reference_ids').map(Number) : null;
@@ -624,21 +637,29 @@
             if (index < 0) list.push(item);
             else list[index] = item;
         } else {
+            if (!activeAreas().includes(values.area)) {
+                showError('表示場所を選び直してください。');
+                return;
+            }
             const destination = layouts[theme].widgets[values.area];
             if ((destination !== list || index < 0) && destination.length >= 12) {
                 showError('この場所には12個まで配置できます。');
                 return;
             }
+            if (/^header(?:_bottom)?[1-5]$/.test(values.area)) ensureChrome('header');
             const item = {type: values.type, title: name, text: values.text?.trim() || '', menu: values.menu || 'footer', ...link};
             if (destination === list && index >= 0) list[index] = item;
             else {
                 if (index >= 0) list.splice(index, 1);
                 destination.push(item);
             }
-            area = values.area;
+            const destinationPane = widgetPane(values.area);
+            if (pane !== destinationPane) chromeOpen.set(destinationPane + ':widgets', true);
+            pane = destinationPane;
+            selectedWidgetAreas[pane] = values.area;
         }
         editor = null;
-        changed('[data-action="add"]');
+        changed(itemControl(kind, '[data-action="add"]'));
     });
 
     function warnBeforeUnload(event) {

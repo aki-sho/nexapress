@@ -23,9 +23,12 @@ module.exports = async function checkCategoryWidgets(page, base, output) {
         await page.waitForFunction(() => document.querySelector('[data-action="publish"]').disabled);
     }
     async function openWidget(area, index = 0) {
-        await page.locator('[data-pane="widgets"]').click();
-        await page.locator('[data-setting="area"]').selectOption(area);
-        await page.locator('[data-action="edit"][data-index="' + index + '"]').click();
+        const kind = area === 'sidebar' ? 'columns' : 'header';
+        await page.locator('[data-pane="' + kind + '"]').click();
+        const details = page.locator('[data-chrome-details="' + kind + ':widgets"]');
+        if (!(await details.evaluate(element => element.open))) await details.locator('> summary').click();
+        if (kind === 'header') await details.locator('[data-setting="area"]').selectOption(area);
+        await details.locator('[data-action="edit"][data-index="' + index + '"]').click();
     }
     const initial = await catalog();
     const theme = initial.active;
@@ -108,7 +111,7 @@ module.exports = async function checkCategoryWidgets(page, base, output) {
         await visitor.goto(base + '/posts');
         assert.equal(await visitor.getByRole('link', {name: 'クルマ表示名', exact: true}).count(), 1);
 
-        await page.locator('[data-action="add"]').click();
+        await page.locator('[data-chrome-details="header:widgets"] [data-action="add"]').click();
         await form.locator('[data-form-setting="type"]').selectOption('category');
         assert.equal(await form.locator('[name="reference_ids"]:checked').count(), 0);
         await selected(first.id).check();
@@ -123,7 +126,7 @@ module.exports = async function checkCategoryWidgets(page, base, output) {
         await page.locator('[data-pane="header"]').click();
         const headerLinks = page.locator('[data-chrome-details="header:links"]');
         if (!(await headerLinks.evaluate(element => element.open))) await headerLinks.locator('> summary').click();
-        await page.locator('[data-action="add"]').click();
+        await headerLinks.locator('[data-action="add"]').click();
         await form.locator('[data-form-setting="type"]').selectOption('category');
         assert.equal(await form.locator('[name="reference_id"]').count(), 1);
         assert.equal(await form.locator('[name="reference_ids"]').count(), 0);
