@@ -16,6 +16,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
         return openGroup(kind, 'links');
     }
     async function set(kind, row, field, value) {
+        if (row) await openGroup(kind, row);
         await control(kind, row, field).selectOption(String(value));
     }
     async function publish() {
@@ -108,7 +109,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     await group('header', 'links').locator('.nx-design-item-list [data-action="edit"]').last().click();
     assert.equal(await menuForm.locator('[name="label"]').inputValue(), 'ヘッダー配置確認');
     await menuForm.locator('[name="url"]').fill('/editing-link');
-    await set('header', '', 'split', 2);
+    await page.getByRole('button', {name: '＋ 下に段を追加', exact: true}).click();
     assert.equal(await menuForm.locator('[name="url"]').inputValue(), '/editing-link',
         'a layout control redraw retains the unfinished link form');
     await menuForm.locator('[name="url"]').fill('/');
@@ -221,7 +222,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     await publish();
     await page.locator('[data-setting="theme"]').selectOption('monoedge');
     await open('header');
-    await set('header', '', 'split', 2);
+    await page.getByRole('button', {name: '＋ 下に段を追加', exact: true}).click();
     await set('header', 'top', 'columns', 5);
     await set('header', 'bottom', 'columns', 1);
     await open('footer');

@@ -60,10 +60,20 @@ function nx_design_header(string $searchQuery = '', bool $includeHomeFallback = 
     $rows = $design['headerRows'];
     $links = $header['menu'] ? \app\Core\Design::menuLinks('header', $includeHomeFallback) : [];
     $logo = $header['logo'] ? site_icon() : '';
-    if ($rows !== null) {
-        require BASE_PATH . '/app/Views/design/header-rows.php';
-    } elseif ($logo !== '' || $header['name'] || $links || $header['search']) {
+    $hasMainRow = $rows !== null || $logo !== '' || $header['name'] || $links || $header['search'];
+    $draft = \app\Core\Design::isDraftPreview();
+    $hasAbove = $design['headerAbove'] && ($draft || $design['widgets']['header_above']);
+    $hasBelow = $rows === null && $design['headerBelow'] && ($draft || $design['widgets']['header_bottom1']);
+    if ($hasMainRow || $hasAbove || $hasBelow) {
         require BASE_PATH . '/app/Views/design/header.php';
+    }
+}
+
+function nx_design_background_style(): void
+{
+    $stylesheet = \app\Core\Design::backgroundStylesheetUrl();
+    if ($stylesheet !== null) {
+        echo '<link rel="stylesheet" href="' . e($stylesheet) . '">' . "\n";
     }
 }
 
@@ -102,6 +112,7 @@ function nx_design_footer(): void
     $design = nx_design_settings();
     $columns = $design['footer'];
     $rows = $design['footerRows'];
+    $width = $design['footerWidth'];
     require BASE_PATH . ($rows === null ? '/app/Views/design/footer.php' : '/app/Views/design/footer-rows.php');
 }
 

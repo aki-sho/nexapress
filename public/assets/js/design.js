@@ -17,8 +17,9 @@
     const linkTypeIds = Object.keys(linkTypes);
     const areas = data.widgetAreas;
     const menus = {header: 'ヘッダーのリンク', footer: 'フッターのリンク'};
-    const labels = {header: 'ヘッダー', header_rows: 'ヘッダーの上下分割', columns: '本文カラム',
+    const labels = {header: 'ヘッダー', header_rows: 'ヘッダーの段構成', columns: '本文カラム',
         footer: 'フッター', footer_rows: 'フッターの上下分割', page_layout: 'ページ毎のレイアウト', ...regions};
+    const designColor = window.NexaPressDesignColor;
     const chromeOpen = new Map();
     const selectedWidgetAreas = {header: 'header_after', columns: 'sidebar', footer: 'footer_before'};
     const clone = value => JSON.parse(JSON.stringify(value));
@@ -33,6 +34,7 @@
     const layouts = Object.fromEntries(Object.entries(published).map(([id, item]) => [id, clone(item.layout)]));
     const conflicts = new Set();
     let menuItems = clone(published[theme].menus);
+    let background = clone(published[theme].background);
     let pane = 'header';
     let mode = 'draft';
     let device = 'desktop';
@@ -45,16 +47,35 @@
 
     const supports = feature => data.themes[theme].areas.includes(feature);
     const state = () => ({
-        theme, layout: layouts[theme], menus: menuItems,
+        theme, layout: layouts[theme], menus: menuItems, background,
         contentLayouts: pageEditor.commonPayload(),
         content: pageEditor.payload(),
     });
-    const chromeRows = kind => layouts[theme][kind + 'Rows'] ??
-        data.chromeDefaults[kind === 'header' && layouts[theme].header.placement === 'stack' ? 'stackedHeader' : kind];
-    const ensureChrome = kind => layouts[theme][kind + 'Rows'] ??= clone(chromeRows(kind));
+    function chromeRows(kind) {
+        const layout = layouts[theme];
+        const saved = layout[kind + 'Rows'];
+        if (saved) return saved;
+        if (kind === 'footer') return data.chromeDefaults.footer;
+        if (layout.header.placement === 'stack') {
+            const stacked = data.chromeDefaults.stackedHeader;
+            return {...stacked, split: layout.headerBelow,
+                positions: Object.fromEntries(Object.keys(stacked.positions).map(part => [part, {row: 'top', column: 1}]))};
+        }
+        return {...data.chromeDefaults.header, split: layout.headerBelow};
+    }
+    function ensureChrome(kind) {
+        const layout = layouts[theme];
+        const key = kind + 'Rows';
+        if (!layout[key]) {
+            layout[key] = clone(chromeRows(kind));
+            if (kind === 'header') layout.headerBelow = false;
+        }
+        return layout[key];
+    }
     const activeAreas = () => Object.keys(areas).filter(key => {
         if (regionIds.includes(key)) return supports(key);
         if (key === 'sidebar') return supports('columns') && layouts[theme].columns !== 'none';
+        if (key === 'header_above') return supports('header_rows') && layouts[theme].headerAbove;
         const match = /^(header|footer)(_bottom)?([1-5])$/.exec(key);
         if (!match) return false;
         const [, kind, bottom, number] = match;
@@ -63,6 +84,7 @@
         return (!bottom || rows.split) && Number(number) <=
             (kind === 'footer' && !bottom ? layouts[theme].footer : rows[bottom ? 'bottom' : 'top'].columns);
     });
+    const widgetAreaLabel = area => area === 'header_bottom1' && chromeRows('header').bottom.columns === 1 ? '下段' : areas[area];
     const hasChanges = id => !same(menuItems, published[id].menus) || !same(layouts[id], published[id].layout);
     const widgetPane = area => area === 'sidebar' ? 'columns' : area.startsWith('header') ? 'header' : 'footer';
     const currentList = list => list === 'links' ? menuItems[pane] : layouts[theme].widgets[selectedWidgetAreas[pane]];
@@ -80,7 +102,12 @@
         previewMode: () => mode,
     });
     const pageChanges = () => pageEditor.hasChanges();
-    const currentChanges = () => hasChanges(theme) || pageChanges();
+    const currentChanges = () => hasChanges(theme) || !same(background, published[theme].background) || pageChanges();
+
+    designColor.bind(panel, 'site', () => background.color, color => {
+        background.color = color;
+        changed(undefined, false);
+    }, showError);
 
     function showError(message = '') {
         error.textContent = message;
@@ -158,7 +185,7 @@
             const destinations = activeAreas();
             const destination = destinations.includes(item.area) ? item.area : selectedWidgetAreas[pane];
             fields = field('種類', 'type', Object.entries(data.widgets), item.type, 'data-form-setting="type"') +
-                field('表示場所', 'area', destinations.map(id => [id, areas[id]]), destination, 'required');
+                field('表示場所', 'area', destinations.map(id => [id, widgetAreaLabel(id)]), destination, 'required');
             if (item.type === 'category') {
                 fields += categoryField(item) + `<label><span data-category-title-label>${categoryTitleLabel(categoryIds(item).length)}</span>
                     <input name="title" maxlength="80" value="${escape(item.title)}"></label>`;
@@ -203,9 +230,21 @@
         const area = selectedWidgetAreas[kind];
         const sidebar = kind === 'columns';
         const picker = sidebar || editor?.list === 'widgets' ? '' :
-            field('表示場所', 'widget-area', available.map(id => [id, areas[id]]), area, 'data-setting="area"');
+            field('表示場所', 'widget-area', available.map(id => [id, widgetAreaLabel(id)]), area, 'data-setting="area"');
         return chromeGroup(kind, 'widgets', sidebar ? 'サイドバーのウィジェット' : 'ウィジェット',
             picker + renderList(layouts[theme].widgets[area], 'widgets'));
+    }
+
+    function headerStructure(hasAbove, hasBelow) {
+        const toggle = (row, label, direction, enabled) => {
+            const attributes = 'data-row="' + row + '"';
+            return enabled ? '<div class="nx-header-row-label"><strong>' + label + '</strong>' +
+                button('header-row', '削除', attributes + ' aria-label="' + label + 'を削除"') + '</div>'
+                : button('header-row', '＋ ' + direction + 'に段を追加', attributes);
+        };
+        return '<div class="nx-header-structure">' + toggle('above', '上段', '上', hasAbove) +
+            '<div class="nx-header-base-row"><strong>ヘッダー本体</strong><span class="nx-design-note">サイト名・メニュー・検索欄</span></div>' +
+            toggle('below', '下段', '下', hasBelow) + '</div>';
     }
 
     function chromePanel(kind) {
@@ -217,17 +256,23 @@
         const control = (label, row, name, choices, value) => field(label, kind + '-' + row + '-' + name, choices, value,
             `data-chrome="${kind}" data-chrome-row="${row}" data-chrome-field="${name}"` +
             (kind === 'footer' && row === 'top' && name === 'columns' ? ' data-setting="footer"' : ''));
-        let html = '<h2>' + title + '</h2>' + chromeGroup(kind, 'links', 'リンク', renderList(menuItems[kind], 'links')) +
-            widgetGroup(kind);
-        if (!supports(kind)) return html;
+        let html = '<h2>' + title + '</h2>';
+        if (supports(kind)) {
+            const width = kind + 'Width';
+            html += field(title + 'の幅', width, Object.entries(data.chromeWidths), layout[width], 'data-setting="' + width + '"');
+        }
+        html += chromeGroup(kind, 'links', 'リンク', renderList(menuItems[kind], 'links'));
+        if (!supports(kind)) return html + widgetGroup(kind);
         if (capable) {
-            html += chromeGroup(kind, 'structure', '段構成', control('段数', '', 'split',
-                [[1, '1段'], [2, '上下2段']], rows.split ? 2 : 1), true);
+            const structure = kind === 'header' ? headerStructure(layout.headerAbove, rows.split)
+                : control('段数', '', 'split', [[1, '1段'], [2, '上下2段']], rows.split ? 2 : 1);
+            html += chromeGroup(kind, 'structure', '段構成', structure, true);
             for (const row of rows.split ? ['top', 'bottom'] : ['top']) {
                 const count = kind === 'footer' && row === 'top' ? layout.footer : rows[row].columns;
-                html += chromeGroup(kind, row, (row === 'top' ? '上段' : '下段') + 'のカラム・配置',
+                const label = row === 'bottom' ? '下段' : kind === 'header' ? 'ヘッダー本体' : '上段';
+                html += chromeGroup(kind, row, label + 'のカラム・配置',
                     '<div class="nx-chrome-form-row">' + control('カラム数', row, 'columns', columnChoices, count) +
-                    control('配置', row, 'align', Object.entries(data.alignments), rows[row].align) + '</div>', true);
+                    control('配置', row, 'align', Object.entries(data.alignments), rows[row].align) + '</div>', kind === 'footer');
             }
         } else if (kind === 'footer') {
             html += field('カラム数', 'footer', columnChoices, layout.footer, 'data-setting="footer"');
@@ -235,11 +280,12 @@
             html += field('配置', 'placement', [['row', '横並び'], ['stack', 'ロゴ・サイト名の下にメニュー']],
                 layout.header.placement, 'data-setting="placement"');
         }
+        html += widgetGroup(kind);
         let content = '';
         if (kind === 'header') {
             const positions = (rows.split ? ['top', 'bottom'] : ['top']).flatMap(row =>
                 Array.from({length: rows[row].columns}, (_, index) =>
-                    [row + ':' + (index + 1), (row === 'top' ? '上段' : '下段') + ' · カラム' + (index + 1)]));
+                    [row + ':' + (index + 1), widgetAreaLabel((row === 'top' ? 'header' : 'header_bottom') + (index + 1))]));
             for (const [part, label, flags] of [
                 ['brand', 'サイト情報', {logo: 'サイトアイコン', name: 'サイト名'}],
                 ['menu', 'メニュー', {menu: 'メニュー'}], ['search', '検索欄', {search: '検索欄'}],
@@ -254,6 +300,20 @@
             }
         }
         return kind === 'header' ? html + chromeGroup(kind, 'content', '中身の配置', content) : html;
+    }
+
+    function generalPanel() {
+        const modes = [['theme', 'テーマの既定'], ['color', '背景色'], ['image', '背景画像']];
+        let html = '<h2>全体設定</h2>' +
+            field('サイト全体の背景', 'background-mode', modes, background.mode, 'data-setting="background-mode"');
+        if (background.mode === 'color') {
+            html += designColor.fields(background.color, 'site', escape);
+        } else if (background.mode === 'image') {
+            html += field('背景画像', 'background-image', [['', '画像を選択'], ...data.pageLayout.images.map(item => [item.id, item.label])],
+                background.media_id ?? '', 'data-setting="background-image"');
+            html += '<div><a href="' + escape(data.media) + '" target="_blank" rel="noopener">メディアを開く</a></div>';
+        }
+        return html;
     }
 
     panel.addEventListener('toggle', event => {
@@ -277,7 +337,7 @@
         ].filter(Boolean).join(' ');
         root.querySelectorAll('[data-pane]').forEach(control => {
             const key = control.dataset.pane;
-            control.disabled = publishing || Boolean(resetDraft) || (!['header', 'footer'].includes(key) && !supports(key));
+            control.disabled = publishing || Boolean(resetDraft) || (!['header', 'footer', 'general'].includes(key) && !supports(key));
             control.setAttribute('aria-pressed', String(key === pane));
         });
 
@@ -288,7 +348,7 @@
             }
             const target = resetDraft.target;
             panel.innerHTML = '<h2>初期状態の確認</h2>' +
-                '<p class="nx-design-note">全テーマのデザイン、リンク、ウィジェット、共通・ページ個別のレイアウトが初期状態に戻ります。「公開」で確定します。</p>' +
+                '<p class="nx-design-note">サイト全体の背景、全テーマのデザイン、リンク、ウィジェット、ページレイアウトが初期状態に戻ります。「公開」で確定します。</p>' +
                 field('プレビューするページ', 'reset-target', choices, target.id ? target.kind + ':' + target.id : '', 'data-setting="reset-target"');
         } else if (pane === 'header' || pane === 'footer') {
             panel.innerHTML = chromePanel(pane);
@@ -299,13 +359,16 @@
                 layout.columns, 'data-setting="columns"') + widgetGroup('columns');
         } else if (pane === 'page_layout') {
             panel.innerHTML = pageEditor.render();
+        } else if (pane === 'general') {
+            panel.innerHTML = generalPanel();
         }
         renderStatus();
         if (focus) root.querySelector(focus)?.focus();
     }
 
     function resizePreview() {
-        const width = device === 'mobile' ? 390 : supports('page_layout') ? 1600 : 1080;
+        const wide = supports('page_layout') || supports('header') || supports('footer');
+        const width = device === 'mobile' ? 390 : wide ? 1600 : 1080;
         const style = getComputedStyle(stage);
         const available = stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
         if (available <= 0) return;
@@ -333,7 +396,8 @@
         const document = frame.contentDocument;
         const widgetGroupOpen = panel.querySelector('[data-chrome-details="' + pane + ':widgets"][open]');
         const area = widgetGroupOpen && editor?.list !== 'links' ? selectedWidgetAreas[pane] : null;
-        const region = area
+        const headerSlot = pane === 'header' && area && !regionIds.includes(area);
+        const region = area && !headerSlot
             ? document?.querySelector(regionIds.includes(area) ? `[data-design-area="${area}"]` : `[data-widget-area="${area}"]`)
             : pane === 'page_layout' ? document?.querySelector(`[data-layout-section="${pageEditor.sectionIndex()}"]`) : null;
         const anchor = region || (footer ? (document?.querySelector('.site-footer') || document?.querySelector('footer'))
@@ -468,6 +532,7 @@
             }
             published = nextStates;
             menuItems = clone(published[theme].menus);
+            background = clone(published[theme].background);
             pageEditor.saved(result);
             editor = null;
             updatePreview();
@@ -477,6 +542,36 @@
             publishing = false;
             renderPanel();
         }
+    }
+
+    function toggleHeaderRow(row) {
+        const layout = layouts[theme];
+        const above = row === 'above';
+        const enabled = above ? !layout.headerAbove : !chromeRows('header').split;
+        if (above) {
+            layout.headerAbove = enabled;
+        } else if (layout.headerRows) {
+            const rows = layout.headerRows;
+            rows.split = enabled;
+            layout.header.placement = enabled ? 'stack' : 'row';
+            if (!enabled) {
+                for (const position of Object.values(rows.positions)) {
+                    if (position.row === 'bottom') {
+                        position.row = 'top';
+                        position.column = Math.min(position.column, rows.top.columns);
+                    }
+                }
+            }
+        } else {
+            layout.headerBelow = enabled;
+        }
+        if (enabled && !editor) {
+            selectedWidgetAreas.header = above ? 'header_above' : 'header_bottom1';
+            const group = panel.querySelector('[data-chrome-details="header:widgets"]');
+            if (group) group.open = true;
+            else chromeOpen.set('header:widgets', true);
+        }
+        changed('[data-action="header-row"][data-row="' + row + '"]');
     }
 
     root.addEventListener('click', event => {
@@ -498,6 +593,8 @@
             publish();
         } else if (target.action === 'reset') {
             if (!resetButton.disabled) toggleResetPreview();
+        } else if (target.action === 'header-row') {
+            toggleHeaderRow(target.row);
         } else if (target.action) {
             const group = control.closest('[data-chrome-details]');
             const kind = group?.dataset.chromeDetails.split(':')[1];
@@ -579,10 +676,14 @@
             rememberForm();
             renderPanel('[data-setting="area"]');
             revealPreviewArea();
+        } else if (setting === 'background-mode' || setting === 'background-image') {
+            if (setting === 'background-mode') background.mode = input.value;
+            else background.media_id = input.value ? Number(input.value) : null;
+            changed('[data-setting="' + setting + '"]');
         } else if (setting === 'placement' || header) {
             layouts[theme].header[header || setting] = header ? input.checked : input.value;
             changed(header ? `[data-header="${header}"]` : '[data-setting="placement"]');
-        } else if (setting === 'columns' || setting === 'footer' || setting === 'width') {
+        } else if (['columns', 'footer', 'width', 'headerWidth', 'footerWidth'].includes(setting)) {
             layouts[theme][setting] = setting === 'footer' ? Number(input.value) : input.value;
             changed(`[data-setting="${setting}"]`);
         } else if (formSetting === 'type' && editor) {
@@ -646,7 +747,7 @@
                 showError('この場所には12個まで配置できます。');
                 return;
             }
-            if (/^header(?:_bottom)?[1-5]$/.test(values.area)) ensureChrome('header');
+            if (/^header[1-5]$/.test(values.area)) ensureChrome('header');
             const item = {type: values.type, title: name, text: values.text?.trim() || '', menu: values.menu || 'footer', ...link};
             if (destination === list && index >= 0) list[index] = item;
             else {

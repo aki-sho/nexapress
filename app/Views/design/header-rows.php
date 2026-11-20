@@ -1,4 +1,3 @@
-<header class="site-header">
     <?php foreach (['top', 'bottom'] as $row): ?>
         <?php if ($row === 'bottom' && !$rows['split']) { continue; } ?>
         <div class="site-header-inner nx-chrome-row" data-chrome="header" data-chrome-row="<?= e($row) ?>"
@@ -24,4 +23,3 @@
             <?php endfor; ?>
         </div>
     <?php endforeach; ?>
-</header>

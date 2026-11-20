@@ -29,6 +29,7 @@
 .nx-design-controls { border-inline-end: 1px solid var(--design-line); }
 .nx-design-nav, .nx-design-panel { padding: 14px; }
 .nx-design-nav { display: grid; gap: 9px; background: #f4f7fc; border-bottom: 1px solid var(--design-line); }
+.nx-design-theme-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
 .nx-design-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .nx-design-tabs [data-pane="page_layout"] { grid-column: 1 / -1; }
 .nx-design-tabs button, .nx-design-switch button, .nx-design-small {
@@ -123,6 +124,12 @@
     gap: 8px;
 }
 .nx-page-color-fields input[type="color"] { height: 34px; padding: 3px 5px; cursor: pointer; }
+.nx-design-color { display: grid; gap: 8px; min-width: 0; }
+.nx-design-color .nx-page-color-fields { grid-template-columns: minmax(0, 1fr) 5em; }
+.nx-design-opacity { display: flex; justify-content: space-between; gap: 6px; }
+.nx-design-opacity output { color: var(--design-muted); font-variant-numeric: tabular-nums; }
+.nx-design-color input[type="range"] { padding: 0; border: 0; accent-color: var(--design-blue); }
+.nx-design-color .nx-page-palettes { margin-top: 0; }
 .nx-page-details { border-block-start: 1px solid var(--design-line); padding-block-start: 8px; }
 .nx-page-details summary { font-size: .9rem; font-weight: 600; cursor: pointer; }
 .nx-page-palettes, .nx-page-fields { display: grid; gap: 8px; margin-top: 8px; }
@@ -137,6 +144,11 @@
 .nx-chrome-form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .nx-chrome-part { display: grid; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--design-line); }
 .nx-chrome-fields strong { font-size: .88rem; }
+.nx-header-structure { display: grid; gap: 5px; }
+.nx-header-row-label, .nx-header-base-row { padding: 6px 8px; border: 1px solid var(--design-line); border-radius: 6px; }
+.nx-header-row-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.nx-header-base-row { display: grid; gap: 2px; background: #f4f7fc; }
+.nx-header-structure > button { border-style: dashed; color: var(--design-blue); text-align: start; min-height: 34px; }
 
 @media (max-width: 860px) {
     .nx-design-editor-grid { grid-template-columns: minmax(0, 1fr); }

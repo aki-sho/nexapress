@@ -2,6 +2,7 @@
 
 namespace app\Core;
 
+use app\Models\Media;
 use app\Models\Navigation;
 use InvalidArgumentException;
 use RuntimeException;
@@ -10,6 +11,8 @@ use Throwable;
 final class Design
 {
     public const MAX_CATEGORY_LINKS = 100;
+    public const CHROME_WIDTHS = ['theme' => 'テーマの既定幅（現在の表示）'] + PageLayout::WIDTHS;
+    public const DEFAULT_BACKGROUND = ['mode' => 'theme', 'color' => '#F5F6F8', 'media_id' => null];
 
     public const ALIGNMENTS = [
         'flex-start' => '左寄せ',
@@ -20,11 +23,11 @@ final class Design
 
     public static function widgetAreas(): array
     {
-        $areas = self::REGIONS + ['sidebar' => 'サイドバー'];
-        foreach (['header' => 'ヘッダー上段', 'header_bottom' => 'ヘッダー下段',
+        $areas = self::REGIONS + ['sidebar' => 'サイドバー', 'header_above' => '上段'];
+        foreach (['header' => 'ヘッダー本体', 'header_bottom' => '下段',
             'footer' => 'フッター上段', 'footer_bottom' => 'フッター下段'] as $prefix => $label) {
             for ($column = 1; $column <= 5; $column++) {
-                $areas[$prefix . $column] = $label . ' ' . $column;
+                $areas[$prefix . $column] = $label . '・' . $column . '列目';
             }
         }
         return $areas;
@@ -87,6 +90,45 @@ final class Design
     {
         $theme = Theme::active();
         return self::$preview['layout'] ?? self::layout($theme, self::stored());
+    }
+
+    public static function background(): array
+    {
+        return self::$preview['background'] ?? self::stored()['background'] ?? self::DEFAULT_BACKGROUND;
+    }
+
+    public static function backgroundStylesheetUrl(): ?string
+    {
+        $background = self::background();
+        $query = match ($background['mode']) {
+            'color' => ['color' => $background['color']],
+            'image' => $background['media_id'] !== null ? ['media' => $background['media_id']] : [],
+            default => [],
+        };
+        return $query ? url('nexapress/assets/site-background') . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986) : null;
+    }
+
+    public static function backgroundStylesheet(array $query): string
+    {
+        if (array_key_exists('color', $query)) {
+            $color = DesignColor::normalize($query['color']);
+            if ($color === null) {
+                throw new InvalidArgumentException('背景色を確認してください。');
+            }
+            return "body { background-image: linear-gradient($color, $color); }\n";
+        }
+
+        $id = filter_var($query['media'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($id === false) {
+            throw new InvalidArgumentException('背景画像を選んでください。');
+        }
+        $image = Media::find($id);
+        if (($image['file_type'] ?? null) !== 'image') {
+            return '';
+        }
+        $url = str_replace(['\\', '"', "\n", "\r", "\f"], ['\\\\', '\\"', '\\a ', '\\d ', '\\c '],
+            public_url($image['file_path']));
+        return "body { background-image: url(\"$url\"); background-position: center top; background-repeat: no-repeat; background-size: cover; }\n";
     }
 
     public static function pageLayout(int $id, string $kind = 'page'): array
@@ -190,8 +232,19 @@ final class Design
             } elseif ($area === 'header_rows' || $area === 'footer_rows') {
                 $kind = $area === 'header_rows' ? 'header' : 'footer';
                 $defaults[$kind . 'Rows'] = self::rows($layout[$kind . 'Rows'] ?? null, $kind);
-                if ($kind === 'header' && $defaults['headerRows'] !== null) {
-                    $defaults['header']['placement'] = $defaults['headerRows']['split'] ? 'stack' : 'row';
+                if ($kind === 'header') {
+                    foreach (['headerAbove', 'headerBelow'] as $key) {
+                        $enabled = $layout[$key] ?? false;
+                        if (!is_bool($enabled)) {
+                            throw new InvalidArgumentException('ヘッダーの段構成を確認してください。');
+                        }
+                        $defaults[$key] = $enabled;
+                    }
+                    $defaults['widgets']['header_above'] = self::widgets($layout['widgets']['header_above'] ?? []);
+                    if ($defaults['headerRows'] !== null) {
+                        $defaults['headerBelow'] = false;
+                        $defaults['header']['placement'] = $defaults['headerRows']['split'] ? 'stack' : 'row';
+                    }
                 }
                 foreach (array_keys(self::widgetAreas()) as $key) {
                     if (($kind === 'header' && preg_match('/^header(?:_bottom)?[1-5]$/D', $key)) ||
@@ -202,6 +255,17 @@ final class Design
             } elseif (isset(self::REGIONS[$area])) {
                 $defaults['widgets'][$area] = self::widgets($layout['widgets'][$area] ?? []);
             }
+        }
+        foreach (['header', 'footer'] as $kind) {
+            if (!in_array($kind, $caps, true)) {
+                continue;
+            }
+            $key = $kind . 'Width';
+            $width = $layout[$key] ?? 'theme';
+            if (!is_string($width) || !isset(self::CHROME_WIDTHS[$width])) {
+                throw new InvalidArgumentException('ヘッダー・フッターの幅を選択してください。');
+            }
+            $defaults[$key] = $width;
         }
         $page = null;
         $content = [];
@@ -269,6 +333,7 @@ final class Design
         return [
             'theme' => $theme,
             'layout' => $defaults,
+            'background' => self::validateBackground($input['background'] ?? self::background()),
             'menus' => [
                 'header' => self::menu($input['menus']['header'] ?? null, 100),
                 'footer' => self::menu($input['menus']['footer'] ?? null, 100),
@@ -310,6 +375,7 @@ final class Design
             }
             $saved['footerMenu'] = $state['menus']['footer'];
             $saved['contentLayouts'] = $state['contentLayouts'];
+            $saved['background'] = $state['background'];
             if (Theme::designAreas($state['theme'])) {
                 $saved['themes'][$state['theme']] = $state['layout'];
             }
@@ -345,7 +411,7 @@ final class Design
             $menusChanged = $navigation || !empty($saved['footerMenu']);
             Navigation::replace([], $navigation);
             PageLayout::resetAll();
-            unset($saved['themes'], $saved['footerMenu'], $saved['contentLayouts']);
+            unset($saved['themes'], $saved['footerMenu'], $saved['contentLayouts'], $saved['background']);
             $saved = self::saveSettings($saved);
             $pdo->commit();
             self::$stored = $saved;
@@ -383,6 +449,7 @@ final class Design
         $state = [
             'theme' => $theme,
             'layout' => self::layout($theme, $stored),
+            'background' => $stored['background'] ?? self::DEFAULT_BACKGROUND,
             'contentLayouts' => self::contentLayouts($stored),
             'menus' => [
                 'header' => array_map(static fn(array $row): array => [
@@ -440,12 +507,29 @@ final class Design
         return [
             'header' => ['placement' => 'row', 'logo' => true, 'name' => true, 'menu' => true, 'search' => true],
             'headerRows' => null,
+            'headerAbove' => false,
+            'headerBelow' => false,
+            'headerWidth' => 'theme',
             'columns' => 'none',
             'width' => 'standard',
             'footer' => 1,
             'footerRows' => null,
+            'footerWidth' => 'theme',
             'widgets' => $widgets,
         ];
+    }
+
+    private static function validateBackground(mixed $background): array
+    {
+        if (!is_array($background) || !in_array($background['mode'] ?? null, ['theme', 'color', 'image'], true)) {
+            throw new InvalidArgumentException('サイト全体の背景を選んでください。');
+        }
+        $color = DesignColor::normalize($background['color'] ?? null);
+        $media = $background['media_id'] ?? null;
+        if ($color === null || ($media !== null && (!is_int($media) || $media < 1))) {
+            throw new InvalidArgumentException('サイト全体の背景色・画像を確認してください。');
+        }
+        return ['mode' => $background['mode'], 'color' => $color, 'media_id' => $media];
     }
 
     private static function rows(mixed $input, string $kind): ?array

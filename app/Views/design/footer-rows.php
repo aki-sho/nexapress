@@ -1,4 +1,4 @@
-<footer class="site-footer">
+<footer class="site-footer"<?= $width === 'theme' ? '' : ' data-design-width="' . e($width) . '"' ?>>
     <?php foreach (['top', 'bottom'] as $row): ?>
         <?php if ($row === 'bottom' && !$rows['split']) { continue; } ?>
         <?php $count = $row === 'top' ? $columns : $rows['bottom']['columns']; ?>

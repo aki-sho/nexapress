@@ -21,7 +21,10 @@
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <a href="<?= e(url('admin/themes')) ?>">使用するテーマを変更</a>
+                <div class="nx-design-theme-actions">
+                    <a href="<?= e(url('admin/themes')) ?>">使用するテーマを変更</a>
+                    <button type="button" class="nx-design-small" data-pane="general" aria-pressed="false">全体設定</button>
+                </div>
                 <div class="nx-design-tabs" role="group" aria-label="編集する項目">
                     <?php foreach ([
                         'header' => 'ヘッダー', 'columns' => '本文カラム', 'footer' => 'フッター',
@@ -59,5 +62,6 @@
     <noscript><p>デザイン編集にはJavaScriptを有効にしてください。</p></noscript>
 </section>
 <script type="application/json" id="nx-design-data"><?= json_encode($designData, JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
+<script src="<?= e(nx_asset_url('assets/js/design-color.js')) ?>" defer></script>
 <script src="<?= e(nx_asset_url('assets/js/design-page.js')) ?>" defer></script>
 <script src="<?= e(nx_asset_url('assets/js/design.js')) ?>" defer></script>

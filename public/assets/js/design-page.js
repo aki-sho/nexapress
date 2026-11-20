@@ -1,22 +1,10 @@
 (() => {
     'use strict';
 
-    const palettes = [
-        ['高級感', ['#18243A', '#654155', '#CBB380']],
-        ['優しい', ['#F6E6E6', '#EEE6F7', '#E5F0E7']],
-        ['シンプル', ['#FFFFFF', '#F4F5F7', '#E4E7EC']],
-        ['明るい', ['#FFF0AD', '#D7F0FF', '#D7F6E9']],
-        ['暗い', ['#101827', '#242831', '#2C233D']],
-    ];
+    const designColor = window.NexaPressDesignColor;
     const backgrounds = [['full', '画面いっぱい'], ['content', '中身と同じ'], ['none', '背景なし']];
     const clone = value => structuredClone(value);
     const owns = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
-
-    function hexColor(value) {
-        const code = value.trim().replace(/^#/, '').toUpperCase();
-        if (/^[0-9A-F]{6}$/.test(code)) return '#' + code;
-        return /^[0-9A-F]{3}$/.test(code) ? '#' + Array.from(code, digit => digit.repeat(2)).join('') : null;
-    }
 
     function editableRecord(snapshot) {
         const saved = clone(snapshot);
@@ -257,16 +245,7 @@
                 <div class="nx-page-fields">
                     <label class="nx-design-check"><input type="checkbox" data-page-inherit="color"
                         ${owns(sectionOverrides(), 'color') ? '' : 'checked'}>${labelForInheritance()}の色を使用</label>
-                    <div class="nx-page-color-fields">
-                        <label>カラーコード<input type="text" data-page-field="hex" value="${escape(item.color)}" maxlength="7" spellcheck="false"></label>
-                        <label>色を選ぶ<input type="color" data-page-field="color" value="${escape(item.color)}"></label>
-                    </div>
-                    <div class="nx-page-palettes">${palettes.map(([label, colors]) => `<div>
-                        <span class="nx-design-note">${label}</span>
-                        <div class="nx-page-swatches">${colors.map(color => `<button type="button" class="nx-design-small nx-page-swatch"
-                            data-page-color="${color}" aria-label="${label} ${color}" aria-pressed="${item.color === color}">
-                            <span style="background-color:${color}" aria-hidden="true"></span>${color}</button>`).join('')}</div>
-                    </div>`).join('')}</div>
+                    ${designColor.fields(item.color, 'section', escape)}
                 </div>
             </details>`;
         }
@@ -396,15 +375,11 @@
             changed(undefined, false);
         }
 
-        function applyColor(color, updateCode) {
+        designColor.bind(panel, 'section', () => section().color, color => {
             editSection().color = color;
-            if (updateCode) panel.querySelector('[data-page-field="hex"]').value = color;
-            panel.querySelector('[data-page-field="color"]').value = color;
             panel.querySelector('[data-page-inherit="color"]').checked = false;
-            panel.querySelectorAll('[data-page-color]').forEach(button =>
-                button.setAttribute('aria-pressed', String(button.dataset.pageColor === color)));
             changed(undefined, false);
-        }
+        }, showError);
 
         panel.addEventListener('click', event => {
             const control = event.target.closest('button');
@@ -426,10 +401,6 @@
                     prune();
                 }
                 changed();
-                return;
-            }
-            if (control.dataset.pageColor) {
-                applyColor(control.dataset.pageColor, true);
                 return;
             }
             const command = control.dataset.pageAction;
@@ -495,6 +466,7 @@
 
         panel.addEventListener('change', event => {
             const input = event.target;
+            if (input.dataset.colorField) return;
             const name = input.dataset.pageField;
             const value = input.value;
             if (name === 'page' || name === 'post') {
@@ -555,15 +527,6 @@
             } else {
                 const item = section();
                 if (!item) return;
-                if (name === 'hex' || name === 'color') {
-                    const color = hexColor(value);
-                    if (color) applyColor(color, true);
-                    else {
-                        input.value = item.color;
-                        showError('背景色は #RRGGBB または #RGB で入力してください。');
-                    }
-                    return;
-                }
                 if (['percent', 'share', 'gap'].includes(name)) {
                     if (!input.validity.valid) {
                         input.value = sectionOverrides()[name] ?? '';
@@ -598,13 +561,10 @@
 
         panel.addEventListener('input', event => {
             const input = event.target;
+            if (input.dataset.colorField) return;
             const name = input.dataset.pageField;
             if (!name || !section()) return;
-            if (name === 'color') {
-                applyColor(input.value.toUpperCase(), true);
-            } else if (name === 'hex' && /^#?[0-9a-f]{6}$/i.test(input.value)) {
-                applyColor(hexColor(input.value), false);
-            } else if (['percent', 'share', 'gap'].includes(name) && input.validity.valid) {
+            if (['percent', 'share', 'gap'].includes(name) && input.validity.valid) {
                 if (input.value === '') delete editSection()[name];
                 else editSection()[name] = Number(input.value);
                 prune();

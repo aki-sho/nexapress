@@ -5,6 +5,21 @@
     gap: 12px;
 }
 
+.site-header-inner.nx-design-header-band {
+    display: grid;
+    gap: 12px;
+    overflow-wrap: anywhere;
+}
+
+:is(.site-header, .site-footer)[data-design-width] {
+    width: 100%;
+    margin-inline: auto;
+}
+
+:is(.site-header, .site-footer)[data-design-width="standard"] { max-width: var(--theme-content-width, 1080px); }
+:is(.site-header, .site-footer)[data-design-width="wide"] { max-width: 1440px; }
+:is(.site-header, .site-footer)[data-design-width] > :is(.site-header-inner, .site-footer-inner) { max-width: none; }
+
 .site-header-inner > .public-search,
 .nx-chrome-column > .public-search {
     flex-wrap: nowrap;

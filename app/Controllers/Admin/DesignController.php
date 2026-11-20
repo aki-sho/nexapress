@@ -54,13 +54,14 @@ final class DesignController extends Controller
             'regions' => Design::REGIONS, 'token' => Csrf::token(),
             'resetRevision' => $snapshot['resetRevision'],
             'widgetAreas' => Design::widgetAreas(), 'alignments' => Design::ALIGNMENTS,
+            'chromeWidths' => Design::CHROME_WIDTHS,
             'categoryLimit' => Design::MAX_CATEGORY_LINKS,
             'chromeDefaults' => [
                 'header' => Design::headerRowDefaults(),
                 'stackedHeader' => Design::headerRowDefaults(true),
                 'footer' => Design::footerRowDefaults(),
             ],
-            'preview' => url('admin/design/preview'), 'publish' => url('admin/design/publish'),
+            'preview' => url('admin/design/preview'), 'publish' => url('admin/design/publish'), 'media' => url('admin/media'),
             'pageLayout' => [
                 'url' => url('admin/design/page-layout'),
                 'postUrl' => url('admin/design/post-layout'),

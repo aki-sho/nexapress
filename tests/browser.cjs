@@ -795,6 +795,7 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
         console.log('PASS: the published colors and column widths are visible with strict Content Security Policy');
         await checkInheritedLayouts(page, base, output);
         await checkCommonLayoutFeedback(page, base, output);
+        await require('./design-appearance.cjs')(page, base, output);
         await require('./chrome-layouts.cjs')(page, base, output);
         await require('./post-categories.cjs')(page, base, output);
         await require('./design-audit.cjs')(page, base, output);

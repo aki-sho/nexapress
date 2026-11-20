@@ -1,29 +1,21 @@
-<header class="site-header">
-    <div class="site-header-inner<?= $header['placement'] === 'stack' ? ' nx-design-header-stacked' : '' ?>">
-        <?php if ($logo !== '' || $header['name']): ?>
-            <div class="site-brand">
-                <?php if ($logo !== ''): ?>
-                    <a href="<?= e(url('')) ?>" class="site-icon-link">
-                        <img src="<?= e($logo) ?>" alt="<?= e(site_title()) ?>" class="site-icon">
-                    </a>
-                <?php endif; ?>
-                <?php if ($header['name']): ?>
-                    <h1 class="site-title"><a href="<?= e(url('')) ?>"><?= e(site_title()) ?></a></h1>
-                <?php endif; ?>
-            </div>
-        <?php endif; ?>
-        <?php if ($links): ?>
-            <nav class="site-nav" aria-label="メインメニュー">
-                <?php foreach ($links as $link): ?>
-                    <a href="<?= e($link['url']) ?>"><?= e($link['label']) ?></a>
-                <?php endforeach; ?>
-            </nav>
-        <?php endif; ?>
-        <?php if ($header['search']): ?>
-            <form class="public-search" action="<?= e(url(nx_public_archive_path('search'))) ?>" method="get" role="search">
-                <input type="search" name="q" aria-label="記事を検索" placeholder="記事を検索" maxlength="200" value="<?= e($searchQuery) ?>">
-                <button type="submit">検索</button>
-            </form>
-        <?php endif; ?>
-    </div>
+<header class="site-header"<?= $design['headerWidth'] === 'theme' ? '' : ' data-design-width="' . e($design['headerWidth']) . '"' ?>>
+    <?php if ($hasAbove): ?>
+        <div class="site-header-inner nx-design-header-band" data-widget-area="header_above">
+            <?php nx_design_widgets('header_above'); ?>
+        </div>
+    <?php endif; ?>
+    <?php if ($rows !== null): ?>
+        <?php require BASE_PATH . '/app/Views/design/header-rows.php'; ?>
+    <?php elseif ($hasMainRow): ?>
+        <div class="site-header-inner<?= $header['placement'] === 'stack' ? ' nx-design-header-stacked' : '' ?>">
+            <?php foreach (['brand', 'menu', 'search'] as $part): ?>
+                <?php require BASE_PATH . '/app/Views/design/header-content.php'; ?>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+    <?php if ($hasBelow): ?>
+        <div class="site-header-inner nx-design-header-band" data-widget-area="header_bottom1">
+            <?php nx_design_widgets('header_bottom1'); ?>
+        </div>
+    <?php endif; ?>
 </header>

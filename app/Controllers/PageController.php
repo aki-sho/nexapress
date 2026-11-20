@@ -3,6 +3,7 @@
 namespace app\Controllers;
 
 use app\Core\Controller;
+use app\Core\Design;
 use app\Core\Installer;
 use app\Core\PageLayout;
 use app\Models\Page;
@@ -16,6 +17,17 @@ class PageController extends Controller
         header('X-Content-Type-Options: nosniff');
         try {
             echo PageLayout::stylesheet($_GET);
+        } catch (InvalidArgumentException) {
+            http_response_code(400);
+        }
+    }
+
+    public function backgroundStylesheet(): void
+    {
+        header('Content-Type: text/css; charset=UTF-8');
+        header('X-Content-Type-Options: nosniff');
+        try {
+            echo Design::backgroundStylesheet($_GET);
         } catch (InvalidArgumentException) {
             http_response_code(400);
         }

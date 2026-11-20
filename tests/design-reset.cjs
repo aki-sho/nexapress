@@ -44,8 +44,13 @@ module.exports = async function checkDesignReset(page, base, output) {
         state.layout.width = 'full';
         state.layout.columns = 'right';
         state.layout.headerRows = {...data.chromeDefaults.header, split: true};
+        state.layout.headerAbove = true;
+        state.layout.headerWidth = 'wide';
         state.layout.footer = 3;
+        state.layout.footerWidth = 'standard';
         state.layout.widgets.sidebar = [{type: 'text', title: '初期化対象ウィジェット', text: 'サイドバー', menu: 'footer'}];
+        state.layout.widgets.header_above = [{type: 'text', title: '初期化対象の上段', text: '上段', menu: 'footer'}];
+        state.background = {mode: 'color', color: 'rgba(40, 80, 120, 0.5)', media_id: null};
         state.menus = {
             header: [{id: null, type: 'custom', label: '初期化対象リンク', reference_id: null, url: '/posts'}],
             footer: [{id: null, type: 'custom', label: 'フッターリンク', reference_id: null, url: '/'}],
@@ -73,6 +78,8 @@ module.exports = async function checkDesignReset(page, base, output) {
     const preview = page.frameLocator('#nx-design-frame');
     assert.equal(await preview.locator('aside.nx-design-sidebar').count(), 0);
     assert.equal(await preview.getByText('初期化対象リンク').count(), 0);
+    assert.equal(await preview.locator('link[href*="nexapress/assets/site-background"]').count(), 0);
+    assert.equal(await preview.locator('.site-header [data-widget-area="header_above"]').count(), 0);
     assert.equal(await preview.locator('.site-main').getAttribute('data-content-width'), 'standard');
     assert(await preview.locator('.site-footer').textContent().then(text => text.includes('Powered by MonoEdge')));
     await page.locator('[data-mode="published"]').click();
@@ -121,7 +128,11 @@ module.exports = async function checkDesignReset(page, base, output) {
         assert.equal(state.layout.width, 'standard');
         assert.equal(state.layout.columns, 'none');
         assert.equal(state.layout.headerRows, null);
+        assert.equal(state.layout.headerAbove, false);
+        assert.equal(state.layout.headerWidth, 'theme');
+        assert.equal(state.layout.footerWidth, 'theme');
         assert.equal(state.layout.footer, 1);
+        assert.equal(state.background.mode, 'theme');
         assert.deepEqual(state.layout.widgets.sidebar, []);
         assert.equal(state.layout.widgets.footer1[0].type, 'copyright');
         assert.deepEqual(state.menus, {header: [], footer: []});

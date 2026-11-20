@@ -36,9 +36,12 @@ final class PageLayout
             'gap' => $section['gap'],
         ], $layout['sections']);
 
-        return url('nexapress/assets/page-layout') . '?' . http_build_query([
-            'width' => $width, 'sections' => $sections,
-        ], '', '&', PHP_QUERY_RFC3986);
+        $query = ['width' => $width, 'sections' => $sections];
+        $background = Design::background();
+        if ($background['mode'] === 'color') {
+            $query['background'] = $background['color'];
+        }
+        return url('nexapress/assets/page-layout') . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
     }
 
     public static function stylesheet(array $query): string
@@ -55,10 +58,11 @@ final class PageLayout
             default => 'var(--theme-content-width, 1080px)',
         };
 
+        $background = DesignColor::normalize($query['background'] ?? null) ?? '#F5F6F8';
         $rules = [];
         foreach (array_values($sections) as $index => $section) {
-            $color = $section['color'] ?? null;
-            if (!is_string($color) || !preg_match('/^#[0-9A-F]{6}$/iD', $color)) {
+            $color = DesignColor::normalize($section['color'] ?? null);
+            if ($color === null) {
                 throw new InvalidArgumentException('セクションの背景色を確認してください。');
             }
             $sectionWidth = isset($section['percent'])
@@ -66,7 +70,7 @@ final class PageLayout
                 : $defaultWidth;
             $share = self::range(filter_var($section['share'] ?? null, FILTER_VALIDATE_INT), 20, 80);
             $gap = self::range(filter_var($section['gap'] ?? null, FILTER_VALIDATE_INT), 0, 30);
-            $foreground = self::foreground($color);
+            $foreground = DesignColor::foreground($color, $background);
             $right = 100 - $share;
             $rules[] = ".nx-page-section[data-layout-section=\"$index\"] {" .
                 "--nx-section-width:$sectionWidth;--nx-section-background:$color;--nx-section-foreground:$foreground;" .
@@ -74,16 +78,6 @@ final class PageLayout
         }
 
         return implode("\n", $rules);
-    }
-
-    public static function foreground(string $hex): string
-    {
-        $channels = array_map(static function (string $part): float {
-            $value = hexdec($part) / 255;
-            return $value <= 0.04045 ? $value / 12.92 : (($value + 0.055) / 1.055) ** 2.4;
-        }, str_split(substr($hex, 1), 2));
-        $luminance = 0.2126 * $channels[0] + 0.7152 * $channels[1] + 0.0722 * $channels[2];
-        return $luminance > 0.179 ? '#000000' : '#FFFFFF';
     }
 
     public static function settings(int $id, string $kind = 'page'): array
@@ -264,12 +258,12 @@ final class PageLayout
     private static function section(array $input, int &$count): array
     {
         $background = $input['background'] ?? null;
-        $color = $input['color'] ?? null;
+        $color = DesignColor::normalize($input['color'] ?? null);
         $widthMode = $input['widthMode'] ?? null;
         $columns = $input['columns'] ?? null;
         $groups = $input['groups'] ?? null;
         if (!in_array($background, ['full', 'content', 'none'], true) ||
-            !is_string($color) || !preg_match('/^#(?:[A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})$/D', $color) ||
+            $color === null ||
             !in_array($widthMode, ['theme', 'percent'], true) || !in_array($columns, [1, 2], true) ||
             !is_array($groups) || array_keys($groups) !== [0, 1] || !is_array($groups[0]) || !is_array($groups[1])) {
             throw new InvalidArgumentException('セクションの背景色・幅・カラムを確認してください。');
@@ -278,11 +272,8 @@ final class PageLayout
         if ($count > self::MAX_ELEMENTS) {
             throw new InvalidArgumentException('ページの要素数が上限を超えました。');
         }
-        if (strlen($color) === 4) {
-            $color = '#' . $color[1] . $color[1] . $color[2] . $color[2] . $color[3] . $color[3];
-        }
         return [
-            'background' => $background, 'color' => strtoupper($color), 'widthMode' => $widthMode,
+            'background' => $background, 'color' => $color, 'widthMode' => $widthMode,
             'percent' => self::range($input['percent'] ?? null, 40, 100),
             'columns' => $columns, 'share' => self::range($input['share'] ?? null, 20, 80),
             'gap' => self::range($input['gap'] ?? null, 0, 30),
