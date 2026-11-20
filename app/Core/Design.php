@@ -91,6 +91,9 @@ final class Design
 
     public static function pageLayout(int $id, string $kind = 'page'): array
     {
+        if (self::$preview['reset'] ?? false) {
+            return PageLayout::resolve([]);
+        }
         $common = self::$preview['contentLayouts'] ?? self::contentLayouts(self::stored());
         $individual = PageLayout::snapshot($id, false, $kind)['overrides'] ?? PageLayout::EMPTY_OVERRIDES;
         foreach (self::$preview['content'] ?? [] as $entry) {
@@ -120,13 +123,26 @@ final class Design
 
     public static function snapshots(array $themes): array
     {
+        return self::editorSnapshot($themes)['states'];
+    }
+
+    public static function editorSnapshot(array $themes): array
+    {
         $stored = self::stored();
         $navigation = Navigation::all();
         $result = [];
         foreach ($themes as $theme) {
             $result[$theme] = self::state($theme, $stored, $navigation);
         }
-        return $result;
+        return ['states' => $result, 'resetRevision' => self::resetRevision($stored, $navigation)];
+    }
+
+    public static function resetPreview(mixed $theme): array
+    {
+        if (!is_string($theme) || !Theme::exists($theme)) {
+            throw new InvalidArgumentException('テーマを選択してください。');
+        }
+        return self::state($theme, [], []) + ['reset' => true];
     }
 
     public static function validate(array $input): array
@@ -266,7 +282,6 @@ final class Design
     public static function publish(array $state, string $revision): ?array
     {
         $pdo = Database::connect();
-        $table = Database::table('site_design');
         $pdo->beginTransaction();
         try {
             $saved = self::stored(true);
@@ -298,8 +313,7 @@ final class Design
             if (Theme::designAreas($state['theme'])) {
                 $saved['themes'][$state['theme']] = $state['layout'];
             }
-            $stmt = $pdo->prepare("UPDATE {$table} SET settings = ? WHERE id = 1");
-            $stmt->execute([self::json($saved)]);
+            $saved = self::saveSettings($saved);
             $pdo->commit();
             self::$stored = $saved;
         } catch (Throwable $exception) {
@@ -314,6 +328,54 @@ final class Design
         }
         do_action('design_published', $state['theme']);
         return self::snapshot($state['theme']);
+    }
+
+    public static function reset(string $revision): bool
+    {
+        $pdo = Database::connect();
+        $pdo->beginTransaction();
+        try {
+            $saved = self::stored(true);
+            $navigation = Navigation::all(true);
+            if (!hash_equals(self::resetRevision($saved, $navigation), $revision)) {
+                $pdo->rollBack();
+                return false;
+            }
+
+            $menusChanged = $navigation || !empty($saved['footerMenu']);
+            Navigation::replace([], $navigation);
+            PageLayout::resetAll();
+            unset($saved['themes'], $saved['footerMenu'], $saved['contentLayouts']);
+            $saved = self::saveSettings($saved);
+            $pdo->commit();
+            self::$stored = $saved;
+        } catch (Throwable $exception) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $exception;
+        }
+
+        if ($menusChanged) {
+            do_action('navigation_saved');
+        }
+        do_action('design_published', Theme::active());
+        return true;
+    }
+
+    private static function resetRevision(array $stored, array $navigation): string
+    {
+        return hash('sha256', self::json([$stored, $navigation]));
+    }
+
+    private static function saveSettings(array $settings): array
+    {
+        // Track publications that change only individual page or post layouts.
+        $settings['publicationId'] = bin2hex(random_bytes(16));
+        $table = Database::table('site_design');
+        $stmt = Database::connect()->prepare("UPDATE {$table} SET settings = ? WHERE id = 1");
+        $stmt->execute([self::json($settings)]);
+        return $settings;
     }
 
     private static function state(string $theme, array $stored, array $navigation): array

@@ -124,6 +124,16 @@ final class PageLayout
         $stmt->execute([$id, $json, $json]);
     }
 
+    /** Use the caller's transaction to reset both kinds of layout together. */
+    public static function resetAll(): void
+    {
+        $pdo = Database::connect();
+        foreach (['page', 'post'] as $kind) {
+            $table = self::table($kind);
+            $pdo->exec("DELETE FROM {$table}");
+        }
+    }
+
     private static function table(string $kind): string
     {
         if (!in_array($kind, ['page', 'post'], true)) {

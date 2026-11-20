@@ -546,7 +546,8 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
         await Promise.all([page.waitForURL(base + '/admin'), page.locator('button[type="submit"]').click()]);
         const media = await checkMediaEditor(page, base, output);
         await checkMediaFolders(page, base, output, media);
-        page.on('dialog', dialog => dialog.accept());
+        const acceptDialogs = dialog => dialog.accept();
+        page.on('dialog', acceptDialogs);
         for (const kind of ['page', 'post']) {
             const route = kind === 'page' ? '/admin/pages/create' : '/admin/posts/create';
             await page.goto(base + route);
@@ -798,6 +799,8 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
         await require('./post-categories.cjs')(page, base, output);
         await require('./design-audit.cjs')(page, base, output);
         await require('./category-widgets.cjs')(page, base, output);
+        page.off('dialog', acceptDialogs);
+        await require('./design-reset.cjs')(page, base, output);
         assert.deepEqual(errors, []);
         console.log('PASS: browser warning, menu editing, profile, desktop/mobile layout, and no JavaScript exceptions');
     } finally {

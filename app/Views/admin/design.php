@@ -3,6 +3,7 @@
     <div class="nx-design-toolbar">
         <h1>デザイン</h1>
         <div class="nx-design-actions">
+            <button type="button" class="button secondary small" data-action="reset" disabled>デザインを初期状態に戻す</button>
             <span id="nx-design-status" role="status" aria-live="polite">公開済み</span>
             <button type="button" class="button" data-action="publish" disabled>公開</button>
         </div>

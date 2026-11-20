@@ -25,12 +25,12 @@ final class DesignController extends Controller
         $active = Theme::active();
         $catalog = [];
         $themes = Theme::all();
-        $states = Design::snapshots(array_column($themes, 'id'));
+        $snapshot = Design::editorSnapshot(array_column($themes, 'id'));
         foreach ($themes as $theme) {
             $id = $theme['id'];
             $catalog[$id] = [
                 'name' => $theme['name'], 'areas' => Theme::designAreas($id),
-                'state' => $states[$id],
+                'state' => $snapshot['states'][$id],
             ];
         }
         $contentChoices = static fn(array $item): array => [
@@ -51,6 +51,7 @@ final class DesignController extends Controller
             ],
             'linkTypes' => Navigation::TYPES, 'widgets' => Design::WIDGETS,
             'regions' => Design::REGIONS, 'token' => Csrf::token(),
+            'resetRevision' => $snapshot['resetRevision'],
             'widgetAreas' => Design::widgetAreas(), 'alignments' => Design::ALIGNMENTS,
             'categoryLimit' => Design::MAX_CATEGORY_LINKS,
             'chromeDefaults' => [
@@ -102,14 +103,19 @@ final class DesignController extends Controller
         header('Cache-Control: no-store, private');
         Csrf::requireValid($_POST['_csrf_token'] ?? null);
         $draft = ($_POST['mode'] ?? '') !== 'published';
+        $reset = $draft && ($_POST['reset'] ?? null) === '1';
         try {
-            $state = $draft ? $this->readDesign() : Design::snapshot(Theme::active());
+            if ($reset) {
+                $state = Design::resetPreview($_POST['theme'] ?? null);
+            } else {
+                $state = $draft ? $this->readDesign() : Design::snapshot(Theme::active());
+            }
         } catch (InvalidArgumentException | JsonException $exception) {
             $this->respond(['error' => $exception->getMessage()], 422);
             return;
         }
         Theme::preview($state['theme']);
-        Design::preview($state, $draft);
+        Design::preview($state, $draft && !$reset);
         header('Content-Type: text/html; charset=UTF-8');
         $kind = $_POST['content_kind'] ?? 'page';
         if (!in_array($kind, ['page', 'post'], true)) {
@@ -143,13 +149,18 @@ final class DesignController extends Controller
     {
         header('Cache-Control: no-store, private');
         Csrf::requireValid($_POST['_csrf_token'] ?? null);
+        $reset = ($_POST['reset'] ?? null) === '1';
         try {
-            $state = $this->readDesign();
             $revision = $_POST['revision'] ?? '';
             if (!is_string($revision) || !preg_match('/^[a-f0-9]{64}$/D', $revision)) {
                 throw new InvalidArgumentException('編集画面を開き直してください。');
             }
-            $saved = Design::publish($state, $revision);
+            if ($reset) {
+                $saved = Design::reset($revision);
+            } else {
+                $state = $this->readDesign();
+                $saved = Design::publish($state, $revision) !== null;
+            }
         } catch (InvalidArgumentException | JsonException $exception) {
             $this->respond(['error' => $exception->getMessage()], 422);
             return;
@@ -157,12 +168,15 @@ final class DesignController extends Controller
             $this->respond(['error' => 'デザインを公開できませんでした。DBの状態を確認してください。'], 500);
             return;
         }
-        if ($saved === null) {
+        if (!$saved) {
             $this->respond(['error' => '別の操作でデザインが更新されました。画面を開き直してください。'], 409);
             return;
         }
-        $this->respond([
-            'states' => Design::snapshots(array_column(Theme::all(), 'id')),
+        if ($reset) {
+            $this->respond(['reset' => true]);
+            return;
+        }
+        $this->respond(Design::editorSnapshot(array_column(Theme::all(), 'id')) + [
             'page' => $state['page'] === null ? null : PageLayout::snapshot($state['page']['id']),
             'content' => array_map(static fn(array $entry): ?array =>
                 PageLayout::snapshot($entry['id'], false, $entry['kind']), $state['content']),

@@ -8,6 +8,7 @@
     const status = root.querySelector('#nx-design-status');
     const error = root.querySelector('#nx-design-error');
     const publishButton = root.querySelector('[data-action="publish"]');
+    const resetButton = root.querySelector('[data-action="reset"]');
     const stage = root.querySelector('#nx-design-stage');
     const canvas = root.querySelector('#nx-design-canvas');
     const frame = root.querySelector('#nx-design-frame');
@@ -37,6 +38,8 @@
     let device = 'desktop';
     let editor = null;
     let publishing = false;
+    let resetRevision = data.resetRevision;
+    let resetDraft = null;
     let previewTimer;
     let previewRequest;
 
@@ -86,8 +89,11 @@
     }
 
     function renderStatus() {
-        publishButton.disabled = publishing || editor !== null || !currentChanges();
-        status.textContent = publishing ? '公開中…' : currentChanges() ? '未公開の変更'
+        const canPublish = resetDraft ? resetDraft.ready && stage.getAttribute('aria-busy') === 'false' : currentChanges();
+        publishButton.disabled = publishing || editor !== null || !canPublish;
+        resetButton.disabled = publishing || editor !== null;
+        resetButton.textContent = resetDraft ? '初期化を取り消す' : 'デザインを初期状態に戻す';
+        status.textContent = publishing ? '公開中…' : resetDraft ? '初期化プレビュー' : currentChanges() ? '未公開の変更'
             : pageEditor.hasAnyChanges() ? '別のページに未公開の変更' : '公開済み';
         panel.disabled = publishing;
         root.querySelector('[data-setting="theme"]').disabled = publishing;
@@ -258,12 +264,21 @@
         ].filter(Boolean).join(' ');
         root.querySelectorAll('[data-pane]').forEach(control => {
             const key = control.dataset.pane;
-            control.disabled = publishing || (!['header', 'footer'].includes(key) && (key === 'widgets'
+            control.disabled = publishing || Boolean(resetDraft) || (!['header', 'footer'].includes(key) && (key === 'widgets'
                 ? !supportsWidgets() : !supports(key)));
             control.setAttribute('aria-pressed', String(key === pane));
         });
 
-        if (pane === 'widgets') {
+        if (resetDraft) {
+            const choices = [['', 'トップページ']];
+            for (const [kind, label] of [['page', '固定ページ'], ['post', '投稿']]) {
+                for (const item of targets[kind]) choices.push([kind + ':' + item.id, label + ' · ' + item.label]);
+            }
+            const target = resetDraft.target;
+            panel.innerHTML = '<h2>初期状態の確認</h2>' +
+                '<p class="nx-design-note">全テーマのデザイン、リンク、ウィジェット、共通・ページ個別のレイアウトが初期状態に戻ります。「公開」で確定します。</p>' +
+                field('プレビューするページ', 'reset-target', choices, target.id ? target.kind + ':' + target.id : '', 'data-setting="reset-target"');
+        } else if (pane === 'widgets') {
             const choose = field('表示場所', 'area', usable.map(id => [id, areas[id]]), area, 'data-setting="area"');
             panel.innerHTML = '<h2>ウィジェット</h2>' + (usable.length
                 ? choose + renderRows(currentList(), false) + (editor
@@ -299,6 +314,7 @@
     }
 
     function syncPreviewButtons() {
+        root.querySelector('[data-mode="draft"]').textContent = resetDraft ? '初期状態' : '編集中';
         root.querySelectorAll('[data-mode]').forEach(control =>
             control.setAttribute('aria-pressed', String(control.dataset.mode === mode)));
         root.querySelectorAll('[data-device]').forEach(control =>
@@ -308,6 +324,7 @@
     }
 
     function revealPreviewArea() {
+        if (resetDraft) return;
         const footer = pane === 'footer' || (pane === 'widgets' && area.startsWith('footer'));
         const body = pane === 'columns' || (pane === 'widgets' && area === 'sidebar');
         const document = frame.contentDocument;
@@ -323,10 +340,12 @@
     }
 
     function body(extra) {
+        const target = resetDraft?.target ?? pageEditor.target();
+        const design = resetDraft ? {reset: '1', theme} : {design: JSON.stringify(state())};
         return new URLSearchParams({
-            _csrf_token: data.token, design: JSON.stringify(state()),
-            content_kind: pageEditor.target().kind,
-            content_id: supports('page_layout') ? pageEditor.target().id : '', ...extra,
+            _csrf_token: data.token, ...design,
+            content_kind: target.kind,
+            content_id: resetDraft || supports('page_layout') ? target.id : '', ...extra,
         });
     }
 
@@ -344,6 +363,10 @@
         clearTimeout(previewTimer);
         previewRequest?.abort();
         stage.setAttribute('aria-busy', 'true');
+        if (resetDraft) {
+            resetDraft.ready = false;
+            renderStatus();
+        }
         previewTimer = setTimeout(async () => {
             const controller = new AbortController();
             previewRequest = controller;
@@ -351,7 +374,10 @@
                 const response = await fetch(data.preview, {method: 'POST', body: body({mode}), signal: controller.signal});
                 await checkResponse(response);
                 const html = await response.text();
-                if (!controller.signal.aborted) frame.srcdoc = html;
+                if (!controller.signal.aborted) {
+                    if (resetDraft) resetDraft.ready = mode === 'draft';
+                    frame.srcdoc = html;
+                }
             } catch (cause) {
                 if (controller.signal.aborted) return;
                 stage.setAttribute('aria-busy', 'false');
@@ -379,9 +405,30 @@
         updatePreview();
     }
 
+    function toggleResetPreview() {
+        if (resetDraft) {
+            theme = resetDraft.previousTheme;
+            mode = resetDraft.previousMode;
+            resetDraft = null;
+            root.querySelector('[data-setting="theme"]').value = theme;
+        } else {
+            resetDraft = {previousTheme: theme, previousMode: mode, target: pageEditor.target(), ready: false};
+            mode = 'draft';
+        }
+        changedResetPreview();
+    }
+
+    function changedResetPreview() {
+        showError();
+        renderPanel();
+        syncPreviewButtons();
+        updatePreview();
+    }
+
     async function publish() {
-        if (publishing || !currentChanges()) return;
-        if (conflicts.has(theme)) {
+        if (publishButton.disabled) return;
+        if (resetDraft && !window.confirm('全テーマのデザインを初期状態に戻して公開しますか？登録済みのリンク、ウィジェット、ページのレイアウト設定も初期化されます。')) return;
+        if (!resetDraft && conflicts.has(theme)) {
             showError('別の操作でこのテーマの設定が更新されました。画面を開き直してください。');
             return;
         }
@@ -389,9 +436,16 @@
         showError();
         renderPanel();
         try {
-            const response = await fetch(data.publish, {method: 'POST', body: body({revision: published[theme].revision})});
+            const revision = resetDraft ? resetRevision : published[theme].revision;
+            const response = await fetch(data.publish, {method: 'POST', body: body({revision})});
             await checkResponse(response);
             const result = await response.json();
+            if (resetDraft) {
+                window.removeEventListener('beforeunload', warnBeforeUnload);
+                window.location.reload();
+                return;
+            }
+            resetRevision = result.resetRevision;
             const nextStates = {...published, ...result.states};
             for (const id of Object.keys(layouts)) {
                 if (id === theme || same(layouts[id], published[id].layout)) {
@@ -431,6 +485,8 @@
             else revealPreviewArea();
         } else if (target.action === 'publish') {
             publish();
+        } else if (target.action === 'reset') {
+            if (!resetButton.disabled) toggleResetPreview();
         } else if (target.action === 'area') {
             const initializeHeader = /^header(?:_bottom)?[1-5]$/.test(target.area) && layouts[theme].headerRows === null;
             if (initializeHeader) ensureChrome('header');
@@ -494,11 +550,21 @@
                 `[data-chrome="${chrome}"][data-chrome-row="${chromeRow ?? ''}"][data-chrome-field="${chromeField}"]`);
         } else if (setting === 'theme') {
             theme = input.value;
+            if (resetDraft) {
+                mode = 'draft';
+                changedResetPreview();
+                return;
+            }
             editor = null;
             if (!editingLinks() && (pane === 'widgets' ? !supportsWidgets() : !supports(pane))) {
                 pane = 'header';
             }
             changed('[data-setting="theme"]');
+        } else if (setting === 'reset-target' && resetDraft) {
+            const [kind, id] = input.value ? input.value.split(':') : ['page', ''];
+            resetDraft.target = {kind, id};
+            showError();
+            updatePreview();
         } else if (setting === 'area') {
             area = input.value;
             editor = null;
@@ -575,11 +641,12 @@
         changed('[data-action="add"]');
     });
 
-    window.addEventListener('beforeunload', event => {
-        if (!editor && !Object.keys(layouts).some(hasChanges) && !pageEditor.hasAnyChanges()) return;
+    function warnBeforeUnload(event) {
+        if (!resetDraft && !editor && !Object.keys(layouts).some(hasChanges) && !pageEditor.hasAnyChanges()) return;
         event.preventDefault();
         event.returnValue = '';
-    });
+    }
+    window.addEventListener('beforeunload', warnBeforeUnload);
     frame.addEventListener('load', () => {
         if (!frame.hasAttribute('srcdoc')) return;
         // Keep the site controls read-only while allowing the iframe's native scrolling.
@@ -587,6 +654,7 @@
         if (body) body.inert = true;
         revealPreviewArea();
         stage.setAttribute('aria-busy', 'false');
+        if (resetDraft) renderStatus();
     });
     window.addEventListener('resize', resizePreview);
     renderPanel();
