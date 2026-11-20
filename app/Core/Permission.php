@@ -214,7 +214,7 @@ class Permission
             return;
         }
 
-        if ($methodName === 'create') {
+        if ($methodName === 'create' || ($methodName === 'editorPreview' && (int)($params[0] ?? 0) === 0)) {
             self::require('posts.create');
 
             return;
@@ -257,6 +257,7 @@ class Permission
                     'edit',
                     'update',
                     'preview',
+                    'editorPreview',
                 ],
                 true
             )

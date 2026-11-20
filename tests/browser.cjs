@@ -800,6 +800,7 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
         await require('./post-categories.cjs')(page, base, output);
         await require('./design-audit.cjs')(page, base, output);
         await require('./category-widgets.cjs')(page, base, output);
+        if (process.env.NEXAPRESS_TEST_CLASSIC_EDITOR) await require('./editor-preview.cjs')(page, base, output);
         page.off('dialog', acceptDialogs);
         await require('./design-reset.cjs')(page, base, output);
         assert.deepEqual(errors, []);

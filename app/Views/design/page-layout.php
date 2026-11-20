@@ -23,10 +23,10 @@ $images = [];
                     <?php foreach ($elements as $element): ?>
                         <?php switch ($element['type']):
                             case 'page_title': ?>
-                                <h1><?= e($title) ?></h1>
+                                <h1<?php \app\Core\EditorPreview::attribute('title'); ?>><?= e($title) ?></h1>
                                 <?php break;
                             case 'page_content': ?>
-                                <div class="post-content"><?= $body ??= nx_post_content($layoutDocument) ?></div>
+                                <div class="post-content"<?php \app\Core\EditorPreview::attribute('body'); ?>><?= $body ??= nx_post_content($layoutDocument) ?></div>
                                 <?php break;
                             case 'heading': ?>
                                 <?php if ($element['text'] !== ''): ?><h2><?= e($element['text']) ?></h2><?php endif; ?>

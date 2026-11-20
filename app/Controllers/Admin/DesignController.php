@@ -62,6 +62,7 @@ final class DesignController extends Controller
                 'footer' => Design::footerRowDefaults(),
             ],
             'preview' => url('admin/design/preview'), 'publish' => url('admin/design/publish'), 'media' => url('admin/media'),
+            'imageUpload' => url('admin/media/upload-image'),
             'pageLayout' => [
                 'url' => url('admin/design/page-layout'),
                 'postUrl' => url('admin/design/post-layout'),

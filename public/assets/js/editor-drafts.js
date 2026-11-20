@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (visual && textarea && editor && typeof editor.sanitizeHtml === 'function') {
                     visual.innerHTML = editor.sanitizeHtml(textarea.value);
                 }
+                form.dispatchEvent(new Event('nexapress:draft-restored'));
                 recoveryPending = false;
                 controls.remove();
                 status.textContent = '入力を復元しました。内容を確認して「保存」を押してください。';

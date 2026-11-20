@@ -368,6 +368,9 @@ function nx_head(?string $title = null): void
         <link rel="icon" href="<?= e($icon) ?>">
     <?php endif; ?>
 
+    <?php if (\app\Core\EditorPreview::active()): ?>
+        <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/editor-preview.css')) ?>">
+    <?php endif; ?>
     <?php do_action('nx_head'); ?>
     <?php
 }
@@ -375,7 +378,7 @@ function nx_head(?string $title = null): void
 function nexapress_admin_header(): void
 {
     // ログイン中の管理者だけに、本体側の管理者用ヘッダーを表示する
-    if (\app\Core\Design::isPreview() || !\app\Core\Auth::check()) {
+    if (\app\Core\Design::isPreview() || \app\Core\EditorPreview::active() || !\app\Core\Auth::check()) {
         return;
     }
 

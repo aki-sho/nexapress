@@ -21,6 +21,9 @@ final class ContentExtension
 
     public static function begin(string $view, array $data): bool
     {
+        if (EditorPreview::active()) {
+            return true;
+        }
         $type = match ($view) {
             'page-detail' => 'page',
             'post-detail' => 'post',

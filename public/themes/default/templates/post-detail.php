@@ -107,7 +107,7 @@ if ($updatedDateTime !== '') {
         <?php endif; ?>
 
         <header class="post-detail-header">
-            <h1>
+            <h1<?php \app\Core\EditorPreview::attribute('title'); ?>>
                 <?= e(
                     (string)(
                         $post['title']
@@ -162,7 +162,7 @@ if ($updatedDateTime !== '') {
             </div>
         </header>
 
-        <div class="post-content">
+        <div class="post-content"<?php \app\Core\EditorPreview::attribute('body'); ?>>
             <?= nx_post_content($post) ?>
         </div>
 

@@ -108,6 +108,10 @@ $router->post('/admin/navigation/save', 'app\Controllers\Admin\NavigationControl
 $router->post('/admin/navigation/move/{id}', 'app\Controllers\Admin\NavigationController@move');
 $router->post('/admin/navigation/delete/{id}', 'app\Controllers\Admin\NavigationController@delete');
 $router->get('/admin/pages/preview/{id}', 'app\Controllers\Admin\PageController@preview');
+$router->post('/admin/pages/editor-preview', 'app\Controllers\Admin\PageController@editorPreview');
+$router->post('/admin/pages/editor-preview/{id}', 'app\Controllers\Admin\PageController@editorPreview');
+$router->post('/admin/posts/editor-preview', 'app\Controllers\Admin\PostController@editorPreview');
+$router->post('/admin/posts/editor-preview/{id}', 'app\Controllers\Admin\PostController@editorPreview');
 $router->get('/admin/pages/revisions/{id}', 'app\Controllers\Admin\PageController@revisions');
 $router->post('/admin/pages/revisions/{id}/restore/{revision}', 'app\Controllers\Admin\PageController@restoreRevision');
 $router->post('/admin/pages/restore/{id}', 'app\Controllers\Admin\PageController@restore');
@@ -332,6 +336,7 @@ $router->post('/admin/themes/update', 'app\Controllers\Admin\ThemeController@upd
 // メディア管理
 $router->get('/admin/media', 'app\Controllers\Admin\MediaController@index');
 $router->post('/admin/media/upload', 'app\Controllers\Admin\MediaController@upload');
+$router->post('/admin/media/upload-image', 'app\Controllers\Admin\MediaController@uploadImage');
 $router->post('/admin/media/edit/{id}', 'app\Controllers\Admin\MediaController@saveEdit');
 $router->post('/admin/media/update/{id}', 'app\Controllers\Admin\MediaController@update');
 $router->post('/admin/media/delete/{id}', 'app\Controllers\Admin\MediaController@delete');

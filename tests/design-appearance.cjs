@@ -142,14 +142,25 @@ module.exports = async function checkDesignAppearance(page, base, output) {
         await page.locator('[data-setting="background-image"]').selectOption({label: fixtureName});
         await settled();
         assert((await color(preview)).includes(source));
+        const [uploadResponse] = await Promise.all([
+            page.waitForResponse(base + '/admin/media/upload-image'),
+            page.locator('[data-setting="background-file"]').setInputFiles({
+                name: 'direct-design-background.png', mimeType: 'image/png', buffer: Buffer.from(image, 'base64'),
+            }),
+        ]);
+        assert.equal(uploadResponse.status(), 201, await uploadResponse.text());
+        const uploaded = (await uploadResponse.json()).image;
+        await page.waitForFunction(id => document.querySelector('[data-setting="background-image"]').value === String(id), uploaded.id);
+        await settled();
+        assert((await color(preview)).includes(uploaded.url));
         await publish();
-        const download = new URL(source, base);
+        const download = new URL(uploaded.url, base);
         const [imageRequest] = await Promise.all([
             visitor.waitForResponse(response => response.url() === download.href && response.ok()),
             visitor.reload(),
         ]);
         assert.match(imageRequest.headers()['content-type'], /^image\/png/);
-        assert((await color(visitor)).includes(source));
+        assert((await color(visitor)).includes(uploaded.url));
         await visitor.setViewportSize({width: 390, height: 844});
         assert(await visitor.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
         await visitor.screenshot({path: path.join(output, 'appearance-mobile-background.png'), fullPage: true});

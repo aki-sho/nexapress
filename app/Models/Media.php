@@ -160,7 +160,7 @@ class Media
 
     public static function create(
         array $data
-    ): void {
+    ): int {
         $pdo = Database::connect();
 
         $media = Database::table('media');
@@ -214,6 +214,7 @@ class Media
             ':folder_id' =>
                 $data['folder_id'] ?? null,
         ]);
+        return (int)$pdo->lastInsertId();
     }
 
     public static function updateMeta(

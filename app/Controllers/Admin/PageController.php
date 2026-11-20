@@ -6,6 +6,7 @@ use app\Core\Auth;
 use app\Core\Controller;
 use app\Core\Csrf;
 use app\Core\Database;
+use app\Core\EditorPreview;
 use app\Core\PageValidator;
 use app\Models\Page;
 use app\Models\PageRevision;
@@ -86,6 +87,15 @@ class PageController extends Controller
             header('X-Robots-Tag: noindex, nofollow');
             header('Cache-Control: no-store, private');
             $this->view('page-detail', ['page' => $page, 'isPreview' => true]);
+        }
+    }
+
+    public function editorPreview(int $id = 0): void
+    {
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
+        $page = $id === 0 ? ['id' => 0, 'status' => 'draft'] : $this->page($id);
+        if ($page !== null) {
+            EditorPreview::render('page', $page, $_POST);
         }
     }
 

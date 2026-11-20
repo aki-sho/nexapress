@@ -40,6 +40,7 @@
     let device = 'desktop';
     let editor = null;
     let publishing = false;
+    let uploadingImage = false;
     let resetRevision = data.resetRevision;
     let resetDraft = null;
     let previewTimer;
@@ -116,10 +117,10 @@
 
     function renderStatus() {
         const canPublish = resetDraft ? resetDraft.ready && stage.getAttribute('aria-busy') === 'false' : currentChanges();
-        publishButton.disabled = publishing || editor !== null || !canPublish;
-        resetButton.disabled = publishing || editor !== null;
+        publishButton.disabled = publishing || uploadingImage || editor !== null || !canPublish;
+        resetButton.disabled = publishing || uploadingImage || editor !== null;
         resetButton.textContent = resetDraft ? '初期化を取り消す' : 'デザインを初期状態に戻す';
-        status.textContent = publishing ? '公開中…' : resetDraft ? '初期化プレビュー' : currentChanges() ? '未公開の変更'
+        status.textContent = uploadingImage ? '画像を登録中…' : publishing ? '公開中…' : resetDraft ? '初期化プレビュー' : currentChanges() ? '未公開の変更'
             : pageEditor.hasAnyChanges() ? '別のページに未公開の変更' : '公開済み';
         panel.disabled = publishing;
         root.querySelector('[data-setting="theme"]').disabled = publishing;
@@ -310,7 +311,9 @@
             html += designColor.fields(background.color, 'site', escape);
         } else if (background.mode === 'image') {
             html += field('背景画像', 'background-image', [['', '画像を選択'], ...data.pageLayout.images.map(item => [item.id, item.label])],
-                background.media_id ?? '', 'data-setting="background-image"');
+                background.media_id ?? '', 'data-setting="background-image"' + (uploadingImage ? ' disabled' : ''));
+            html += '<label>画像を追加<input type="file" data-setting="background-file" ' +
+                'accept="image/jpeg,image/png,image/gif,image/webp"' + (uploadingImage ? ' disabled' : '') + '></label>';
             html += '<div><a href="' + escape(data.media) + '" target="_blank" rel="noopener">メディアを開く</a></div>';
         }
         return html;
@@ -425,6 +428,39 @@
         if (!response.ok) {
             const result = await response.json().catch(() => null);
             throw new Error(result?.error || 'デザイン設定を処理できませんでした。');
+        }
+    }
+
+    async function uploadBackgroundImage(input) {
+        const file = input.files[0];
+        if (!file || uploadingImage) return;
+        uploadingImage = true;
+        input.disabled = true;
+        panel.querySelector('[data-setting="background-image"]').disabled = true;
+        showError();
+        renderStatus();
+        const request = new FormData();
+        request.set('_csrf_token', data.token);
+        request.set('media_file', file);
+        try {
+            const response = await fetch(data.imageUpload, {method: 'POST', body: request});
+            await checkResponse(response);
+            const {image} = await response.json();
+            if (!Number.isInteger(image?.id) || image.id < 1) throw new Error('画像を確認できませんでした。');
+            data.pageLayout.images.unshift({id: image.id, label: image.title});
+            background.media_id = image.id;
+            changed('[data-setting="background-image"]');
+        } catch (cause) {
+            showError(cause.message);
+        } finally {
+            uploadingImage = false;
+            const field = panel.querySelector('[data-setting="background-file"]');
+            if (field) {
+                field.disabled = false;
+                field.value = '';
+                panel.querySelector('[data-setting="background-image"]').disabled = false;
+            }
+            renderStatus();
         }
     }
 
@@ -676,6 +712,8 @@
             rememberForm();
             renderPanel('[data-setting="area"]');
             revealPreviewArea();
+        } else if (setting === 'background-file') {
+            uploadBackgroundImage(input);
         } else if (setting === 'background-mode' || setting === 'background-image') {
             if (setting === 'background-mode') background.mode = input.value;
             else background.media_id = input.value ? Number(input.value) : null;

@@ -82,7 +82,7 @@ class View
             }
         }
 
-        if (!file_exists($viewPath)) {
+        if (!file_exists($viewPath) && !EditorPreview::active()) {
             echo 'View not found: ' . htmlspecialchars($view, ENT_QUOTES, 'UTF-8');
             return;
         }
@@ -94,8 +94,13 @@ class View
                 return;
             }
             ob_start();
-            require $viewPath;
+            if (file_exists($viewPath)) {
+                require $viewPath;
+            }
             $content = ob_get_clean();
+            if (EditorPreview::active()) {
+                $content = EditorPreview::addMissingFields($content, $layoutDocument);
+            }
             $themeLayoutPath = Theme::template('layout');
             require $themeLayoutPath ?: BASE_PATH . '/app/Views/layout.php';
         } finally {

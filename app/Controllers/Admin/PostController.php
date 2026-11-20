@@ -386,6 +386,17 @@ class PostController extends Controller
         );
     }
 
+    public function editorPreview(int $id = 0): void
+    {
+        $this->requireCsrf();
+        $post = $id === 0 ? ['id' => 0, 'status' => 'draft'] : Post::findPreview($id);
+        if ($post === null) {
+            $this->notFound();
+            return;
+        }
+        \app\Core\EditorPreview::render('post', $post, $_POST);
+    }
+
     /*
      * 投稿をゴミ箱へ移動
      */

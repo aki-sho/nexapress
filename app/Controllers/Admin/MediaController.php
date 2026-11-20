@@ -12,6 +12,7 @@ class MediaController extends Controller
 {
     private const MAX_EDIT_DIMENSION = 4096;
     private const EDITED_IMAGE_EXTENSIONS = ['image/webp' => 'webp', 'image/png' => 'png'];
+    private const IMAGE_EXTENSIONS = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
 
     private array $allowedTypes = [
         'image/jpeg' => 'image',
@@ -199,6 +200,34 @@ class MediaController extends Controller
         ], 201);
     }
 
+    public function uploadImage(): void
+    {
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
+        $file = $_FILES['media_file'] ?? null;
+        if (($file['error'] ?? null) !== UPLOAD_ERR_OK || $file['size'] < 1 || $file['size'] > $this->maxUploadSize) {
+            $this->editResponse(['error' => '100 MB以下の画像を選んでください。'], 422);
+            return;
+        }
+        $dimensions = @getimagesize($file['tmp_name']);
+        $mime = mime_content_type($file['tmp_name']);
+        if (!isset(self::IMAGE_EXTENSIONS[$mime]) || $dimensions === false || $dimensions['mime'] !== $mime) {
+            $this->editResponse(['error' => 'JPG、PNG、GIF、WebPの画像を選んでください。'], 422);
+            return;
+        }
+        $name = trim((string)preg_replace('~[\x00-\x1f\x7f/\\\\]+~u', ' ', (string)$file['name']));
+        preg_match('/^.{1,255}/u', $name, $nameParts);
+        try {
+            $image = $this->storeUpload($file, $mime, $nameParts[0] ?? '画像', (int)Auth::user()['id'], '', null);
+        } catch (\Throwable) {
+            $image = null;
+        }
+        if ($image === null) {
+            $this->editResponse(['error' => '画像を登録できませんでした。'], 500);
+            return;
+        }
+        $this->editResponse(['image' => $image], 201);
+    }
+
     private function editResponse(array $data, int $status): void
     {
         http_response_code($status);
@@ -209,27 +238,29 @@ class MediaController extends Controller
 
     private function storeUpload(
         array $file, string $mimeType, string $originalName, int $userId, string $description, ?int $folderId
-    ): bool {
+    ): ?array {
         $uploadDir = BASE_PATH . '/public/uploads/media';
         if (!is_dir($uploadDir) && !@mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
-            return false;
+            return null;
         }
 
-        $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        $extension = self::IMAGE_EXTENSIONS[$mimeType] ?? strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
         $safeFileName = date('YmdHis') . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
         $targetPath = $uploadDir . '/' . $safeFileName;
 
         if (!@move_uploaded_file($file['tmp_name'], $targetPath)) {
-            return false;
+            return null;
         }
 
         try {
-            Media::create([
-                'title' => pathinfo($originalName, PATHINFO_FILENAME),
+            $title = pathinfo($originalName, PATHINFO_FILENAME) ?: '画像';
+            $relativePath = 'uploads/media/' . $safeFileName;
+            $id = Media::create([
+                'title' => $title,
                 'description' => $description,
                 'original_name' => $originalName,
                 'file_name' => $safeFileName,
-                'file_path' => 'uploads/media/' . $safeFileName,
+                'file_path' => $relativePath,
                 'mime_type' => $mimeType,
                 'file_size' => $file['size'],
                 'file_type' => $this->allowedTypes[$mimeType],
@@ -240,7 +271,7 @@ class MediaController extends Controller
             @unlink($targetPath);
             throw $exception;
         }
-        return true;
+        return ['id' => $id, 'title' => $title, 'description' => $description, 'url' => public_url($relativePath)];
     }
 
     public function update(int $id): void
