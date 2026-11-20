@@ -6,6 +6,7 @@ use app\Controllers\HomeController;
 use app\Core\Controller;
 use app\Core\Csrf;
 use app\Core\Design;
+use app\Core\DesignSpacing;
 use app\Core\PageLayout;
 use app\Core\Theme;
 use app\Models\Category;
@@ -55,6 +56,7 @@ final class DesignController extends Controller
             'resetRevision' => $snapshot['resetRevision'],
             'widgetAreas' => Design::widgetAreas(), 'alignments' => Design::ALIGNMENTS,
             'chromeWidths' => Design::CHROME_WIDTHS,
+            'spacingLimit' => DesignSpacing::MAX_PIXELS,
             'categoryLimit' => Design::MAX_CATEGORY_LINKS,
             'chromeDefaults' => [
                 'header' => Design::headerRowDefaults(),

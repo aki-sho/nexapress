@@ -207,66 +207,7 @@ foreach (
             <!-- 投稿本文側 -->
             <div class="post-form-main">
                 <section class="admin-card post-form-card">
-                    <div class="post-form-card-header">
-                        <h2>基本情報</h2>
-
-                        <p>
-                            投稿のタイトルとURLを設定します。
-                        </p>
-                    </div>
-
                     <div class="post-basic-fields">
-                    <!-- タイトル -->
-                    <div class="form-group post-basic-title">
-                        <label for="title">
-                            タイトル
-                            <span class="post-required">
-                                必須
-                            </span>
-                        </label>
-
-                        <input
-                            type="text"
-                            id="title"
-                            name="title"
-                            value="<?= e($postTitle) ?>"
-                            maxlength="255"
-                            required
-                            <?= $hasError('title')
-                                ? 'aria-invalid="true"'
-                                : '' ?>
-                        >
-
-                        <?php $renderError('title'); ?>
-                    </div>
-
-                    <!-- スラッグ -->
-                    <div class="form-group">
-                        <label for="slug">
-                            スラッグ
-                        </label>
-
-                        <input
-                            type="text"
-                            id="slug"
-                            name="slug"
-                            value="<?= e($slug) ?>"
-                            maxlength="255"
-                            placeholder="example-post"
-                            <?= $hasError('slug')
-                                ? 'aria-invalid="true"'
-                                : '' ?>
-                        >
-
-                        <p class="form-help">
-                            投稿URLに使用します。
-                            空欄の場合はタイトルから
-                            自動生成されます。
-                        </p>
-
-                        <?php $renderError('slug'); ?>
-                    </div>
-
                     <!-- カテゴリ -->
                     <div class="form-group">
                         <label for="category_id">
@@ -425,6 +366,57 @@ foreach (
                 <section class="admin-card post-form-card">
                     <div class="post-form-card-header">
                         <h2>公開設定</h2>
+                    </div>
+
+                    <!-- タイトル -->
+                    <div class="form-group">
+                        <label for="title">
+                            タイトル
+                            <span class="post-required">
+                                必須
+                            </span>
+                        </label>
+
+                        <input
+                            type="text"
+                            id="title"
+                            name="title"
+                            value="<?= e($postTitle) ?>"
+                            maxlength="255"
+                            required
+                            <?= $hasError('title')
+                                ? 'aria-invalid="true"'
+                                : '' ?>
+                        >
+
+                        <?php $renderError('title'); ?>
+                    </div>
+
+                    <!-- スラッグ -->
+                    <div class="form-group">
+                        <label for="slug">
+                            スラッグ
+                        </label>
+
+                        <input
+                            type="text"
+                            id="slug"
+                            name="slug"
+                            value="<?= e($slug) ?>"
+                            maxlength="255"
+                            placeholder="example-post"
+                            <?= $hasError('slug')
+                                ? 'aria-invalid="true"'
+                                : '' ?>
+                        >
+
+                        <p class="form-help">
+                            投稿URLに使用します。
+                            空欄の場合はタイトルから
+                            自動生成されます。
+                        </p>
+
+                        <?php $renderError('slug'); ?>
                     </div>
 
                     <div class="form-group">

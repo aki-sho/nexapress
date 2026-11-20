@@ -359,6 +359,7 @@ $router->post('/admin/settings/debug/update', 'app\Controllers\Admin\SettingCont
 $router->getContent('/page/{slug}', 'app\Controllers\PageController@show');
 $router->get('/nexapress/assets/page-layout', 'app\Controllers\PageController@layoutStylesheet');
 $router->get('/nexapress/assets/site-background', 'app\Controllers\PageController@backgroundStylesheet');
+$router->get('/nexapress/assets/site-spacing', 'app\Controllers\PageController@spacingStylesheet');
 
 // 有効な拡張機能を読み込む
 \app\Core\Extension::bootEnabled($router, $guardRequired);

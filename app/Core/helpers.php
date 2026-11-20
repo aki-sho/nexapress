@@ -77,6 +77,14 @@ function nx_design_background_style(): void
     }
 }
 
+function nx_design_spacing_style(): void
+{
+    $stylesheet = \app\Core\DesignSpacing::stylesheetUrl(nx_design_settings()['spacing']);
+    if ($stylesheet !== null) {
+        echo '<link rel="stylesheet" href="' . e($stylesheet) . '">' . "\n";
+    }
+}
+
 function nx_design_main(string $content, ?array $pageDesign = null): void
 {
     require BASE_PATH . '/app/Views/design/main.php';

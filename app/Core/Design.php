@@ -267,6 +267,12 @@ final class Design
             }
             $defaults[$key] = $width;
         }
+        $spacing = DesignSpacing::validate($layout['spacing'] ?? []);
+        foreach (DesignSpacing::AREAS as $region => $area) {
+            if (in_array($area, $caps, true)) {
+                $defaults['spacing'][$region] = $spacing[$region];
+            }
+        }
         $page = null;
         $content = [];
         $common = self::contentLayouts(self::stored());
@@ -515,6 +521,7 @@ final class Design
             'footer' => 1,
             'footerRows' => null,
             'footerWidth' => 'theme',
+            'spacing' => DesignSpacing::defaults(),
             'widgets' => $widgets,
         ];
     }

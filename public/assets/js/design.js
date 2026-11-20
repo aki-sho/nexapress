@@ -214,6 +214,21 @@
             <summary>${title}</summary><div class="nx-chrome-fields">${content}</div></details>`;
     }
 
+    function spacingGroup(kind) {
+        const area = kind === 'columns' ? 'body' : kind;
+        const spacing = layouts[theme].spacing[area];
+        const fields = [
+            ['marginTop', '外側・上'], ['marginBottom', '外側・下'],
+            ['paddingTop', '内側・上'], ['paddingBottom', '内側・下'],
+        ].map(([key, label]) => `<label>${label}（px）
+            <input type="number" min="0" max="${data.spacingLimit}" step="1"
+                value="${escape(spacing[key])}" placeholder="テーマの既定値"
+                data-spacing-area="${area}" data-spacing-field="${key}">
+            </label>`).join('');
+        return chromeGroup(kind, 'spacing', '上下の余白',
+            '<div class="nx-chrome-form-row">' + fields + '</div>');
+    }
+
     function renderList(list, kind) {
         const links = kind === 'links';
         return renderRows(list, links) + (editor?.list === kind ? renderForm() :
@@ -261,6 +276,7 @@
         if (supports(kind)) {
             const width = kind + 'Width';
             html += field(title + 'の幅', width, Object.entries(data.chromeWidths), layout[width], 'data-setting="' + width + '"');
+            html += spacingGroup(kind);
         }
         html += chromeGroup(kind, 'links', 'リンク', renderList(menuItems[kind], 'links'));
         if (!supports(kind)) return html + widgetGroup(kind);
@@ -359,7 +375,7 @@
             panel.innerHTML = '<h2>本文カラム</h2>' + (supports('page_layout')
                 ? field('テーマの本文幅', 'width', pageEditor.widths, layout.width, 'data-setting="width"') : '') + field('レイアウト', 'columns',
                 [['none', '1カラム・本文のみ'], ['left', '2カラム・左サイドバー'], ['right', '2カラム・右サイドバー']],
-                layout.columns, 'data-setting="columns"') + widgetGroup('columns');
+                layout.columns, 'data-setting="columns"') + spacingGroup('columns') + widgetGroup('columns');
         } else if (pane === 'page_layout') {
             panel.innerHTML = pageEditor.render();
         } else if (pane === 'general') {
@@ -538,6 +554,7 @@
 
     async function publish() {
         if (publishButton.disabled) return;
+        if (panel.querySelector('[data-spacing-area]:invalid')?.reportValidity() === false) return;
         if (resetDraft && !window.confirm('全テーマのデザインを初期状態に戻して公開しますか？登録済みのリンク、ウィジェット、ページのレイアウト設定も初期化されます。')) return;
         if (!resetDraft && conflicts.has(theme)) {
             showError('別の操作でこのテーマの設定が更新されました。画面を開き直してください。');
@@ -664,6 +681,24 @@
                 changed(itemControl(kind, `[data-action="edit"][data-index="${next}"]`));
             }
         }
+    });
+
+    panel.addEventListener('input', event => {
+        const input = event.target;
+        const {spacingArea, spacingField} = input.dataset;
+        if (!spacingArea || publishing) return;
+        if (!input.validity.valid) {
+            showError('上下の余白は0〜' + data.spacingLimit + 'の整数で入力してください。');
+            return;
+        }
+        const spacing = layouts[theme].spacing[spacingArea];
+        const value = input.value === '' ? null : input.valueAsNumber;
+        if (spacing[spacingField] === value) {
+            showError();
+            return;
+        }
+        spacing[spacingField] = value;
+        changed(undefined, false);
     });
 
     root.addEventListener('change', event => {

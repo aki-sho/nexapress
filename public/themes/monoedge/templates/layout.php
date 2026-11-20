@@ -16,6 +16,7 @@ $footerPart = Theme::part('footer');
     <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/public-features.css')) ?>">
     <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/site-design.css')) ?>">
     <?php nx_design_background_style(); ?>
+    <?php nx_design_spacing_style(); ?>
     <?php if (Auth::check()): ?>
         <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/admin-preview.css')) ?>">
     <?php endif; ?>
