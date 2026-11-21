@@ -55,6 +55,7 @@ final class DesignController extends Controller
             'regions' => Design::REGIONS, 'token' => Csrf::token(),
             'resetRevision' => $snapshot['resetRevision'],
             'widgetAreas' => Design::widgetAreas(), 'alignments' => Design::ALIGNMENTS,
+            'regionDirections' => Design::REGION_DIRECTIONS, 'regionAlignments' => Design::REGION_ALIGNMENTS,
             'headerWidgetAreas' => Design::headerWidgetAreas(),
             'headerWidgetTypes' => array_keys(Design::HEADER_WIDGETS),
             'widgetLimit' => Design::MAX_WIDGETS, 'headerWidgetLimit' => Design::MAX_HEADER_WIDGETS,

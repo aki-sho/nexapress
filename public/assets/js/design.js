@@ -436,6 +436,15 @@
         return '<div class="nx-chrome-form-row">' + place + select + '</div>';
     }
 
+    function widgetRegionFields(area) {
+        if (!regionIds.includes(area)) return '';
+        const {direction, align} = layouts[theme].regions[area];
+        return '<div class="nx-chrome-form-row">' +
+            field('並び方', 'region-direction', Object.entries(data.regionDirections), direction, 'data-region-field="direction"') +
+            field('配置', 'region-align', Object.entries(data.regionAlignments[direction]), align, 'data-region-field="align"') +
+            '</div>';
+    }
+
     function widgetGroup(kind) {
         const available = activeAreas().filter(area => widgetPane(area) === kind);
         if (!available.includes(selectedWidgetAreas[kind])) {
@@ -447,7 +456,7 @@
         const area = selectedWidgetAreas[kind];
         const sidebar = kind === 'columns';
         const picker = sidebar || editor?.list === 'widgets' ? '' :
-            widgetLocationFields(kind, available, area, 'list');
+            widgetLocationFields(kind, available, area, 'list') + widgetRegionFields(area);
         const highlighted = widgetHighlightVisible(kind, chromeOpen.get(kind + ':widgets'));
         return chromeGroup(kind, 'widgets', sidebar ? 'サイドバーのウィジェット' : 'ウィジェット',
             picker + renderList(layouts[theme].widgets[area], 'widgets'), false,
@@ -955,7 +964,7 @@
     root.addEventListener('change', event => {
         if (publishing) return;
         const input = event.target;
-        const {setting, formSetting, chrome, chromeRow, chromeField, widgetRow} = input.dataset;
+        const {setting, formSetting, chrome, chromeRow, chromeField, widgetRow, regionField} = input.dataset;
         if (chrome) {
             if (chrome === 'footer' && chromeRow === 'above') {
                 layouts[theme].footerAbove[chromeField] = chromeField === 'columns' ? Number(input.value) : input.value;
@@ -988,6 +997,13 @@
             }
             renderPanel('[data-widget-row="' + widgetRow + '"]');
             revealPreviewArea();
+        } else if (regionField) {
+            const region = layouts[theme].regions[selectedWidgetAreas[pane]];
+            region[regionField] = input.value;
+            if (regionField === 'direction' && !Object.hasOwn(data.regionAlignments[region.direction], region.align)) {
+                region.align = 'auto';
+            }
+            changed('[data-region-field="' + regionField + '"]');
         } else if (setting === 'theme') {
             theme = input.value;
             if (resetDraft) {

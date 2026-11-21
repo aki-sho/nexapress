@@ -136,6 +136,18 @@
     padding-inline: var(--theme-gutter, 24px);
     overflow-wrap: anywhere;
 }
+.nx-design-region[data-region-direction="row"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: var(--nx-region-justify, flex-start);
+}
+.nx-design-region[data-region-direction="row"] > * { min-width: 0; max-width: 100%; }
+.nx-design-region[data-region-align="flex-start"] { justify-items: start; }
+.nx-design-region[data-region-align="center"] { justify-items: center; --nx-region-justify: center; }
+.nx-design-region[data-region-align="flex-end"] { justify-items: end; --nx-region-justify: flex-end; }
+.nx-design-region[data-region-align="space-between"] { --nx-region-justify: space-between; }
+.nx-design-region > .nx-design-empty { justify-self: stretch; flex-basis: 100%; }
 .nx-design-sidebar:empty { display: none; }
 .nx-design-sidebar .public-search { flex-wrap: wrap; }
 .nx-design-widget h2 { font-size: 1.1rem; margin: 0 0 8px; }

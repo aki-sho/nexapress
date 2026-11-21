@@ -6,6 +6,8 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     const control = (kind, row, field) => page.locator(
         '[data-chrome="' + kind + '"][data-chrome-row="' + row + '"][data-chrome-field="' + field + '"]');
     const group = (kind, key) => page.locator('[data-chrome-details="' + kind + ':' + key + '"]');
+    const frame = page.frameLocator('#nx-design-frame');
+    const region = (surface, area) => surface.locator('[data-design-area="' + area + '"]');
     async function open(kind) { await page.locator('[data-pane="' + kind + '"]').click(); }
     async function openGroup(kind, key) {
         const details = group(kind, key);
@@ -136,11 +138,25 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     await moveWidget('search', 'header5');
     await addWidget('header', 'header_bottom2', 'ヘッダー下段2');
     await addWidget('header', 'header_after', 'ヘッダー直下の案内');
+    const direction = page.locator('[data-region-field="direction"]');
+    const regionAlign = page.locator('[data-region-field="align"]');
+    assert.equal(await direction.inputValue(), 'column');
+    assert.equal(await regionAlign.inputValue(), 'auto');
+    await regionAlign.selectOption('flex-end');
+    await frame.locator('[data-design-area="header_after"][data-region-direction="column"][data-region-align="flex-end"]').waitFor();
+    await page.locator('#nx-design-stage[aria-busy="false"]').waitFor();
+    assert.equal(await region(frame, 'header_after').evaluate(node => getComputedStyle(node).justifyItems), 'end');
+    await direction.selectOption('row');
+    assert.equal(await regionAlign.inputValue(), 'flex-end', 'shared alignment is retained when switching direction');
+    assert.deepEqual(await regionAlign.locator('option').allTextContents(), ['左寄せ', '中央寄せ', '右寄せ', '両端揃え']);
+    await regionAlign.selectOption('center');
+    await frame.locator('[data-design-area="header_after"][data-region-direction="row"][data-region-align="center"]').waitFor();
+    await page.locator('#nx-design-stage[aria-busy="false"]').waitFor();
+    assert.equal(await region(frame, 'header_after').evaluate(node => getComputedStyle(node).justifyContent), 'center');
     await open('footer');
     const footerRow = row => page.locator('[data-action="footer-row"][data-row="' + row + '"]');
     const footerStructure = page.locator('[data-chrome-details="footer:structure"]');
     assert((await footerStructure.textContent()).includes('フッター本体'));
-    const frame = page.frameLocator('#nx-design-frame');
     const footerBody = frame.locator('.site-footer > [data-chrome-row="top"]');
     const originalBody = await footerBody.evaluate(node => [getComputedStyle(node).display, node.offsetHeight, node.textContent]);
     await footerRow('above').click();
@@ -161,6 +177,15 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     await addWidget('footer', 'footer1', 'フッター上段3', 'footer_above3');
     await addWidget('footer', 'footer_bottom5', 'フッター下段5');
     await addWidget('footer', 'footer_before', 'フッター直前の案内');
+    await addWidget('footer', 'footer_before', 'フッター直前のウィジェット配置確認用の見出し');
+    assert.equal(await direction.inputValue(), 'column', 'footer retains its own default direction');
+    await direction.selectOption('row');
+    await regionAlign.selectOption('space-between');
+    await direction.selectOption('column');
+    assert.equal(await regionAlign.inputValue(), 'auto', 'row-only alignment falls back to the vertical default');
+    await direction.selectOption('row');
+    await regionAlign.selectOption('space-between');
+    await frame.locator('[data-design-area="footer_before"][data-region-direction="row"][data-region-align="space-between"]').waitFor();
     await waitRows([5, 2, 4, 5]);
     await open('footer');
     await page.screenshot({path: path.join(output, 'footer-upper-lower.png')});
@@ -179,6 +204,15 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     assert(data.themes.default.state.menus.footer.some(item => item.label === 'フッター配置確認' && item.url === '/posts'));
     assert(data.themes.default.state.layout.widgets.header_after.some(item => item.title === 'ヘッダー直下の案内'));
     assert(data.themes.default.state.layout.widgets.footer_before.some(item => item.title === 'フッター直前の案内'));
+    assert.deepEqual(data.themes.default.state.layout.regions, {
+        header_after: {direction: 'row', align: 'center'}, footer_before: {direction: 'row', align: 'space-between'},
+    });
+    assert.deepEqual(data.themes.monoedge.state.layout.regions, {
+        header_after: {direction: 'column', align: 'auto'}, footer_before: {direction: 'column', align: 'auto'},
+    });
+    await selectWidgetLocation(await openGroup('footer', 'widgets'), 'footer_before');
+    assert.equal(await direction.inputValue(), 'row');
+    assert.equal(await regionAlign.inputValue(), 'space-between');
     assert.equal(data.themes.default.state.layout.widgets.header5[0].type, 'search');
     const guest = await page.context().browser().newContext({viewport: {width: 1440, height: 1000}, javaScriptEnabled: false});
     const visitor = await guest.newPage();
@@ -218,9 +252,31 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     assert.deepEqual(await visitor.locator('.site-footer > [data-chrome-row]').evaluateAll(nodes =>
         nodes.map(node => node.dataset.chromeRow)), ['above', 'top', 'bottom']);
     assert.equal(await visitor.locator('[data-design-area="footer_before"] + .site-footer').count(), 1);
+    for (const [area, alignment] of [['header_after', 'center'], ['footer_before', 'space-between']]) {
+        const geometry = await region(visitor, area).evaluate(node => {
+            const style = getComputedStyle(node);
+            const outer = node.getBoundingClientRect();
+            const widgets = Array.from(node.children, child => child.getBoundingClientRect());
+            return {
+                display: style.display, justify: style.justifyContent,
+                tops: widgets.map(box => box.top),
+                leftGap: widgets[0].left - outer.left - parseFloat(style.paddingLeft),
+                rightGap: outer.right - widgets.at(-1).right - parseFloat(style.paddingRight),
+            };
+        });
+        assert.equal(geometry.display, 'flex');
+        assert.equal(geometry.justify, alignment);
+        assert(geometry.tops.length >= 2 && geometry.tops.every(y => Math.abs(y - geometry.tops[0]) < 1));
+        assert(Math.abs(geometry.leftGap - geometry.rightGap) < 1);
+        if (alignment === 'space-between') assert(Math.abs(geometry.leftGap) < 1);
+    }
     await visitor.screenshot({path: path.join(output, 'chrome-public-desktop.png'), fullPage: true});
     await visitor.setViewportSize({width: 390, height: 844});
     assert(await visitor.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    assert(await region(visitor, 'footer_before').evaluate(node => {
+        const tops = Array.from(node.children, child => child.getBoundingClientRect().top);
+        return tops.some(top => top > tops[0]);
+    }), 'horizontal widgets wrap within the mobile viewport');
     for (const [kind, row] of expected) {
         const columns = visitor.locator('[data-chrome="' + kind + '"][data-chrome-row="' + row + '"] > .nx-chrome-column');
         const positions = await columns.evaluateAll(columns => columns.map(column => column.getBoundingClientRect().x));
@@ -235,6 +291,8 @@ module.exports = async function checkChromeLayouts(page, base, output) {
         state => { state.layout.footerAbove.enabled = 'yes'; },
         state => { state.layout.footerRows.bottom.align = 'url(https://example.test/)'; },
         state => { state.layout.headerRows.positions.menu.row = 'other'; },
+        state => { state.layout.regions.header_after.direction = 'diagonal'; },
+        state => { state.layout.regions.footer_before = {direction: 'column', align: 'space-between'}; },
     ]) {
         const state = structuredClone(data.themes.default.state);
         mutate(state);
@@ -277,4 +335,5 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     assert.equal(await control('footer', 'top', 'columns').inputValue(), '4');
     assert.equal(await control('footer', 'bottom', 'columns').inputValue(), '5');
     console.log('PASS: upper/lower header/footer columns (1–5), four Flex alignments, content slots, strict CSP, responsive layout, validation, retained rows and independent themes');
+    console.log('PASS: outside widget regions switch between vertical and horizontal, align independently, persist and wrap on mobile');
 };

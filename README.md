@@ -5,7 +5,7 @@
 NexaPressは、PHPとMySQL／MariaDBで動作するWeb CMSです。  
 ブラウザからの初期セットアップに対応し、投稿、固定ページ、メディア、テーマ、ユーザー、拡張機能を管理画面から一元管理できます。
 
-![Version](https://img.shields.io/badge/version-v2.22.2-2563eb)
+![Version](https://img.shields.io/badge/version-v2.23.0-2563eb)
 ![PHP](https://img.shields.io/badge/PHP-8.x-777bb4)
 ![Database](https://img.shields.io/badge/MySQL%20%2F%20MariaDB-supported-f59e0b)
 ![Architecture](https://img.shields.io/badge/Architecture-MVC-111827)
@@ -194,7 +194,7 @@ NexaPressを動作させるには、以下の環境が必要です。
 GitHub Releasesから最新版の本体ZIPをダウンロードします。
 
 ```text
-nexapress-2.22.2.zip
+nexapress-2.23.0.zip
 ```
 
 ### 2. サーバーへ配置
@@ -203,7 +203,7 @@ ZIPを展開し、Webサーバーの公開可能なディレクトリへ配置�
 
 ```text
 htdocs/
-└─ nexapress-2.22.2/
+└─ nexapress-2.23.0/
 ```
 
 ### 3. データベースを作成
@@ -215,7 +215,7 @@ NexaPressで使用するMySQLまたはMariaDBのデータベースを作成し�
 ブラウザからNexaPressのURLへアクセスします。
 
 ```text
-http://localhost/nexapress-2.22.2/
+http://localhost/nexapress-2.23.0/
 ```
 
 未インストールの場合は、自動的にインストーラーへ移動します。
@@ -246,13 +246,13 @@ http://localhost/nexapress-2.22.2/
 
 ```text
 サイト：
-http://localhost/nexapress-2.22.2/
+http://localhost/nexapress-2.23.0/
 
 ログイン画面：
-http://localhost/nexapress-2.22.2/admin/login
+http://localhost/nexapress-2.23.0/admin/login
 
 管理画面：
-http://localhost/nexapress-2.22.2/admin
+http://localhost/nexapress-2.23.0/admin
 ```
 
 ---
@@ -280,10 +280,10 @@ NexaPress 2.2.0以降では、管理画面から本体をアップデートで�
 - バージョン情報の更新
 - 更新失敗時のバックアップ復元
 
-NexaPress 2.22.2の更新用ファイル名は以下です。
+NexaPress 2.23.0の更新用ファイル名は以下です。
 
 ```text
-nexapress-update-2.22.2.zip
+nexapress-update-2.23.0.zip
 ```
 
 ---
@@ -457,6 +457,8 @@ NexaPressには、2つのテーマが同梱されています。
 
 「ウィジェット」で表示場所や列を選ぶと、サイトプレビューがその場所まで移動し、青い枠で配置範囲を示します。見出し横の「表示」「非表示」で枠を切り替えられます。
 
+「表示場所」で「ヘッダー直下」か「フッター直前」を選ぶと、ウィジェットの縦並び・横並びと配置を変更できます。初期値は縦並びで幅いっぱいです。横並びは左寄せ・中央寄せ・右寄せ・両端揃えに対応し、横幅に収まらないウィジェットは次の行に移ります。
+
 ヘッダーとフッターの幅は「テーマの既定幅」が初期値です。「標準」「ワイド（最大1440px）」「全幅」を個別に選べます。「全体設定」で背景画像を選ぶと、メディアの画像を選択したり、その場でPCから画像を追加したりできます。全体とセクションの背景色には、RGBAの入力と不透明度の調整を使用できます。
 
 「本文カラム」でテーマの本文幅を標準・ワイド・全幅から選べます。「ページ毎のレイアウト」には、固定と投稿の共通、固定のみの共通、投稿のみの共通、固定ページ個別、投稿ページ個別の5つの開閉欄があります。共通、種類別、個別の順に適用し、変更した項目を優先します。選択欄の「共通設定を使用」、背景色のチェック、数値欄を空にする操作で継承に戻せます。
@@ -570,13 +572,13 @@ NexaPressを安定して運用するため、以下を推奨します。
 リリースには、用途の異なる2種類のZIPが含まれます。
 
 ```text
-nexapress-2.22.2.zip
+nexapress-2.23.0.zip
 ```
 
 新規インストール用の本体パッケージです。
 
 ```text
-nexapress-update-2.22.2.zip
+nexapress-update-2.23.0.zip
 ```
 
 既存のNexaPress 2.2.0以上を更新するためのパッケージです。

@@ -87,7 +87,7 @@ if ($mode === 'setup') {
         }
     }
     if (version_compare($installedVersion['version'], '2.21.0', '>=') &&
-        version_compare($installedVersion['version'], '2.22.0', '<')) {
+        version_compare($installedVersion['version'], '2.23.0', '<')) {
         $design = \app\Core\Design::snapshot('default');
         $design['layout']['footer'] = 3;
         $design['layout']['footerRows'] = ['split' => true, 'top' => ['align' => 'flex-end'],

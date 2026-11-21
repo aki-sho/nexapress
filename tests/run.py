@@ -354,6 +354,7 @@ def main():
         draft['layout']['header']['placement'] = 'stack'
         # Exercise an older client payload without native widget entries.
         draft['layout'].pop('headerWidgets')
+        draft['layout'].pop('regions', None)
         for area in design['headerWidgetAreas']:
             widget_areas[area] = []
         draft['layout']['columns'] = 'left'
@@ -383,6 +384,9 @@ def main():
               and 'https://example.test/guide">案内サイト</a>' in public_design[below:footer]
               and '非公開のメニューリンク' not in public_design and '非公開のウィジェットリンク' not in public_design,
               'new regions render all four link types in order and hide unpublished article links')
+        check(all('data-region-direction="column" data-region-align="auto"' in section
+                  for section in [public_design[above:main], public_design[below:footer]]),
+              'existing widget layouts keep the vertical, full-width default')
         check(admin.request('/admin/design/publish', design_request)[0] == 409, 'stale design edits cannot overwrite a newer publication')
         page_state = json.loads(admin.request(f'/admin/design/page-layout/{page_id}')[1])
         check(page_state['layout'] == {'enabled': False, 'width': 'inherit', 'sections': []},

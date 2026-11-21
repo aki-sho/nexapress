@@ -69,6 +69,22 @@ final class Design
         'header_after' => 'ヘッダー直下',
         'footer_before' => 'フッター直前',
     ];
+    public const REGION_DIRECTIONS = ['column' => '縦並び', 'row' => '横並び'];
+    public const REGION_ALIGNMENTS = [
+        'column' => [
+            'auto' => '幅いっぱい',
+            'flex-start' => self::ALIGNMENTS['flex-start'],
+            'center' => self::ALIGNMENTS['center'],
+            'flex-end' => self::ALIGNMENTS['flex-end'],
+        ],
+        'row' => [
+            'auto' => self::ALIGNMENTS['flex-start'],
+            'center' => self::ALIGNMENTS['center'],
+            'flex-end' => self::ALIGNMENTS['flex-end'],
+            'space-between' => self::ALIGNMENTS['space-between'],
+        ],
+    ];
+    private const REGION_DEFAULT = ['direction' => 'column', 'align' => 'auto'];
     public const HEADER_WIDGETS = ['site_icon' => 'サイトアイコン', 'site_name' => 'サイト名'];
     public const WIDGETS = self::HEADER_WIDGETS + [
         'recent' => '新着記事',
@@ -212,6 +228,10 @@ final class Design
         if (!is_array($layout)) {
             throw new InvalidArgumentException('レイアウトが正しくありません。');
         }
+        $regionLayouts = $layout['regions'] ?? [];
+        if (!is_array($regionLayouts) || array_diff_key($regionLayouts, self::REGIONS)) {
+            throw new InvalidArgumentException('ウィジェットの表示場所を確認してください。');
+        }
         $headerWidgets = $layout['headerWidgets'] ?? false;
         if (!is_bool($headerWidgets)) {
             throw new InvalidArgumentException('ヘッダーのウィジェット設定を確認してください。');
@@ -279,6 +299,7 @@ final class Design
                 }
             } elseif (isset(self::REGIONS[$area])) {
                 $defaults['widgets'][$area] = self::widgets($layout['widgets'][$area] ?? [], $area);
+                $defaults['regions'][$area] = self::regionLayout($regionLayouts[$area] ?? self::REGION_DEFAULT);
             }
         }
         if (in_array('header', $caps, true) && !in_array('header_rows', $caps, true)) {
@@ -530,6 +551,7 @@ final class Design
         $saved = $stored['themes'][$theme] ?? [];
         $layout = array_replace($defaults, $saved);
         $layout['widgets'] = array_replace($defaults['widgets'], $saved['widgets'] ?? []);
+        $layout['regions'] = array_replace($defaults['regions'], $saved['regions'] ?? []);
         $layout['spacing'] = DesignSpacing::validate($saved['spacing'] ?? []);
         return self::headerWidgetLayout($layout);
     }
@@ -587,6 +609,7 @@ final class Design
             'footerAbove' => ['enabled' => false, 'columns' => 1, 'align' => 'center'],
             'footerWidth' => 'theme',
             'spacing' => DesignSpacing::defaults(),
+            'regions' => array_fill_keys(array_keys(self::REGIONS), self::REGION_DEFAULT),
             'widgets' => $widgets,
         ];
     }
@@ -639,6 +662,16 @@ final class Design
             }
         }
         return $result;
+    }
+
+    private static function regionLayout(mixed $value): array
+    {
+        if (!is_array($value) || array_diff_key($value, self::REGION_DEFAULT) ||
+            !is_string($value['direction'] ?? null) || !is_string($value['align'] ?? null) ||
+            !isset(self::REGION_ALIGNMENTS[$value['direction']][$value['align']])) {
+            throw new InvalidArgumentException('ウィジェットの並び方と配置を確認してください。');
+        }
+        return ['direction' => $value['direction'], 'align' => $value['align']];
     }
 
     private static function rowSettings(mixed $value, bool $hasColumns): array

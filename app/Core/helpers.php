@@ -113,7 +113,10 @@ function nx_design_region(string $area): void
         ob_end_clean();
     }
     if ($content !== '') {
-        echo '<section class="nx-design-region" data-design-area="' . e($area) . '" aria-label="' . e($label) . '">' . $content . '</section>';
+        $layout = nx_design_settings()['regions'][$area];
+        echo '<section class="nx-design-region" data-design-area="' . e($area) . '" aria-label="' . e($label) . '"' .
+            ' data-region-direction="' . e($layout['direction']) . '" data-region-align="' . e($layout['align']) . '">' .
+            $content . '</section>';
     }
 }
 
