@@ -55,6 +55,7 @@
             <div id="nx-design-stage" class="nx-design-stage" role="region" aria-label="サイトプレビュー" aria-busy="true">
                 <div id="nx-design-canvas">
                     <iframe id="nx-design-frame" title="公開サイトの見た目" sandbox="allow-same-origin"></iframe>
+                    <div id="nx-design-spacing-overlay" class="nx-spacing-overlay" aria-hidden="true" hidden></div>
                 </div>
             </div>
         </div>

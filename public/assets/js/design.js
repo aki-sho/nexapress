@@ -12,6 +12,7 @@
     const stage = root.querySelector('#nx-design-stage');
     const canvas = root.querySelector('#nx-design-canvas');
     const frame = root.querySelector('#nx-design-frame');
+    const spacingOverlay = root.querySelector('#nx-design-spacing-overlay');
     const {linkTypes, targets, regions} = data;
     const regionIds = Object.keys(regions);
     const linkTypeIds = Object.keys(linkTypes);
@@ -45,6 +46,9 @@
     let resetDraft = null;
     let previewTimer;
     let previewRequest;
+    let spacingOverlayArea = null;
+    let spacingOverlayFrame = 0;
+    let spacingOverlayObserver;
 
     const supports = feature => data.themes[theme].areas.includes(feature);
     const state = () => ({
@@ -217,6 +221,7 @@
     function spacingGroup(kind) {
         const area = kind === 'columns' ? 'body' : kind;
         const spacing = layouts[theme].spacing[area];
+        const highlighted = spacingOverlayArea === area;
         const fields = [
             ['marginTop', '外側・上'], ['marginBottom', '外側・下'],
             ['marginLeft', '外側・左'], ['marginRight', '外側・右'],
@@ -229,6 +234,10 @@
                 data-spacing-area="${area}" data-spacing-field="${key}">
             </label>`).join('');
         return chromeGroup(kind, 'spacing', '余白',
+            '<div class="nx-design-actions">' + button('toggle-spacing', highlighted ? '余白を非表示' : '余白を表示',
+                `data-spacing-target="${area}" aria-pressed="${highlighted}"`) + '</div>' +
+            `<p class="nx-spacing-key" data-spacing-key ${highlighted ? '' : 'hidden'}>
+                <span data-spacing-color="margin">外側（margin）</span><span data-spacing-color="padding">内側（padding）</span></p>` +
             '<div class="nx-chrome-form-row">' + fields + '</div>' +
             '<p class="nx-design-note">空欄にするとテーマの値に戻ります。</p>');
     }
@@ -254,6 +263,85 @@
             }
             if (Number.isFinite(value)) input.value = String(Number(value.toFixed(3)));
         }
+    }
+
+    function appendSpacingRing(fragment, kind, outer, inner, sides = ['top', 'right', 'bottom', 'left']) {
+        const sideTop = sides.includes('top') ? inner.top : outer.top;
+        const sideBottom = sides.includes('bottom') ? inner.bottom : outer.bottom;
+        const bands = {
+            top: {left: outer.left, top: outer.top, width: outer.right - outer.left, height: inner.top - outer.top},
+            bottom: {left: outer.left, top: inner.bottom, width: outer.right - outer.left, height: outer.bottom - inner.bottom},
+            left: {left: outer.left, top: sideTop, width: inner.left - outer.left, height: sideBottom - sideTop},
+            right: {left: inner.right, top: sideTop, width: outer.right - inner.right, height: sideBottom - sideTop},
+        };
+        for (const side of sides) {
+            const box = bands[side];
+            if (box.width <= 0 || box.height <= 0) continue;
+            const band = document.createElement('div');
+            band.className = 'nx-spacing-band nx-spacing-' + kind;
+            band.dataset.spacingType = kind;
+            band.dataset.spacingSide = side;
+            Object.assign(band.style, {left: box.left + 'px', top: box.top + 'px', width: box.width + 'px', height: box.height + 'px'});
+            fragment.append(band);
+        }
+    }
+
+    function appendPaddingOverlay(fragment, element, sides) {
+        const box = element.getBoundingClientRect();
+        const style = frame.contentWindow.getComputedStyle(element);
+        const pixels = name => parseFloat(style[name]) || 0;
+        const outer = {
+            left: box.left + pixels('borderLeftWidth'), top: box.top + pixels('borderTopWidth'),
+            right: box.right - pixels('borderRightWidth'), bottom: box.bottom - pixels('borderBottomWidth'),
+        };
+        const inner = {
+            left: outer.left + pixels('paddingLeft'), top: outer.top + pixels('paddingTop'),
+            right: outer.right - pixels('paddingRight'), bottom: outer.bottom - pixels('paddingBottom'),
+        };
+        appendSpacingRing(fragment, 'padding', outer, inner, sides);
+    }
+
+    function renderSpacingOverlay() {
+        const area = spacingOverlayArea;
+        const currentArea = pane === 'columns' ? 'body' : pane;
+        const preview = frame.contentDocument;
+        const element = area && preview?.querySelector(area === 'body' ? '.site-main' : '.site-' + area);
+        spacingOverlay.hidden = !element || area !== currentArea || resetDraft !== null ||
+            stage.getAttribute('aria-busy') !== 'false' || frame.dataset.spacingTheme !== theme;
+        if (spacingOverlay.hidden) return;
+        Object.assign(spacingOverlay.style, {width: frame.style.width, height: frame.style.height, transform: frame.style.transform});
+        spacingOverlay.dataset.spacingArea = area;
+        const fragment = document.createDocumentFragment();
+        const box = element.getBoundingClientRect();
+        const style = frame.contentWindow.getComputedStyle(element);
+        const margin = side => Math.max(0, parseFloat(style['margin' + side]) || 0);
+        appendSpacingRing(fragment, 'margin', {
+            left: box.left - margin('Left'), top: box.top - margin('Top'),
+            right: box.right + margin('Right'), bottom: box.bottom + margin('Bottom'),
+        }, box);
+        appendPaddingOverlay(fragment, element);
+        if (area !== 'body') {
+            const rows = Array.from(element.children).filter(row => row.classList.contains('site-' + area + '-inner'));
+            for (const [index, row] of rows.entries()) {
+                const sides = ['left', 'right'];
+                if (index === 0) sides.push('top');
+                if (index === rows.length - 1) sides.push('bottom');
+                appendPaddingOverlay(fragment, row, sides);
+            }
+        }
+        const outline = document.createElement('div');
+        outline.className = 'nx-spacing-outline';
+        Object.assign(outline.style, {left: box.left + 'px', top: box.top + 'px', width: box.width + 'px', height: box.height + 'px'});
+        fragment.append(outline);
+        spacingOverlay.replaceChildren(fragment);
+    }
+
+    function scheduleSpacingOverlay() {
+        if (spacingOverlayFrame) return;
+        spacingOverlayFrame = requestAnimationFrame(() => {
+            spacingOverlayFrame = 0;
+            renderSpacingOverlay();
+        });
     }
 
     function renderList(list, kind) {
@@ -410,6 +498,7 @@
         }
         renderStatus();
         syncSpacingValues();
+        scheduleSpacingOverlay();
         if (focus) root.querySelector(focus)?.focus();
     }
 
@@ -425,6 +514,7 @@
         frame.style.transform = `scale(${scale})`;
         canvas.style.width = width * scale + 'px';
         syncSpacingValues();
+        scheduleSpacingOverlay();
     }
 
     function syncPreviewButtons() {
@@ -448,11 +538,15 @@
         const region = area && !headerSlot
             ? document?.querySelector(regionIds.includes(area) ? `[data-design-area="${area}"]` : `[data-widget-area="${area}"]`)
             : pane === 'page_layout' ? document?.querySelector(`[data-layout-section="${pageEditor.sectionIndex()}"]`) : null;
-        const anchor = region || (footer ? (document?.querySelector('.site-footer') || document?.querySelector('footer'))
+        const currentArea = pane === 'columns' ? 'body' : pane;
+        const spacingTarget = spacingOverlayArea === currentArea
+            ? document?.querySelector(currentArea === 'body' ? '.site-main' : '.site-' + currentArea) : null;
+        const anchor = spacingTarget || region || (footer ? (document?.querySelector('.site-footer') || document?.querySelector('footer'))
             : body ? document?.querySelector('.site-main, main') : (document?.querySelector('.site-header') || document?.querySelector('header')));
         const scroller = document?.scrollingElement;
         if (anchor && scroller) {
-            scroller.scrollTop += anchor.getBoundingClientRect().top;
+            const margin = spacingTarget ? Math.max(0, parseFloat(frame.contentWindow.getComputedStyle(anchor).marginTop) || 0) + 12 : 0;
+            scroller.scrollTop += anchor.getBoundingClientRect().top - margin;
         }
     }
 
@@ -513,6 +607,7 @@
         clearTimeout(previewTimer);
         previewRequest?.abort();
         stage.setAttribute('aria-busy', 'true');
+        spacingOverlay.hidden = true;
         if (resetDraft) {
             resetDraft.ready = false;
             renderStatus();
@@ -663,6 +758,8 @@
         if (!control || publishing) return;
         const target = control.dataset;
         if (target.pane) {
+            spacingOverlayArea = null;
+            spacingOverlay.hidden = true;
             pane = target.pane;
             editor = null;
             renderPanel();
@@ -679,6 +776,15 @@
             if (!resetButton.disabled) toggleResetPreview();
         } else if (target.action === 'header-row') {
             toggleHeaderRow(target.row);
+        } else if (target.action === 'toggle-spacing') {
+            const area = target.spacingTarget;
+            if (!['header', 'body', 'footer'].includes(area)) return;
+            spacingOverlayArea = spacingOverlayArea === area ? null : area;
+            control.textContent = spacingOverlayArea ? '余白を非表示' : '余白を表示';
+            control.setAttribute('aria-pressed', String(spacingOverlayArea !== null));
+            panel.querySelector('[data-spacing-key]').hidden = spacingOverlayArea === null;
+            if (spacingOverlayArea) revealPreviewArea();
+            scheduleSpacingOverlay();
         } else if (target.action) {
             const group = control.closest('[data-chrome-details]');
             const kind = group?.dataset.chromeDetails.split(':')[1];
@@ -890,9 +996,14 @@
         // Keep the site controls read-only while allowing the iframe's native scrolling.
         const body = frame.contentDocument?.body;
         if (body) body.inert = true;
+        spacingOverlayObserver?.disconnect();
+        spacingOverlayObserver = new ResizeObserver(scheduleSpacingOverlay);
+        if (body) spacingOverlayObserver.observe(body);
+        frame.contentDocument.addEventListener('scroll', scheduleSpacingOverlay, {capture: true, passive: true});
         revealPreviewArea();
         stage.setAttribute('aria-busy', 'false');
         syncSpacingValues();
+        scheduleSpacingOverlay();
         if (resetDraft) renderStatus();
     });
     window.addEventListener('resize', resizePreview);
