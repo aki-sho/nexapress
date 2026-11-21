@@ -619,7 +619,7 @@ final class Design
             }
             $settings = [
                 'type' => $type,
-                'title' => self::text($widget['title'] ?? '', 80),
+                'title' => self::text($widget['title'] ?? '', 255),
                 'text' => self::text($widget['text'] ?? '', 1000),
                 'menu' => $menu,
             ];

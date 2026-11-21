@@ -193,12 +193,12 @@
                 field('表示場所', 'area', destinations.map(id => [id, widgetAreaLabel(id)]), destination, 'required');
             if (item.type === 'category') {
                 fields += categoryField(item) + `<label><span data-category-title-label>${categoryTitleLabel(categoryIds(item).length)}</span>
-                    <input name="title" maxlength="80" value="${escape(item.title)}"></label>`;
+                    <input name="title" maxlength="255" value="${escape(item.title)}"></label>`;
             } else if (linkTypeIds.includes(item.type)) {
-                fields += linkField(item) + `<label>${item.type === 'custom' ? '表示名' : '表示名（省略するとリンク先の名前）'}
-                    <input name="title" maxlength="80" value="${escape(item.title)}" ${item.type === 'custom' ? 'required' : ''}></label>`;
+                fields += linkField(item) + `<label>表示名
+                    <input name="title" maxlength="255" value="${escape(item.title)}" ${item.type === 'custom' ? 'required' : ''}></label>`;
             } else {
-                fields += `<label>見出し<input name="title" maxlength="80" value="${escape(item.title)}"></label>`;
+                fields += `<label>見出し<input name="title" maxlength="255" value="${escape(item.title)}"></label>`;
             }
             if (['text', 'copyright'].includes(item.type)) {
                 fields += `<label>テキスト<textarea rows="3" name="text" maxlength="1000">${escape(item.text)}</textarea></label>`;
@@ -806,6 +806,10 @@
                     ? {id: null, type: 'page', label: '', reference_id: null, url: ''}
                     : {type: 'text', title: '', text: '', menu: 'footer', area: selectedWidgetAreas[pane]};
                 editor = {list: kind, index, item: {...empty, ...list[index]}};
+                if (!forMenu && !editor.item.title && ['page', 'post'].includes(editor.item.type)) {
+                    const choice = targets[editor.item.type]?.find(item => item.id === editor.item.reference_id);
+                    if (choice) editor.item.title = choice.name ?? choice.label;
+                }
                 renderPanel('[data-designer-form] select');
             } else if (target.action === 'remove') {
                 list.splice(index, 1);
@@ -913,9 +917,10 @@
             editor.item.reference_id = null;
             delete editor.item.reference_ids;
             renderPanel('[data-form-setting="type"]');
-        } else if (input.name === 'reference_id' && editor?.list === 'links') {
+        } else if (input.name === 'reference_id' && editor) {
             const choice = targets[editor.item.type]?.find(item => item.id === Number(input.value));
-            if (choice) input.form.elements.namedItem('label').value = choice.name ?? choice.label;
+            const fieldName = editor.list === 'links' ? 'label' : 'title';
+            if (choice) input.form.elements.namedItem(fieldName).value = choice.name ?? choice.label;
         } else if (input.name === 'reference_ids' && editor) {
             const count = new FormData(input.form).getAll('reference_ids').length;
             panel.querySelector('[data-category-count]').textContent = count + '件';
