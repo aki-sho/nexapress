@@ -236,10 +236,24 @@ function curl_setopt_array($handle, array $options): bool {
                           ref + ': updated design editor offers shared page and post layouts')
                     if tuple(map(int, version.split('.'))) < (2, 25, 0) <= tuple(map(int, target.split('.'))):
                         frame = {'mode': 'theme', 'line': None, 'radius': None}
-                        check(all(theme['state']['layout']['frames'] == dict.fromkeys(['header', 'body', 'footer'], frame)
-                                  for theme in data['themes'].values())
+                        frames = dict.fromkeys(['header', 'body', 'footer'], frame)
+                        if tuple(map(int, target.split('.'))) >= (2, 26, 0):
+                            shadow = {'mode': 'theme', 'value': None}
+                            frame['shadow'] = shadow
+                            frames['body'] = dict(frame, cardShadow=shadow)
+                        check(all(theme['state']['layout']['frames'] == frames for theme in data['themes'].values())
                               and '/nexapress/assets/site-frame?' not in guest.request('/')[1],
                               ref + ': theme frame styles are inherited after upgrading')
+                    if (2, 25, 0) <= tuple(map(int, version.split('.'))) < (2, 26, 0) <= tuple(map(int, target.split('.'))):
+                        frames = data['themes']['default']['state']['layout']['frames']
+                        shadow = {'mode': 'theme', 'value': None}
+                        header = frames['header']
+                        check(all(frame['shadow'] == shadow for frame in frames.values())
+                              and frames['body']['cardShadow'] == shadow,
+                              ref + ': new shadow settings inherit the theme')
+                        check(header['radius'] == 6 and header['line']['style'] == 'dashed'
+                              and header['line']['widths']['bottom'] == 3,
+                              ref + ': saved frame widths and rounding survive the update')
                     if (2, 20, 0) <= tuple(map(int, version.split('.'))) < (2, 21, 0) <= tuple(map(int, target.split('.'))):
                         for theme in ['default', 'monoedge']:
                             layout = data['themes'][theme]['state']['layout']

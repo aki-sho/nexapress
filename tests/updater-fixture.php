@@ -65,6 +65,17 @@ if ($mode === 'setup') {
             ->execute([json_encode(['enabled' => false, 'width' => 'inherit', 'sections' => []], JSON_THROW_ON_ERROR)]);
     }
     $installedVersion = require $fixture . '/config/version.php';
+    if (version_compare($installedVersion['version'], '2.25.0', '>=') &&
+        version_compare($installedVersion['version'], '2.26.0', '<')) {
+        $design = \app\Core\Design::snapshot('default');
+        $design['layout']['frames']['header'] = [
+            'mode' => 'custom', 'radius' => 6,
+            'line' => ['style' => 'dashed', 'color' => '#123456', 'widths' => ['top' => 0, 'right' => 0, 'bottom' => 3, 'left' => 0]],
+        ];
+        if (!\app\Core\Design::publish(\app\Core\Design::validate($design), $design['revision'])) {
+            throw new RuntimeException('Could not seed the legacy frame design.');
+        }
+    }
     if (version_compare($installedVersion['version'], '2.20.0', '>=') &&
         version_compare($installedVersion['version'], '2.21.0', '<')) {
         foreach (['default', 'monoedge'] as $theme) {

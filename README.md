@@ -5,7 +5,7 @@
 NexaPressは、PHPとMySQL／MariaDBで動作するWeb CMSです。  
 ブラウザからの初期セットアップに対応し、投稿、固定ページ、メディア、テーマ、ユーザー、拡張機能を管理画面から一元管理できます。
 
-![Version](https://img.shields.io/badge/version-v2.25.0-2563eb)
+![Version](https://img.shields.io/badge/version-v2.26.0-2563eb)
 ![PHP](https://img.shields.io/badge/PHP-8.x-777bb4)
 ![Database](https://img.shields.io/badge/MySQL%20%2F%20MariaDB-supported-f59e0b)
 ![Architecture](https://img.shields.io/badge/Architecture-MVC-111827)
@@ -194,7 +194,7 @@ NexaPressを動作させるには、以下の環境が必要です。
 GitHub Releasesから最新版の本体ZIPをダウンロードします。
 
 ```text
-nexapress-2.25.0.zip
+nexapress-2.26.0.zip
 ```
 
 ### 2. サーバーへ配置
@@ -203,7 +203,7 @@ ZIPを展開し、Webサーバーの公開可能なディレクトリへ配置�
 
 ```text
 htdocs/
-└─ nexapress-2.25.0/
+└─ nexapress-2.26.0/
 ```
 
 ### 3. データベースを作成
@@ -215,7 +215,7 @@ NexaPressで使用するMySQLまたはMariaDBのデータベースを作成し�
 ブラウザからNexaPressのURLへアクセスします。
 
 ```text
-http://localhost/nexapress-2.25.0/
+http://localhost/nexapress-2.26.0/
 ```
 
 未インストールの場合は、自動的にインストーラーへ移動します。
@@ -246,13 +246,13 @@ http://localhost/nexapress-2.25.0/
 
 ```text
 サイト：
-http://localhost/nexapress-2.25.0/
+http://localhost/nexapress-2.26.0/
 
 ログイン画面：
-http://localhost/nexapress-2.25.0/admin/login
+http://localhost/nexapress-2.26.0/admin/login
 
 管理画面：
-http://localhost/nexapress-2.25.0/admin
+http://localhost/nexapress-2.26.0/admin
 ```
 
 ---
@@ -280,10 +280,10 @@ NexaPress 2.2.0以降では、管理画面から本体をアップデートで�
 - バージョン情報の更新
 - 更新失敗時のバックアップ復元
 
-NexaPress 2.25.0の更新用ファイル名は以下です。
+NexaPress 2.26.0の更新用ファイル名は以下です。
 
 ```text
-nexapress-update-2.25.0.zip
+nexapress-update-2.26.0.zip
 ```
 
 ---
@@ -479,6 +479,8 @@ NexaPressには、2つのテーマが同梱されています。
 
 「ヘッダー」「本文カラム」「フッター」の「余白」の下にある「枠」で、線の表示、種類、色、上下左右の太さと角丸を設定できます。初期値はテーマの値です。四辺をまとめて揃えたり、0 px を入力してその辺の線を消したりできます。
 
+「枠」の「影」では「テーマの既定」「なし」「指定」を選べます。「指定」では位置、ぼかし、広がり、色と不透明度を調整できます。「本文カラム」では本文全体と記事・固定ページのカードの影を個別に設定できます。
+
 プレビュー内の編集位置を指定するには、タイトル・本文を囲むタグで `\app\Core\EditorPreview::attribute('title')` と `\app\Core\EditorPreview::attribute('body')` をそれぞれ呼び出します。公開ページで本文カラムを表示するため、`assets/css/public-features.css` を読み込みます。
 
 | 設定値 | テーマでの組み込み方 |
@@ -572,13 +574,13 @@ NexaPressを安定して運用するため、以下を推奨します。
 リリースには、用途の異なる2種類のZIPが含まれます。
 
 ```text
-nexapress-2.25.0.zip
+nexapress-2.26.0.zip
 ```
 
 新規インストール用の本体パッケージです。
 
 ```text
-nexapress-update-2.25.0.zip
+nexapress-update-2.26.0.zip
 ```
 
 既存のNexaPress 2.2.0以上を更新するためのパッケージです。

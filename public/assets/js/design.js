@@ -146,11 +146,15 @@
         theme: () => theme,
         settings: area => layouts[theme].frames[area],
         saving: () => publishing,
-        previewElement: area => stage.getAttribute('aria-busy') === 'false' && frame.dataset.previewTheme === theme &&
-            (mode !== 'published' || theme === data.active) ? spacingElement(frame.contentDocument, area) : null,
-        changed: (area, redraw) => {
+        previewElement: (area, selector) => {
+            if (stage.getAttribute('aria-busy') !== 'false' || frame.dataset.previewTheme !== theme ||
+                (mode === 'published' && theme !== data.active)) return null;
+            const doc = frame.contentDocument;
+            return selector ? doc?.querySelector(selector) : spacingElement(doc, area);
+        },
+        changed: (area, focus) => {
             showPreviewScope(spacingScope(area));
-            changed(redraw ? '[data-frame-mode]' : undefined, redraw);
+            changed(focus, Boolean(focus));
         },
     });
     const pageChanges = () => pageEditor.hasChanges();

@@ -48,6 +48,8 @@ module.exports = async function checkDesignReset(page, base, output) {
         state.layout.headerWidth = 'wide';
         state.layout.footer = 3;
         state.layout.footerWidth = 'standard';
+        state.layout.frames.header.shadow = {mode: 'custom', value: data.frameOptions.shadowDefault};
+        state.layout.frames.body.cardShadow = {mode: 'none', value: null};
         state.layout.widgets.sidebar = [{type: 'text', title: '初期化対象ウィジェット', text: 'サイドバー', menu: 'footer'}];
         state.layout.widgets.header_above = [{type: 'text', title: '初期化対象の上段', text: '上段', menu: 'footer'}];
         state.background = {mode: 'color', color: 'rgba(40, 80, 120, 0.5)', media_id: null};
@@ -136,8 +138,9 @@ module.exports = async function checkDesignReset(page, base, output) {
         const row = {direction: 'column', align: 'auto', columns: 1};
         const region = {...row, above: {enabled: false, ...row}, bottom: {enabled: false, ...row}};
         assert.deepEqual(state.layout.regions, {header_after: region, footer_before: region});
-        const frame = {mode: 'theme', line: null, radius: null};
-        assert.deepEqual(state.layout.frames, {header: frame, body: frame, footer: frame});
+        const shadow = {mode: 'theme', value: null};
+        const frame = {mode: 'theme', line: null, radius: null, shadow};
+        assert.deepEqual(state.layout.frames, {header: frame, body: {...frame, cardShadow: shadow}, footer: frame});
         assert.equal(state.background.mode, 'theme');
         assert.deepEqual(state.layout.widgets.sidebar, []);
         assert.equal(state.layout.widgets.footer1[0].type, 'copyright');

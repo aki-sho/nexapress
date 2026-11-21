@@ -2,19 +2,26 @@
     'use strict';
 
     window.NexaPressDesignFrame = ({panel, options, field, escape, settings, theme, previewElement, changed, showError, saving}) => {
-        const {modes, styles, lineDefault, limit} = options;
+        const {modes, styles, lineDefault, shadowDefault, cardSelector, limit} = options;
         const color = window.NexaPressDesignColor;
         const sideLabels = {top: '上', right: '右', bottom: '下', left: '左'};
         const sides = Object.keys(sideLabels);
         const corners = ['TopLeft', 'TopRight', 'BottomRight', 'BottomLeft'];
+        const shadowFields = {x: '左右（右＋）', y: '上下（下＋）', blur: 'ぼかし', spread: '広がり'};
         const samples = new Map();
+        const shadowSamples = new Map();
         const keyFor = area => theme() + ':' + area;
         const sample = area => samples.get(keyFor(area)) ?? {line: lineDefault, radius: null};
         const lineFor = area => settings(area).line ?? sample(area).line;
         const radiusFor = area => settings(area).radius ?? sample(area).radius;
         const allWidth = widths => sides.every(side => widths[side] === widths.top) ? widths.top : null;
         const groupFor = input => input.closest('[data-frame-settings]');
-        const number = value => Number(Math.min(limit, Math.max(0, value)).toFixed(3));
+        const number = (value, minimum = 0) => Number(Math.min(limit, Math.max(minimum, value)).toFixed(3));
+        const shadowKey = (area, key) => keyFor(area) + ':' + key;
+        const shadowMinimum = name => name === 'blur' ? 0 : -limit;
+        const numeric = (label, value, attribute, minimum = 0, placeholder = '') => `<label>${label}（px）
+            <input type="number" min="${minimum}" max="${limit}" step="0.001" ${attribute}
+                value="${escape(value)}" placeholder="${placeholder}"></label>`;
 
         function measure(area, element) {
             const previous = sample(area);
@@ -41,25 +48,54 @@
             samples.set(keyFor(area), {line, radius});
         }
 
-        function render(area) {
-            const current = settings(area);
-            const mode = field('表示設定', 'frame-mode', Object.entries(modes), current.mode, 'data-frame-mode');
-            if (current.mode === 'none') return `<div class="nx-frame-settings" data-frame-settings="${area}">${mode}</div>`;
+        function measureShadow(area, key, element) {
+            const computed = element.ownerDocument.defaultView.getComputedStyle(element).boxShadow;
+            const shade = computed.match(/rgba?\([^)]*\)/)?.[0];
+            const normalized = shade && color.normalize(shade);
+            const lengths = shade ? computed.replace(shade, '').trim().split(/\s+/) : [];
+            const id = shadowKey(area, key);
+            if (!normalized || lengths.length !== 4 || lengths.some(value => !/^-?\d+(?:\.\d+)?px$/.test(value))) {
+                shadowSamples.delete(id);
+                return;
+            }
+            const dimensions = Object.fromEntries(Object.keys(shadowFields).map((name, index) =>
+                [name, number(parseFloat(lengths[index]), shadowMinimum(name))]));
+            shadowSamples.set(id, {...dimensions, color: normalized});
+        }
+
+        function renderBorder(area) {
+            const mode = field('表示設定', 'frame-mode', Object.entries(modes), settings(area).mode, 'data-frame-mode');
+            if (settings(area).mode === 'none') return mode;
             const line = lineFor(area);
-            const numeric = (id, label, value, placeholder = '') => `<label>${label}（px）
-                <input type="number" min="0" max="${limit}" step="0.001" data-frame-number="${id}"
-                    value="${escape(value)}" placeholder="${placeholder}"></label>`;
-            return `<div class="nx-frame-settings" data-frame-settings="${area}">
-                <div class="nx-chrome-form-row">${mode}
+            return `<div class="nx-chrome-form-row">${mode}
                     ${field('線の種類', 'frame-style', Object.entries(styles), line.style, 'data-frame-style')}</div>
                 <div class="nx-chrome-form-row">
-                    ${numeric('all', '四辺一括', allWidth(line.widths), '四辺の太さを揃える')}
-                    ${numeric('radius', '角丸', radiusFor(area), 'テーマの角丸')}</div>
+                    ${numeric('四辺一括', allWidth(line.widths), 'data-frame-number="all"', 0, '四辺の太さを揃える')}
+                    ${numeric('角丸', radiusFor(area), 'data-frame-number="radius"', 0, 'テーマの角丸')}</div>
                 <div class="nx-chrome-form-row">
-                    ${sides.map(side => numeric(side, sideLabels[side] + 'の線', line.widths[side])).join('')}
+                    ${sides.map(side => numeric(sideLabels[side] + 'の線', line.widths[side], `data-frame-number="${side}"`)).join('')}
                 </div>
                 <p class="nx-design-note">線を消す辺は 0 px。角丸を空欄にするとテーマの値に戻ります。</p>
-                ${color.fields(line.color, 'frame', escape, true)}
+                ${color.fields(line.color, 'frame', escape, true)}`;
+        }
+
+        function renderShadow(area, key, label) {
+            const {mode, value} = settings(area)[key];
+            const control = field(label, 'frame-' + key, Object.entries(modes), mode, `data-shadow-mode="${key}"`);
+            let controls = control;
+            if (mode === 'custom') {
+                const numbers = Object.entries(shadowFields).map(([name, caption]) =>
+                    numeric(caption, value[name], `data-shadow-number="${name}"`, shadowMinimum(name))).join('');
+                controls += `<div class="nx-chrome-form-row">${numbers}</div>` + color.fields(value.color, 'frame-' + key, escape, true);
+            }
+            return `<div class="nx-frame-shadow" data-frame-shadow="${key}">${controls}</div>`;
+        }
+
+        function render(area) {
+            return `<div class="nx-frame-settings" data-frame-settings="${area}">
+                ${renderBorder(area)}
+                ${renderShadow(area, 'shadow', area === 'body' ? '本文全体の影' : '影')}
+                ${area === 'body' ? renderShadow(area, 'cardShadow', '記事・固定ページのカードの影') : ''}
             </div>`;
         }
 
@@ -83,18 +119,34 @@
             const group = panel.querySelector('[data-frame-settings]');
             if (!group) return;
             const area = group.dataset.frameSettings;
-            if (settings(area).mode === 'none') return;
+            const current = settings(area);
             const element = previewElement(area);
-            if (element) measure(area, element);
+            if (element && current.mode !== 'none') measure(area, element);
+            if (element && current.shadow.mode === 'theme') measureShadow(area, 'shadow', element);
+            if (current.cardShadow?.mode === 'theme') {
+                const card = previewElement(area, cardSelector);
+                if (card) measureShadow(area, 'cardShadow', card);
+            }
             paint(group);
         }
 
-        function apply(group, redraw = false) {
+        function applyBorder(group) {
             const area = group.dataset.frameSettings;
             settings(area).mode = 'custom';
             group.querySelector('[data-frame-mode]').value = 'custom';
             paint(group);
-            changed(area, redraw);
+            changed(area);
+        }
+
+        function editShadow(group, key, name, value) {
+            const area = group.dataset.frameSettings;
+            const shadow = settings(area)[key];
+            if (shadow.value[name] === value) {
+                showError();
+                return;
+            }
+            shadow.value[name] = value;
+            changed(area);
         }
 
         panel.addEventListener('change', event => {
@@ -103,35 +155,55 @@
             if (!group || saving()) return;
             const area = group.dataset.frameSettings;
             const current = settings(area);
-            if (input.hasAttribute('data-frame-mode')) {
+            const shadowKeyName = input.dataset.shadowMode;
+            if (shadowKeyName) {
+                const shadow = current[shadowKeyName];
+                if (shadow.mode === input.value) return;
+                let value = shadow.value;
+                if (input.value === 'custom' && value === null) {
+                    const fallback = area === 'footer' ? {...shadowDefault, y: -shadowDefault.y} : shadowDefault;
+                    value = {...(shadowSamples.get(shadowKey(area, shadowKeyName)) ?? fallback)};
+                } else if (input.value === 'theme') {
+                    value = null;
+                }
+                current[shadowKeyName] = {mode: input.value, value};
+                changed(area, `[data-shadow-mode="${shadowKeyName}"]`);
+            } else if (input.hasAttribute('data-frame-mode')) {
                 if (current.mode === input.value) return;
                 current.mode = input.value;
                 if (current.mode === 'theme') {
                     current.line = null;
                     current.radius = null;
                 }
-                changed(area, true);
+                changed(area, '[data-frame-mode]');
             } else if (input.hasAttribute('data-frame-style') && input.value !== lineFor(area).style) {
                 current.line = {...lineFor(area), style: input.value};
-                apply(group);
+                applyBorder(group);
             }
         });
 
         panel.addEventListener('input', event => {
             const input = event.target;
             const field = input.dataset.frameNumber;
-            if (!field || saving()) return;
+            const shadowField = input.dataset.shadowNumber;
+            if ((!field && !shadowField) || saving()) return;
+            const minimum = Number(input.min);
             input.setCustomValidity('');
             if (!input.validity.valid) {
-                const message = '枠の数値は0〜' + limit + 'で、小数第3位まで入力できます。';
+                const label = shadowField ? '影' : '枠';
+                const message = label + 'の数値は' + minimum + '〜' + limit + 'で、小数第3位まで入力できます。';
                 input.setCustomValidity(message);
                 showError(message);
                 return;
             }
             const group = groupFor(input);
+            const value = input.value === '' ? null : number(input.valueAsNumber, minimum);
+            if (shadowField) {
+                if (value !== null) editShadow(group, input.closest('[data-frame-shadow]').dataset.frameShadow, shadowField, value);
+                return;
+            }
             const area = group.dataset.frameSettings;
             const current = settings(area);
-            const value = input.value === '' ? null : number(input.valueAsNumber);
             if (field === 'radius') {
                 if (current.radius === value || (current.radius === null && value === radiusFor(area))) {
                     showError();
@@ -150,11 +222,18 @@
                 for (const side of keys) widths[side] = value;
                 current.line = {...line, widths};
             }
-            apply(group);
+            applyBorder(group);
         });
 
         panel.addEventListener('focusout', event => {
-            if (event.target.hasAttribute('data-frame-number')) requestAnimationFrame(sync);
+            const input = event.target;
+            if (input.hasAttribute('data-frame-number')) requestAnimationFrame(sync);
+            const name = input.dataset.shadowNumber;
+            if (name && input.value === '' && input.validity.valid) {
+                const area = groupFor(input).dataset.frameSettings;
+                const key = input.closest('[data-frame-shadow]').dataset.frameShadow;
+                input.value = settings(area)[key].value[name];
+            }
         });
 
         color.bind(panel, 'frame', group => lineFor(groupFor(group).dataset.frameSettings).color, (value, editor) => {
@@ -164,8 +243,15 @@
             const line = lineFor(area);
             if (line.color === value) return;
             settings(area).line = {...line, color: value};
-            apply(group);
+            applyBorder(group);
         }, showError, '枠線の色');
+
+        for (const key of ['shadow', 'cardShadow']) {
+            color.bind(panel, 'frame-' + key, group => settings(groupFor(group).dataset.frameSettings)[key].value.color,
+                (value, editor) => {
+                    if (!saving()) editShadow(groupFor(editor), key, 'color', value);
+                }, showError, '影の色');
+        }
 
         return {render, sync};
     };

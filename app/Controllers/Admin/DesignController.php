@@ -68,6 +68,7 @@ final class DesignController extends Controller
             'frameOptions' => [
                 'modes' => DesignFrame::MODES, 'styles' => DesignFrame::STYLES,
                 'lineDefault' => DesignFrame::LINE_DEFAULT, 'limit' => DesignFrame::MAX_PIXELS,
+                'shadowDefault' => DesignFrame::SHADOW_DEFAULT, 'cardSelector' => DesignFrame::CARD_SELECTOR,
             ],
             'categoryLimit' => Design::MAX_CATEGORY_LINKS,
             'chromeDefaults' => [
