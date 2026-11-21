@@ -64,6 +64,28 @@ if ($mode === 'setup') {
         $pdo->prepare('INSERT INTO nx_page_layouts (page_id, settings) VALUES (2, ?)')
             ->execute([json_encode(['enabled' => false, 'width' => 'inherit', 'sections' => []], JSON_THROW_ON_ERROR)]);
     }
+    $installedVersion = require $fixture . '/config/version.php';
+    if (version_compare($installedVersion['version'], '2.20.0', '>=') &&
+        version_compare($installedVersion['version'], '2.21.0', '<')) {
+        foreach (['default', 'monoedge'] as $theme) {
+            $design = \app\Core\Design::snapshot($theme);
+            $rows = \app\Core\Design::headerRowDefaults();
+            $rows['split'] = true;
+            $rows['top']['columns'] = 2;
+            $rows['bottom']['columns'] = 2;
+            $rows['positions'] = ['brand' => ['row' => 'top', 'column' => 2],
+                'menu' => ['row' => 'bottom', 'column' => 1], 'search' => ['row' => 'bottom', 'column' => 2]];
+            $design['layout']['headerRows'] = $rows;
+            $design['layout']['header']['logo'] = false;
+            $design['layout']['headerAbove'] = true;
+            $text = ['type' => 'text', 'title' => 'Retained widget', 'text' => 'Retained header content', 'menu' => 'footer'];
+            $design['layout']['widgets']['header_above'] = [$text];
+            $design['layout']['widgets']['header_bottom2'] = array_fill(0, 12, $text);
+            if (!\app\Core\Design::publish(\app\Core\Design::validate($design), $design['revision'])) {
+                throw new RuntimeException('Could not seed the legacy header design.');
+            }
+        }
+    }
 }
 if ($mode === 'restore') {
     \app\Core\UpdateBackup::restore($argv[3]);

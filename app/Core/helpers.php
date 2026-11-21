@@ -41,9 +41,9 @@ function nx_text_length(string $value): int
     return function_exists('mb_strlen') ? mb_strlen($value, 'UTF-8') : strlen($value);
 }
 
-function nx_navigation(string $menu = 'header'): void
+function nx_navigation(string $menu = 'header', bool $includeHomeFallback = true): void
 {
-    foreach (\app\Core\Design::menuLinks($menu) as $link) {
+    foreach (\app\Core\Design::menuLinks($menu, $includeHomeFallback) as $link) {
         echo '<a href="' . e($link['url']) . '">' . e($link['label']) . '</a>';
     }
 }
@@ -58,10 +58,12 @@ function nx_design_header(string $searchQuery = '', bool $includeHomeFallback = 
     $design = nx_design_settings();
     $header = $design['header'];
     $rows = $design['headerRows'];
-    $links = $header['menu'] ? \app\Core\Design::menuLinks('header', $includeHomeFallback) : [];
-    $logo = $header['logo'] ? site_icon() : '';
-    $hasMainRow = $rows !== null || $logo !== '' || $header['name'] || $links || $header['search'];
     $draft = \app\Core\Design::isDraftPreview();
+    $hasMainRow = $draft || $rows !== null;
+    $mainColumns = $rows['top']['columns'] ?? ($header['placement'] === 'stack' ? 1 : 3);
+    for ($column = 1; $column <= $mainColumns; $column++) {
+        $hasMainRow = $hasMainRow || (bool)$design['widgets']['header' . $column];
+    }
     $hasAbove = $design['headerAbove'] && ($draft || $design['widgets']['header_above']);
     $hasBelow = $rows === null && $design['headerBelow'] && ($draft || $design['widgets']['header_bottom1']);
     if ($hasMainRow || $hasAbove || $hasBelow) {
@@ -90,7 +92,7 @@ function nx_design_main(string $content, ?array $pageDesign = null): void
     require BASE_PATH . '/app/Views/design/main.php';
 }
 
-function nx_design_widgets(string $area): void
+function nx_design_widgets(string $area, string $searchQuery = '', bool $includeHomeFallback = true): void
 {
     $widgets = nx_design_settings()['widgets'][$area] ?? [];
     require BASE_PATH . '/app/Views/design/widgets.php';

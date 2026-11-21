@@ -234,6 +234,19 @@ function curl_setopt_array($handle, array $options): bool {
                     data = json.loads(re.search(r'<script type="application/json" id="nx-design-data">(.*?)</script>', body, re.S)[1])
                     check(status == 200 and 'ページ毎のレイアウト' in body and len(data['pageLayout']['scopes']) == 3,
                           ref + ': updated design editor offers shared page and post layouts')
+                    if (2, 20, 0) <= tuple(map(int, version.split('.'))) < (2, 21, 0) <= tuple(map(int, target.split('.'))):
+                        for theme in ['default', 'monoedge']:
+                            layout = data['themes'][theme]['state']['layout']
+                            check(layout['headerWidgets'] is True
+                                  and [item['type'] for item in layout['widgets']['header2']] == ['site_name']
+                                  and [item['type'] for item in layout['widgets']['header_bottom1']] == ['menu']
+                                  and [item['type'] for item in layout['widgets']['header_bottom2']] == ['search'] + ['text'] * 12
+                                  and layout['widgets']['header_above'][0]['text'] == 'Retained header content',
+                                  ref + ': ' + theme + ' legacy header visibility, destinations and 12 widgets survive the real update')
+                        public_header = guest.request('/')[1].split('<header class="site-header"', 1)[1].split('</header>', 1)[0]
+                        check('site-title' in public_header and 'Retained updater test site' in public_header
+                              and 'Retained header content' in public_header and 'site-icon-link' not in public_header,
+                              ref + ': migrated site identity and existing header content render publicly')
                     status, body, _ = admin.request('/admin/design/post-layout/1')
                     check(status == 200 and json.loads(body)['kind'] == 'post',
                           ref + ': updated post layout schema and route work')

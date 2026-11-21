@@ -196,6 +196,7 @@ def main():
     tls = None
     log = None
     try:
+        subprocess.run(['php', str(SOURCE / 'tests/header-widget-migration.php')], check=True)
         subprocess.run(['php', str(SOURCE / 'tests/fixture.php'), str(fixture)] + (['2.2'] if args.from22 else []), check=True)
         subprocess.run(['php', str(SOURCE / 'tests/fresh-install.php'), str(fixture)], check=True)
         subprocess.run(['php', str(fixture / 'app/Console/migrate.php')], check=True)
@@ -351,6 +352,10 @@ def main():
             {'type': 'custom', 'title': '案内サイト', 'url': 'https://example.test/guide'},
         ]
         draft['layout']['header']['placement'] = 'stack'
+        # Exercise an older client payload without native widget entries.
+        draft['layout'].pop('headerWidgets')
+        for area in design['headerWidgetAreas']:
+            widget_areas[area] = []
         draft['layout']['columns'] = 'left'
         draft['layout']['footer'] = 2
         draft['layout']['widgets']['sidebar'] = [{'type': 'text', 'title': 'サイドバーテスト', 'text': '<span>文字として表示</span>', 'menu': 'footer'}]

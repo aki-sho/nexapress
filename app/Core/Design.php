@@ -11,6 +11,8 @@ use Throwable;
 final class Design
 {
     public const MAX_CATEGORY_LINKS = 100;
+    public const MAX_WIDGETS = 12;
+    public const MAX_HEADER_WIDGETS = 16;
     public const CHROME_WIDTHS = ['theme' => 'テーマの既定幅（現在の表示）'] + PageLayout::WIDTHS;
     public const DEFAULT_BACKGROUND = ['mode' => 'theme', 'color' => '#F5F6F8', 'media_id' => null];
 
@@ -47,6 +49,16 @@ final class Design
         ];
     }
 
+    public static function isHeaderWidgetArea(string $area): bool
+    {
+        return $area === 'header_above' || preg_match('/^header(?:_bottom)?[1-5]$/D', $area) === 1;
+    }
+
+    public static function headerWidgetAreas(): array
+    {
+        return array_values(array_filter(array_keys(self::widgetAreas()), static fn(string $area): bool => self::isHeaderWidgetArea($area)));
+    }
+
     public static function footerRowDefaults(): array
     {
         return ['split' => false, 'top' => ['align' => 'center'],
@@ -57,7 +69,8 @@ final class Design
         'header_after' => 'ヘッダー直下',
         'footer_before' => 'フッター直前',
     ];
-    public const WIDGETS = [
+    public const HEADER_WIDGETS = ['site_icon' => 'サイトアイコン', 'site_name' => 'サイト名'];
+    public const WIDGETS = self::HEADER_WIDGETS + [
         'recent' => '新着記事',
         'categories' => 'カテゴリ一覧',
         'menu' => 'メニュー',
@@ -199,6 +212,11 @@ final class Design
         if (!is_array($layout)) {
             throw new InvalidArgumentException('レイアウトが正しくありません。');
         }
+        $headerWidgets = $layout['headerWidgets'] ?? false;
+        if (!is_bool($headerWidgets)) {
+            throw new InvalidArgumentException('ヘッダーのウィジェット設定を確認してください。');
+        }
+        $defaults['headerWidgets'] = $headerWidgets;
         foreach ($caps as $area) {
             if ($area === 'header') {
                 $placement = $layout['header']['placement'] ?? null;
@@ -219,7 +237,7 @@ final class Design
                     throw new InvalidArgumentException('本文のカラム構成が正しくありません。');
                 }
                 $defaults['columns'] = $columns;
-                $defaults['widgets']['sidebar'] = self::widgets($layout['widgets']['sidebar'] ?? []);
+                $defaults['widgets']['sidebar'] = self::widgets($layout['widgets']['sidebar'] ?? [], 'sidebar');
             } elseif ($area === 'footer') {
                 $footer = $layout['footer'] ?? null;
                 if (!in_array($footer, [1, 2, 3, 4, 5], true)) {
@@ -227,7 +245,7 @@ final class Design
                 }
                 $defaults['footer'] = $footer;
                 foreach (['footer1', 'footer2', 'footer3', 'footer4', 'footer5'] as $key) {
-                    $defaults['widgets'][$key] = self::widgets($layout['widgets'][$key] ?? []);
+                    $defaults['widgets'][$key] = self::widgets($layout['widgets'][$key] ?? [], $key);
                 }
             } elseif ($area === 'header_rows' || $area === 'footer_rows') {
                 $kind = $area === 'header_rows' ? 'header' : 'footer';
@@ -240,7 +258,7 @@ final class Design
                         }
                         $defaults[$key] = $enabled;
                     }
-                    $defaults['widgets']['header_above'] = self::widgets($layout['widgets']['header_above'] ?? []);
+                    $defaults['widgets']['header_above'] = self::widgets($layout['widgets']['header_above'] ?? [], 'header_above');
                     if ($defaults['headerRows'] !== null) {
                         $defaults['headerBelow'] = false;
                         $defaults['header']['placement'] = $defaults['headerRows']['split'] ? 'stack' : 'row';
@@ -249,11 +267,17 @@ final class Design
                 foreach (array_keys(self::widgetAreas()) as $key) {
                     if (($kind === 'header' && preg_match('/^header(?:_bottom)?[1-5]$/D', $key)) ||
                         ($kind === 'footer' && preg_match('/^footer_bottom[1-5]$/D', $key))) {
-                        $defaults['widgets'][$key] = self::widgets($layout['widgets'][$key] ?? []);
+                        $defaults['widgets'][$key] = self::widgets($layout['widgets'][$key] ?? [], $key);
                     }
                 }
             } elseif (isset(self::REGIONS[$area])) {
-                $defaults['widgets'][$area] = self::widgets($layout['widgets'][$area] ?? []);
+                $defaults['widgets'][$area] = self::widgets($layout['widgets'][$area] ?? [], $area);
+            }
+        }
+        if (in_array('header', $caps, true) && !in_array('header_rows', $caps, true)) {
+            foreach (range(1, 5) as $column) {
+                $key = 'header' . $column;
+                $defaults['widgets'][$key] = self::widgets($layout['widgets'][$key] ?? [], $key);
             }
         }
         foreach (['header', 'footer'] as $kind) {
@@ -338,7 +362,7 @@ final class Design
         }
         return [
             'theme' => $theme,
-            'layout' => $defaults,
+            'layout' => self::headerWidgetLayout($defaults),
             'background' => self::validateBackground($input['background'] ?? self::background()),
             'menus' => [
                 'header' => self::menu($input['menus']['header'] ?? null, 100),
@@ -500,6 +524,38 @@ final class Design
         $layout = array_replace($defaults, $saved);
         $layout['widgets'] = array_replace($defaults['widgets'], $saved['widgets'] ?? []);
         $layout['spacing'] = DesignSpacing::validate($saved['spacing'] ?? []);
+        return self::headerWidgetLayout($layout);
+    }
+
+    private static function headerWidgetLayout(array $layout): array
+    {
+        if (($layout['headerWidgets'] ?? false) === true) {
+            return $layout;
+        }
+        // Older designs store these parts outside the widget lists. Convert once,
+        // keeping their order, visibility and row/column destinations.
+        $rows = $layout['headerRows'];
+        $positions = $rows['positions'] ?? self::headerRowDefaults()['positions'];
+        if ($rows === null && $layout['header']['placement'] === 'stack') {
+            $positions = array_fill_keys(['brand', 'menu', 'search'], ['row' => 'top', 'column' => 1]);
+        }
+        $converted = [];
+        foreach (['logo' => ['site_icon', 'brand'], 'name' => ['site_name', 'brand'],
+            'menu' => ['menu', 'menu'], 'search' => ['search', 'search']] as $flag => [$type, $part]) {
+            if (!$layout['header'][$flag]) {
+                continue;
+            }
+            $position = $positions[$part];
+            $area = ($position['row'] === 'bottom' ? 'header_bottom' : 'header') . $position['column'];
+            $converted[$area][] = ['type' => $type, 'title' => '', 'text' => '', 'menu' => 'header'];
+        }
+        foreach ($converted as $area => $widgets) {
+            $layout['widgets'][$area] = array_merge($widgets, $layout['widgets'][$area]);
+            if (count($layout['widgets'][$area]) > self::MAX_HEADER_WIDGETS) {
+                throw new InvalidArgumentException('ヘッダーのウィジェット数を確認してください。');
+            }
+        }
+        $layout['headerWidgets'] = true;
         return $layout;
     }
 
@@ -605,17 +661,25 @@ final class Design
         return $result;
     }
 
-    private static function widgets(mixed $widgets): array
+    private static function widgets(mixed $widgets, string $area): array
     {
-        if (!is_array($widgets) || count($widgets) > 12) {
-            throw new InvalidArgumentException('ウィジェットは1か所に12個まで配置できます。');
+        $isHeader = self::isHeaderWidgetArea($area);
+        $limit = $isHeader ? self::MAX_HEADER_WIDGETS : self::MAX_WIDGETS;
+        if (!is_array($widgets) || count($widgets) > $limit) {
+            throw new InvalidArgumentException('ウィジェットは1か所に' . $limit . '個まで配置できます。');
         }
         $result = [];
         foreach ($widgets as $widget) {
+            if (!is_array($widget)) {
+                throw new InvalidArgumentException('ウィジェットを確認してください。');
+            }
             $type = $widget['type'] ?? null;
             $menu = $widget['menu'] ?? 'footer';
             if (!is_string($type) || !isset(self::WIDGETS[$type]) || !in_array($menu, ['header', 'footer'], true)) {
                 throw new InvalidArgumentException('ウィジェットの種類を確認してください。');
+            }
+            if (isset(self::HEADER_WIDGETS[$type]) && !$isHeader) {
+                throw new InvalidArgumentException('サイトアイコン・サイト名はヘッダー内に配置してください。');
             }
             $settings = [
                 'type' => $type,

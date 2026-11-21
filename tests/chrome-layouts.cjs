@@ -102,7 +102,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     assert((await group('footer', 'links').locator('.nx-design-item-list').textContent()).includes('フッター配置確認'));
     console.log('PASS: integrated header/footer link editing preserves all existing theme layouts, widgets and shared page layouts');
     await open('header');
-    for (const section of ['structure', 'top', 'content']) {
+    for (const section of ['structure', 'top', 'widgets']) {
         assert.equal(await page.locator('[data-chrome-details="header:' + section + '"]').count(), 1);
     }
     await links('header');
@@ -118,11 +118,20 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     await set('header', 'bottom', 'columns', 2);
     await set('header', 'top', 'align', 'flex-start');
     await set('header', 'bottom', 'align', 'center');
-    await openGroup('header', 'content');
-    await page.locator('[data-chrome-part="brand"]').selectOption('top:1');
-    await page.locator('[data-chrome-part="menu"]').selectOption('bottom:1');
-    await page.locator('[data-chrome-part="search"]').selectOption('top:5');
-    assert.equal(await page.locator('[data-chrome-part="search"]').evaluate(el => el === document.activeElement), true);
+    async function moveWidget(type, destination) {
+        const source = Object.entries(initial.themes[initial.active].state.layout.widgets)
+            .find(([area, list]) => area.startsWith('header') && list.some(item => item.type === type))[0];
+        const widgets = await openGroup('header', 'widgets');
+        await widgets.locator('[data-setting="area"]').selectOption(source);
+        const row = widgets.locator('.nx-design-item').filter({has: page.locator('span.nx-design-note', {hasText: initial.widgets[type]})});
+        await row.locator('[data-action="edit"]').click();
+        const form = page.locator('[data-designer-form]');
+        await form.locator('[name="area"]').selectOption(destination);
+        assert.equal(await form.locator('[name="area"]').evaluate(el => el === document.activeElement), true);
+        await form.getByRole('button', {name: '反映', exact: true}).click();
+    }
+    await moveWidget('menu', 'header_bottom1');
+    await moveWidget('search', 'header5');
     await addWidget('header', 'header_bottom2', 'ヘッダー下段2');
     await addWidget('header', 'header_after', 'ヘッダー直下の案内');
     await open('footer');
@@ -153,7 +162,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     assert(data.themes.default.state.menus.footer.some(item => item.label === 'フッター配置確認' && item.url === '/posts'));
     assert(data.themes.default.state.layout.widgets.header_after.some(item => item.title === 'ヘッダー直下の案内'));
     assert(data.themes.default.state.layout.widgets.footer_before.some(item => item.title === 'フッター直前の案内'));
-    assert.deepEqual(data.themes.default.state.layout.headerRows.positions.search, {row: 'top', column: 5});
+    assert.equal(data.themes.default.state.layout.widgets.header5[0].type, 'search');
     const guest = await page.context().browser().newContext({viewport: {width: 1440, height: 1000}, javaScriptEnabled: false});
     const visitor = await guest.newPage();
     await guest.route(base + '/', async route => {

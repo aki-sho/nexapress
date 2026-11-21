@@ -21,7 +21,8 @@
 :is(.site-header, .site-footer)[data-design-width] > :is(.site-header-inner, .site-footer-inner) { max-width: none; }
 
 .site-header-inner > .public-search,
-.nx-chrome-column > .public-search {
+.nx-chrome-column > .public-search,
+.nx-chrome-column > .nx-design-widget-search .public-search {
     flex-wrap: nowrap;
     align-items: center;
     width: min(100%, 316px);
@@ -31,7 +32,8 @@
 }
 
 .site-header-inner > .public-search input,
-.nx-chrome-column > .public-search input {
+.nx-chrome-column > .public-search input,
+.nx-chrome-column > .nx-design-widget-search .public-search input {
     flex: 1 1 0;
     min-width: 0;
     max-width: none;
@@ -42,7 +44,8 @@
 }
 
 .site-header-inner > .public-search button,
-.nx-chrome-column > .public-search button {
+.nx-chrome-column > .public-search button,
+.nx-chrome-column > .nx-design-widget-search .public-search button {
     flex: 0 0 auto;
     height: 38px;
     padding: 0 14px;
@@ -159,8 +162,10 @@
     gap: 16px;
     max-width: var(--theme-content-width, 1080px);
     margin-inline: auto;
-    padding: 16px var(--theme-gutter, 24px);
     text-align: var(--nx-chrome-text);
+}
+.site-header-inner.nx-chrome-row:not(.nx-design-header-native), .site-footer-inner.nx-chrome-row {
+    padding: 16px var(--theme-gutter, 24px);
 }
 .nx-chrome-row[data-columns="2"] { --nx-chrome-basis: calc((100% - 16px) / 2); }
 .nx-chrome-row[data-columns="3"] { --nx-chrome-basis: calc((100% - 32px) / 3); }
@@ -182,6 +187,16 @@
 }
 .nx-chrome-column > * { min-width: 0; max-width: 100%; }
 .nx-chrome-column > .public-search { flex: 0 1 316px; margin: 0; }
+.nx-chrome-column > .nx-design-widget-search { flex: 0 1 316px; }
+.nx-design-header-native.nx-design-header-stacked > .nx-chrome-column {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.nx-design-header-stacked > .nx-chrome-column > .nx-design-widget-search {
+    flex: 0 1 auto;
+    width: min(100%, 316px);
+}
 .nx-chrome-column .site-nav, .nx-chrome-column .nx-design-widget-menu {
     flex-wrap: wrap;
     justify-content: var(--nx-chrome-justify);

@@ -22,9 +22,12 @@
         footer: 'フッター', footer_rows: 'フッターの上下分割', page_layout: 'ページ毎のレイアウト', ...regions};
     const designColor = window.NexaPressDesignColor;
     const chromeOpen = new Map();
-    const selectedWidgetAreas = {header: 'header_after', columns: 'sidebar', footer: 'footer_before'};
+    const selectedWidgetAreas = {header: 'header1', columns: 'sidebar', footer: 'footer_before'};
     const clone = value => JSON.parse(JSON.stringify(value));
     const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+    const isHeaderWidgetArea = area => data.headerWidgetAreas.includes(area);
+    const isHeaderWidgetType = type => data.headerWidgetTypes.includes(type);
+    const widgetLimit = area => isHeaderWidgetArea(area) ? data.headerWidgetLimit : data.widgetLimit;
     const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
         ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
     const options = (pairs, current) => pairs.map(([key, label]) =>
@@ -84,7 +87,7 @@
         const match = /^(header|footer)(_bottom)?([1-5])$/.exec(key);
         if (!match) return false;
         const [, kind, bottom, number] = match;
-        if (!supports(kind === 'header' || bottom ? kind + '_rows' : kind)) return false;
+        if (!supports(kind === 'header' && !bottom ? kind : bottom ? kind + '_rows' : kind)) return false;
         const rows = chromeRows(kind);
         return (!bottom || rows.split) && Number(number) <=
             (kind === 'footer' && !bottom ? layouts[theme].footer : rows[bottom ? 'bottom' : 'top'].columns);
@@ -187,11 +190,14 @@
                 linkField(item) +
                 `<label>表示名<input name="label" maxlength="255" required value="${escape(item.label)}"></label>`;
         } else {
-            const destinations = activeAreas();
+            const destinations = activeAreas().filter(area => !isHeaderWidgetType(item.type) || isHeaderWidgetArea(area));
             const destination = destinations.includes(item.area) ? item.area : selectedWidgetAreas[pane];
-            fields = field('種類', 'type', Object.entries(data.widgets), item.type, 'data-form-setting="type"') +
+            const types = Object.entries(data.widgets).filter(([type]) => !isHeaderWidgetType(type) || isHeaderWidgetArea(destination));
+            fields = field('種類', 'type', types, item.type, 'data-form-setting="type"') +
                 field('表示場所', 'area', destinations.map(id => [id, widgetAreaLabel(id)]), destination, 'required');
-            if (item.type === 'category') {
+            if (isHeaderWidgetType(item.type)) {
+                fields += '<p class="nx-design-note">サイトに登録した' + escape(data.widgets[item.type]) + 'を表示します。</p>';
+            } else if (item.type === 'category') {
                 fields += categoryField(item) + `<label><span data-category-title-label>${categoryTitleLabel(categoryIds(item).length)}</span>
                     <input name="title" maxlength="255" value="${escape(item.title)}"></label>`;
             } else if (linkTypeIds.includes(item.type)) {
@@ -374,7 +380,7 @@
                 : button('header-row', '＋ ' + direction + 'に段を追加', attributes);
         };
         return '<div class="nx-header-structure">' + toggle('above', '上段', '上', hasAbove) +
-            '<div class="nx-header-base-row"><strong>ヘッダー本体</strong><span class="nx-design-note">サイト名・メニュー・検索欄</span></div>' +
+            '<div class="nx-header-base-row"><strong>ヘッダー本体</strong><span class="nx-design-note">ウィジェットを配置</span></div>' +
             toggle('below', '下段', '下', hasBelow) + '</div>';
     }
 
@@ -408,30 +414,9 @@
             }
         } else if (kind === 'footer') {
             html += field('カラム数', 'footer', columnChoices, layout.footer, 'data-setting="footer"');
-        } else {
-            html += field('配置', 'placement', [['row', '横並び'], ['stack', 'ロゴ・サイト名の下にメニュー']],
-                layout.header.placement, 'data-setting="placement"');
         }
         html += widgetGroup(kind);
-        let content = '';
-        if (kind === 'header') {
-            const positions = (rows.split ? ['top', 'bottom'] : ['top']).flatMap(row =>
-                Array.from({length: rows[row].columns}, (_, index) =>
-                    [row + ':' + (index + 1), widgetAreaLabel((row === 'top' ? 'header' : 'header_bottom') + (index + 1))]));
-            for (const [part, label, flags] of [
-                ['brand', 'サイト情報', {logo: 'サイトアイコン', name: 'サイト名'}],
-                ['menu', 'メニュー', {menu: 'メニュー'}], ['search', '検索欄', {search: '検索欄'}],
-            ]) {
-                content += '<div class="nx-chrome-part"><strong>' + label + '</strong>' +
-                    Object.entries(flags).map(([key, text]) => `<label class="nx-design-check">
-                        <input type="checkbox" data-header="${key}" ${layout.header[key] ? 'checked' : ''}> ${text}を表示</label>`).join('');
-                if (capable) content += field('表示場所', kind + '-' + part, positions,
-                    rows.positions[part].row + ':' + rows.positions[part].column,
-                    `data-chrome="header" data-chrome-field="position" data-chrome-part="${part}"`);
-                content += '</div>';
-            }
-        }
-        return kind === 'header' ? html + chromeGroup(kind, 'content', '中身の配置', content) : html;
+        return html;
     }
 
     function generalPanel() {
@@ -798,13 +783,13 @@
                 showError();
                 renderPanel(add);
             } else if (target.action === 'add' || target.action === 'edit') {
-                if (index < 0 && list.length >= (forMenu ? 100 : 12)) {
+                if (index < 0 && list.length >= (forMenu ? 100 : widgetLimit(selectedWidgetAreas[pane]))) {
                     showError('登録できる項目数の上限に達しました。');
                     return;
                 }
                 const empty = forMenu
                     ? {id: null, type: 'page', label: '', reference_id: null, url: ''}
-                    : {type: 'text', title: '', text: '', menu: 'footer', area: selectedWidgetAreas[pane]};
+                    : {type: 'text', title: '', text: '', menu: pane === 'header' ? 'header' : 'footer', area: selectedWidgetAreas[pane]};
                 editor = {list: kind, index, item: {...empty, ...list[index]}};
                 if (!forMenu && !editor.item.title && ['page', 'post'].includes(editor.item.type)) {
                     const choice = targets[editor.item.type]?.find(item => item.id === editor.item.reference_id);
@@ -857,14 +842,11 @@
     root.addEventListener('change', event => {
         if (publishing) return;
         const input = event.target;
-        const {setting, header, formSetting, chrome, chromeRow, chromeField, chromePart} = input.dataset;
+        const {setting, formSetting, chrome, chromeRow, chromeField} = input.dataset;
         if (chrome) {
             const rows = ensureChrome(chrome);
             if (chromeField === 'split') rows.split = input.value === '2';
-            else if (chromeField === 'position') {
-                const [row, column] = input.value.split(':');
-                rows.positions[chromePart] = {row, column: Number(column)};
-            } else if (chrome === 'footer' && chromeRow === 'top' && chromeField === 'columns') {
+            else if (chrome === 'footer' && chromeRow === 'top' && chromeField === 'columns') {
                 layouts[theme].footer = Number(input.value);
             } else rows[chromeRow][chromeField] = chromeField === 'columns' ? Number(input.value) : input.value;
             if (chrome === 'header') {
@@ -875,8 +857,7 @@
                 layouts[theme].header.placement = rows.split ? 'stack' : 'row';
             }
             if (chromeField === 'split' && rows.split) chromeOpen.set(chrome + ':bottom', true);
-            changed(chromeField === 'position' ? `[data-chrome-part="${chromePart}"]` :
-                `[data-chrome="${chrome}"][data-chrome-row="${chromeRow ?? ''}"][data-chrome-field="${chromeField}"]`);
+            changed(`[data-chrome="${chrome}"][data-chrome-row="${chromeRow ?? ''}"][data-chrome-field="${chromeField}"]`);
         } else if (setting === 'theme') {
             theme = input.value;
             if (resetDraft) {
@@ -906,9 +887,6 @@
             if (setting === 'background-mode') background.mode = input.value;
             else background.media_id = input.value ? Number(input.value) : null;
             changed('[data-setting="' + setting + '"]');
-        } else if (setting === 'placement' || header) {
-            layouts[theme].header[header || setting] = header ? input.checked : input.value;
-            changed(header ? `[data-header="${header}"]` : '[data-setting="placement"]');
         } else if (['columns', 'footer', 'width', 'headerWidth', 'footerWidth'].includes(setting)) {
             layouts[theme][setting] = setting === 'footer' ? Number(input.value) : input.value;
             changed(`[data-setting="${setting}"]`);
@@ -917,6 +895,9 @@
             editor.item.reference_id = null;
             delete editor.item.reference_ids;
             renderPanel('[data-form-setting="type"]');
+        } else if (input.name === 'area' && editor?.list === 'widgets') {
+            rememberForm(input.form);
+            renderPanel('[data-designer-form] [name="area"]');
         } else if (input.name === 'reference_id' && editor) {
             const choice = targets[editor.item.type]?.find(item => item.id === Number(input.value));
             const fieldName = editor.list === 'links' ? 'label' : 'title';
@@ -946,7 +927,7 @@
         const list = currentList(kind);
         const index = editor.index;
         const forMenu = kind === 'links';
-        const name = (forMenu ? values.label : values.title).trim();
+        const name = ((forMenu ? values.label : values.title) || '').trim();
         const isLink = linkTypeIds.includes(values.type);
         const categories = !forMenu && values.type === 'category' ? formData.getAll('reference_ids').map(Number) : null;
         if (categories && (!categories.length || categories.length > data.categoryLimit ||
@@ -965,16 +946,15 @@
             if (index < 0) list.push(item);
             else list[index] = item;
         } else {
-            if (!activeAreas().includes(values.area)) {
+            if (!activeAreas().includes(values.area) || (isHeaderWidgetType(values.type) && !isHeaderWidgetArea(values.area))) {
                 showError('表示場所を選び直してください。');
                 return;
             }
             const destination = layouts[theme].widgets[values.area];
-            if ((destination !== list || index < 0) && destination.length >= 12) {
-                showError('この場所には12個まで配置できます。');
+            if ((destination !== list || index < 0) && destination.length >= widgetLimit(values.area)) {
+                showError('この場所には' + widgetLimit(values.area) + '個まで配置できます。');
                 return;
             }
-            if (/^header[1-5]$/.test(values.area)) ensureChrome('header');
             const item = {type: values.type, title: name, text: values.text?.trim() || '', menu: values.menu || 'footer', ...link};
             if (destination === list && index >= 0) list[index] = item;
             else {

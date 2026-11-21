@@ -797,6 +797,7 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
         await checkCommonLayoutFeedback(page, base, output);
         await require('./design-spacing-overlay.cjs')(page, base, output);
         await require('./design-spacing.cjs')(page, base, output);
+        await require('./header-widgets.cjs')(page, base, output);
         await require('./design-appearance.cjs')(page, base, output);
         await require('./chrome-layouts.cjs')(page, base, output);
         await require('./post-categories.cjs')(page, base, output);
