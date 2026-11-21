@@ -499,6 +499,7 @@ final class Design
         $saved = $stored['themes'][$theme] ?? [];
         $layout = array_replace($defaults, $saved);
         $layout['widgets'] = array_replace($defaults['widgets'], $saved['widgets'] ?? []);
+        $layout['spacing'] = DesignSpacing::validate($saved['spacing'] ?? []);
         return $layout;
     }
 

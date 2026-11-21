@@ -219,13 +219,15 @@
         const spacing = layouts[theme].spacing[area];
         const fields = [
             ['marginTop', '外側・上'], ['marginBottom', '外側・下'],
+            ['marginLeft', '外側・左'], ['marginRight', '外側・右'],
             ['paddingTop', '内側・上'], ['paddingBottom', '内側・下'],
+            ['paddingLeft', '内側・左'], ['paddingRight', '内側・右'],
         ].map(([key, label]) => `<label>${label}（px）
             <input type="number" min="0" max="${data.spacingLimit}" step="1"
                 value="${escape(spacing[key])}" placeholder="テーマの既定値"
                 data-spacing-area="${area}" data-spacing-field="${key}">
             </label>`).join('');
-        return chromeGroup(kind, 'spacing', '上下の余白',
+        return chromeGroup(kind, 'spacing', '余白',
             '<div class="nx-chrome-form-row">' + fields + '</div>');
     }
 
@@ -688,7 +690,7 @@
         const {spacingArea, spacingField} = input.dataset;
         if (!spacingArea || publishing) return;
         if (!input.validity.valid) {
-            showError('上下の余白は0〜' + data.spacingLimit + 'の整数で入力してください。');
+            showError('余白は0〜' + data.spacingLimit + 'の整数で入力してください。');
             return;
         }
         const spacing = layouts[theme].spacing[spacingArea];
