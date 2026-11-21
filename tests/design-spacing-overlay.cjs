@@ -11,8 +11,8 @@ module.exports = async function checkSpacingOverlay(page, base, output) {
     const open = async pane => {
         await page.locator('[data-pane="' + pane + '"]').click();
         const details = page.locator('[data-chrome-details="' + pane + ':spacing"]');
-        if (!(await details.evaluate(element => element.open))) await details.locator('summary').click();
-        assert.equal(await details.locator('.nx-chrome-fields > :first-child [data-action="toggle-spacing"]').count(), 1);
+        if (!(await details.evaluate(element => element.open))) await details.locator('summary').press('Enter');
+        assert.equal(await details.locator('summary > [data-action="toggle-spacing"]').count(), 1);
     };
     const aligned = async area => {
         await page.waitForFunction(area => {
@@ -42,17 +42,27 @@ module.exports = async function checkSpacingOverlay(page, base, output) {
     };
     await settled();
     assert(await overlay.isHidden());
+    const headerSettings = page.locator('[data-chrome-details="header:spacing"]');
+    assert.equal(await toggle.getAttribute('aria-label'), '余白を表示');
+    await toggle.press('Space');
+    await aligned('header');
+    assert.equal(await toggle.textContent(), '非表示');
+    assert.equal(await headerSettings.evaluate(element => element.open), false);
+    await toggle.press('Enter');
+    await overlay.waitFor({state: 'hidden'});
+    assert.equal(await toggle.textContent(), '表示');
+    assert.equal(await headerSettings.evaluate(element => element.open), false);
     for (const theme of ['default', 'monoedge']) {
         await page.locator('[data-setting="theme"]').selectOption(theme);
         await settled();
         for (const [pane, area] of [['header', 'header'], ['columns', 'body'], ['footer', 'footer']]) {
             await open(pane);
             assert(await overlay.isHidden());
-            assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
+            assert.equal(await toggle.textContent(), '表示');
             const before = await page.locator('[data-action="publish"]').isDisabled();
             await toggle.click();
             await aligned(area);
-            assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
+            assert.equal(await toggle.textContent(), '非表示');
             assert.equal(await page.locator('[data-action="publish"]').isDisabled(), before);
             assert.equal(await overlay.evaluate(element => getComputedStyle(element).pointerEvents), 'none');
             if (area !== 'header') {
@@ -74,7 +84,7 @@ module.exports = async function checkSpacingOverlay(page, base, output) {
             await page.screenshot({path: path.join(output, 'spacing-overlay-' + theme + '-' + area + '.png')});
             await toggle.click();
             await page.waitForFunction(() => document.querySelector('#nx-design-spacing-overlay').hidden);
-            assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
+            assert.equal(await toggle.textContent(), '表示');
         }
         await open('header');
         await toggle.click();
@@ -96,7 +106,7 @@ module.exports = async function checkSpacingOverlay(page, base, output) {
         await aligned('header');
         await open('footer');
         assert(await overlay.isHidden(), 'switching regions clears the previous region highlight');
-        assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
+        assert.equal(await toggle.textContent(), '表示');
         console.log('PASS: ' + theme + ' region-only box model, on/off, scroll, mobile scaling, live edits and published preview');
     }
     const current = JSON.parse((await (await page.request.get(base + '/admin/design')).text()).match(/id="nx-design-data">(.*?)<\/script>/s)[1]);

@@ -16,7 +16,6 @@
     const spacingOverlay = root.querySelector('#nx-design-spacing-overlay');
     const widgetHighlight = root.querySelector('#nx-design-widget-highlight');
     const widgetNote = root.querySelector('#nx-design-widget-note');
-    const widgetHighlightButton = root.querySelector('[data-action="toggle-widget-highlight"]');
     const {linkTypes, targets, regions} = data;
     const regionIds = Object.keys(regions);
     const linkTypeIds = Object.keys(linkTypes);
@@ -26,6 +25,7 @@
         footer: 'フッター', footer_rows: 'フッターの段構成', page_layout: 'ページ毎のレイアウト', ...regions};
     const designColor = window.NexaPressDesignColor;
     const chromeOpen = new Map();
+    const widgetHighlights = new Map();
     const selectedWidgetAreas = {header: 'header1', columns: 'sidebar', footer: 'footer1'};
     const clone = value => JSON.parse(JSON.stringify(value));
     const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -54,7 +54,6 @@
     let previewTimer;
     let previewRequest;
     let spacingOverlayArea = null;
-    let showWidgetHighlight = true;
     let previewOverlayFrame = 0;
     let previewOverlayObserver;
 
@@ -236,10 +235,26 @@
             ${button('cancel', 'キャンセル')}</div></form>`;
     }
 
-    function chromeGroup(kind, key, title, content, open = false) {
+    function chromeGroup(kind, key, title, content, open = false, action = '') {
         const id = kind + ':' + key;
+        const summaryLabel = action ? ` aria-label="${title}"` : '';
         return `<details class="nx-chrome-settings" data-chrome-details="${id}" ${(chromeOpen.get(id) ?? open) ? 'open' : ''}>
-            <summary>${title}</summary><div class="nx-chrome-fields">${content}</div></details>`;
+            <summary${summaryLabel}>${title}${action}</summary><div class="nx-chrome-fields">${content}</div></details>`;
+    }
+
+    const overlayActionLabel = visible => visible ? '非表示' : '表示';
+
+    function overlayButton(action, label, visible, attributes = '') {
+        const text = overlayActionLabel(visible);
+        return button(action, text,
+            `data-overlay-label="${label}" data-overlay-visible="${visible}" aria-label="${label}を${text}" ${attributes}`);
+    }
+
+    function syncOverlayButton(control, visible) {
+        const text = overlayActionLabel(visible);
+        control.textContent = text;
+        control.dataset.overlayVisible = String(visible);
+        control.setAttribute('aria-label', control.dataset.overlayLabel + 'を' + text);
     }
 
     function spacingGroup(kind) {
@@ -258,12 +273,11 @@
                 data-spacing-area="${area}" data-spacing-field="${key}">
             </label>`).join('');
         return chromeGroup(kind, 'spacing', '余白',
-            '<div class="nx-design-actions">' + button('toggle-spacing', highlighted ? '余白を非表示' : '余白を表示',
-                `data-spacing-target="${area}" aria-pressed="${highlighted}"`) + '</div>' +
             `<p class="nx-spacing-key" data-spacing-key ${highlighted ? '' : 'hidden'}>
                 <span data-spacing-color="margin">外側（margin）</span><span data-spacing-color="padding">内側（padding）</span></p>` +
             '<div class="nx-chrome-form-row">' + fields + '</div>' +
-            '<p class="nx-design-note">空欄にするとテーマの値に戻ります。</p>');
+            '<p class="nx-design-note">空欄にするとテーマの値に戻ります。</p>', false,
+            overlayButton('toggle-spacing', '余白', highlighted, `data-spacing-target="${area}"`));
     }
 
     function syncSpacingValues() {
@@ -359,9 +373,11 @@
         spacingOverlay.replaceChildren(fragment);
     }
 
-    function previewWidgetArea() {
-        const group = panel.querySelector('[data-chrome-details="' + pane + ':widgets"][open]');
-        if (!group || resetDraft || editor?.list === 'links') return null;
+    const widgetDetails = () => panel.querySelector('[data-chrome-details="' + pane + ':widgets"]');
+    const widgetHighlightVisible = (kind, expanded) => widgetHighlights.get(kind) ?? Boolean(expanded);
+
+    function previewWidgetArea(group = widgetDetails()) {
+        if (!group || resetDraft || (!group.open && !widgetHighlightVisible(pane, group.open))) return null;
         return editor?.list === 'widgets' ? group.querySelector('[name="area"]')?.value : selectedWidgetAreas[pane];
     }
 
@@ -372,9 +388,9 @@
     }
 
     function renderWidgetHighlight() {
-        const area = previewWidgetArea();
-        widgetHighlightButton.hidden = !area;
-        const ready = area && showWidgetHighlight && stage.getAttribute('aria-busy') === 'false' &&
+        const group = widgetDetails();
+        const area = previewWidgetArea(group);
+        const ready = area && widgetHighlightVisible(pane, group.open) && stage.getAttribute('aria-busy') === 'false' &&
             frame.dataset.previewTheme === theme;
         const bounds = ready ? previewWidgetTarget(area)?.getBoundingClientRect() : null;
         widgetHighlight.hidden = !bounds?.width || !bounds.height;
@@ -432,8 +448,10 @@
         const sidebar = kind === 'columns';
         const picker = sidebar || editor?.list === 'widgets' ? '' :
             widgetLocationFields(kind, available, area, 'list');
+        const highlighted = widgetHighlightVisible(kind, chromeOpen.get(kind + ':widgets'));
         return chromeGroup(kind, 'widgets', sidebar ? 'サイドバーのウィジェット' : 'ウィジェット',
-            picker + renderList(layouts[theme].widgets[area], 'widgets'));
+            picker + renderList(layouts[theme].widgets[area], 'widgets'), false,
+            overlayButton('toggle-widget-highlight', 'ウィジェットの配置範囲', highlighted));
     }
 
     function chromeStructure(kind, hasAbove, hasBelow) {
@@ -509,6 +527,8 @@
         if (id && event.target.isConnected) {
             chromeOpen.set(id, event.target.open);
             if (id === pane + ':widgets') {
+                syncOverlayButton(event.target.querySelector('[data-action="toggle-widget-highlight"]'),
+                    widgetHighlightVisible(pane, event.target.open));
                 if (event.target.open) revealPreviewArea();
                 schedulePreviewOverlays();
             }
@@ -846,16 +866,18 @@
         } else if (target.action === 'header-row' || target.action === 'footer-row') {
             toggleChromeRow(pane, target.row);
         } else if (target.action === 'toggle-widget-highlight') {
-            showWidgetHighlight = !showWidgetHighlight;
-            control.setAttribute('aria-pressed', String(showWidgetHighlight));
-            if (showWidgetHighlight) revealPreviewArea();
+            event.preventDefault();
+            const visible = !widgetHighlightVisible(pane, control.closest('details').open);
+            widgetHighlights.set(pane, visible);
+            syncOverlayButton(control, visible);
+            if (visible) revealPreviewArea();
             schedulePreviewOverlays();
         } else if (target.action === 'toggle-spacing') {
+            event.preventDefault();
             const area = target.spacingTarget;
             if (!['header', 'body', 'footer'].includes(area)) return;
             spacingOverlayArea = spacingOverlayArea === area ? null : area;
-            control.textContent = spacingOverlayArea ? '余白を非表示' : '余白を表示';
-            control.setAttribute('aria-pressed', String(spacingOverlayArea !== null));
+            syncOverlayButton(control, spacingOverlayArea !== null);
             panel.querySelector('[data-spacing-key]').hidden = spacingOverlayArea === null;
             if (spacingOverlayArea) revealPreviewArea(true);
             schedulePreviewOverlays();

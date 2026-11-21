@@ -34,7 +34,7 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
         const pane = area.startsWith('header') ? 'header' : 'footer';
         await page.locator('[data-pane="' + pane + '"]').click();
         const group = page.locator('[data-chrome-details="' + pane + ':widgets"]');
-        if (!(await group.evaluate(node => node.open))) await group.locator('summary').click();
+        if (!(await group.evaluate(node => node.open))) await group.locator('summary').press('Enter');
         await selectWidgetLocation(group, area);
         if (index === undefined) await group.locator('[data-action="add"]').click();
         else await group.locator('[data-action="edit"]').nth(index).click();
@@ -125,7 +125,7 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             await visitor.setViewportSize({width: 1440, height: 1000});
             await page.locator('[data-pane="header"]').click();
             const group = page.locator('[data-chrome-details="header:widgets"]');
-            if (!(await group.evaluate(node => node.open))) await group.locator('summary').click();
+            if (!(await group.evaluate(node => node.open))) await group.locator('summary').press('Enter');
             await selectWidgetLocation(group, 'header2');
             await group.locator('[data-action="remove"]').nth(1).click();
             await publish();

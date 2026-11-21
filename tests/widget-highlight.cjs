@@ -5,14 +5,14 @@ const selectWidgetLocation = require('./widget-location.cjs');
 module.exports = async function checkWidgetHighlight(page, base, output) {
     await page.goto(base + '/admin/design');
     const highlight = page.locator('#nx-design-widget-highlight');
-    const toggle = page.getByRole('button', {name: '配置範囲', exact: true});
+    const toggle = page.locator('[data-action="toggle-widget-highlight"]');
     const note = page.locator('#nx-design-widget-note');
     const frame = page.locator('#nx-design-frame');
     const publish = page.locator('[data-action="publish"]');
     const group = (pane, type = 'widgets') => page.locator('[data-chrome-details="' + pane + ':' + type + '"]');
     const open = async (pane, type = 'widgets') => {
         const details = group(pane, type);
-        if (!(await details.evaluate(element => element.open))) await details.locator('summary').click();
+        if (!(await details.evaluate(element => element.open))) await details.locator('summary').press('Enter');
         return details;
     };
     const aligned = async (area, inViewport = true) => {
@@ -34,16 +34,20 @@ module.exports = async function checkWidgetHighlight(page, base, output) {
                 Math.abs(actual.height - expected.height * scale) < 1;
         }, {area, attribute, inViewport});
     };
-    assert(await toggle.isHidden(), 'the toggle only appears while a widget location is selected');
-    const header = await open('header');
+    assert.equal(await group('header').locator('summary > [data-action="toggle-widget-highlight"]').count(), 1);
+    assert(await toggle.isVisible(), 'the toggle is available with the widget group closed');
+    assert.equal(await toggle.textContent(), '表示');
+    const header = group('header');
+    await header.locator('summary').click({position: {x: 8, y: 12}});
     await aligned('header1');
+    assert.equal(await toggle.textContent(), '非表示');
     await selectWidgetLocation(header, 'header_after');
     await aligned('header_after');
     assert.equal(await highlight.evaluate(element => getComputedStyle(element).pointerEvents), 'none');
     assert(await publish.isDisabled(), 'checking locations does not change the design');
     await toggle.click();
     await highlight.waitFor({state: 'hidden'});
-    assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
+    assert.equal(await toggle.textContent(), '表示');
     await selectWidgetLocation(header, 'header1');
     assert(await highlight.isHidden(), 'turning off the highlight persists while switching locations');
     await toggle.click();
@@ -98,9 +102,16 @@ module.exports = async function checkWidgetHighlight(page, base, output) {
     await note.waitFor({state: 'visible'});
     await page.locator('[data-mode="draft"]').click();
     await aligned('footer_above2');
-    await footer.locator('summary').click();
-    await toggle.waitFor({state: 'hidden'});
-    assert(await highlight.isHidden());
+    await footer.locator('summary').press('Enter');
+    assert.equal(await footer.evaluate(element => element.open), false);
+    assert(await toggle.isVisible());
+    assert.equal(await toggle.getAttribute('aria-label'), 'ウィジェットの配置範囲を非表示');
+    await toggle.press('Enter');
+    await highlight.waitFor({state: 'hidden'});
+    assert.equal(await toggle.textContent(), '表示');
+    await toggle.press('Space');
+    await aligned('footer_above2');
+    assert.equal(await footer.evaluate(element => element.open), false);
 
     await page.locator('[data-pane="columns"]').click();
     await page.locator('[data-setting="columns"]').selectOption('left');
@@ -108,6 +119,7 @@ module.exports = async function checkWidgetHighlight(page, base, output) {
     await aligned('sidebar');
     await page.locator('[data-pane="general"]').click();
     await highlight.waitFor({state: 'hidden'});
+    assert(await toggle.isHidden());
     const response = await page.request.get(base + '/');
     assert(!(await response.text()).includes('nx-design-widget-highlight'));
     await page.goto(base + '/admin/design');

@@ -5,7 +5,7 @@
 NexaPressは、PHPとMySQL／MariaDBで動作するWeb CMSです。  
 ブラウザからの初期セットアップに対応し、投稿、固定ページ、メディア、テーマ、ユーザー、拡張機能を管理画面から一元管理できます。
 
-![Version](https://img.shields.io/badge/version-v2.22.1-2563eb)
+![Version](https://img.shields.io/badge/version-v2.22.2-2563eb)
 ![PHP](https://img.shields.io/badge/PHP-8.x-777bb4)
 ![Database](https://img.shields.io/badge/MySQL%20%2F%20MariaDB-supported-f59e0b)
 ![Architecture](https://img.shields.io/badge/Architecture-MVC-111827)
@@ -194,7 +194,7 @@ NexaPressを動作させるには、以下の環境が必要です。
 GitHub Releasesから最新版の本体ZIPをダウンロードします。
 
 ```text
-nexapress-2.22.1.zip
+nexapress-2.22.2.zip
 ```
 
 ### 2. サーバーへ配置
@@ -203,7 +203,7 @@ ZIPを展開し、Webサーバーの公開可能なディレクトリへ配置�
 
 ```text
 htdocs/
-└─ nexapress-2.22.1/
+└─ nexapress-2.22.2/
 ```
 
 ### 3. データベースを作成
@@ -215,7 +215,7 @@ NexaPressで使用するMySQLまたはMariaDBのデータベースを作成し�
 ブラウザからNexaPressのURLへアクセスします。
 
 ```text
-http://localhost/nexapress-2.22.1/
+http://localhost/nexapress-2.22.2/
 ```
 
 未インストールの場合は、自動的にインストーラーへ移動します。
@@ -246,13 +246,13 @@ http://localhost/nexapress-2.22.1/
 
 ```text
 サイト：
-http://localhost/nexapress-2.22.1/
+http://localhost/nexapress-2.22.2/
 
 ログイン画面：
-http://localhost/nexapress-2.22.1/admin/login
+http://localhost/nexapress-2.22.2/admin/login
 
 管理画面：
-http://localhost/nexapress-2.22.1/admin
+http://localhost/nexapress-2.22.2/admin
 ```
 
 ---
@@ -280,10 +280,10 @@ NexaPress 2.2.0以降では、管理画面から本体をアップデートで�
 - バージョン情報の更新
 - 更新失敗時のバックアップ復元
 
-NexaPress 2.22.1の更新用ファイル名は以下です。
+NexaPress 2.22.2の更新用ファイル名は以下です。
 
 ```text
-nexapress-update-2.22.1.zip
+nexapress-update-2.22.2.zip
 ```
 
 ---
@@ -455,7 +455,7 @@ NexaPressには、2つのテーマが同梱されています。
 
 「フッター」も「段構成」で本体の上下に段を追加でき、各段でカラム数と配置を選べます。「ウィジェット」の「表示場所」で本体・上段・下段を選び、列を指定します。外側の「ヘッダー直下」はヘッダーから、「フッター直前」はフッターから編集できます。段やカラムを減らしたときも、ウィジェットは元の場所に保持されます。1か所に配置できる数は通常12個、ヘッダー内は従来のパーツを引き継ぐため16個です。
 
-「ウィジェット」で表示場所や列を選ぶと、サイトプレビューがその場所まで移動し、青い枠で配置範囲を示します。プレビュー上部の「配置範囲」で表示を切り替えられます。
+「ウィジェット」で表示場所や列を選ぶと、サイトプレビューがその場所まで移動し、青い枠で配置範囲を示します。見出し横の「表示」「非表示」で枠を切り替えられます。
 
 ヘッダーとフッターの幅は「テーマの既定幅」が初期値です。「標準」「ワイド（最大1440px）」「全幅」を個別に選べます。「全体設定」で背景画像を選ぶと、メディアの画像を選択したり、その場でPCから画像を追加したりできます。全体とセクションの背景色には、RGBAの入力と不透明度の調整を使用できます。
 
@@ -475,7 +475,7 @@ NexaPressには、2つのテーマが同梱されています。
 
 余白の設定欄には、プレビューで現在適用されている数値を表示します。「テーマ」の値は画面幅に合わせて更新されます。数値を変更して「公開」すると指定値を保存し、空欄にするとテーマの値に戻ります。
 
-各「余白」の直下にある「余白を表示」で、対象部位の外側余白（margin）をオレンジ、内側余白（padding）を緑でプレビューに表示できます。同じボタンで非表示に切り替えられます。
+各「余白」の見出し横にある「表示」で、対象部位の外側余白（margin）をオレンジ、内側余白（padding）を緑でプレビューに表示できます。「非表示」で消せます。
 
 プレビュー内の編集位置を指定するには、タイトル・本文を囲むタグで `\app\Core\EditorPreview::attribute('title')` と `\app\Core\EditorPreview::attribute('body')` をそれぞれ呼び出します。公開ページで本文カラムを表示するため、`assets/css/public-features.css` を読み込みます。
 
@@ -570,13 +570,13 @@ NexaPressを安定して運用するため、以下を推奨します。
 リリースには、用途の異なる2種類のZIPが含まれます。
 
 ```text
-nexapress-2.22.1.zip
+nexapress-2.22.2.zip
 ```
 
 新規インストール用の本体パッケージです。
 
 ```text
-nexapress-update-2.22.1.zip
+nexapress-update-2.22.2.zip
 ```
 
 既存のNexaPress 2.2.0以上を更新するためのパッケージです。

@@ -9,7 +9,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     async function open(kind) { await page.locator('[data-pane="' + kind + '"]').click(); }
     async function openGroup(kind, key) {
         const details = group(kind, key);
-        if (!(await details.evaluate(element => element.open))) await details.locator('> summary').click();
+        if (!(await details.evaluate(element => element.open))) await details.locator('> summary').press('Enter');
         return details;
     }
     async function links(kind) {

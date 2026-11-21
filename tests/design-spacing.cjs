@@ -11,7 +11,7 @@ module.exports = async function checkSpacingValues(page, base, output) {
     const open = async pane => {
         await page.locator('[data-pane="' + pane + '"]').click();
         const group = page.locator('[data-chrome-details="' + pane + ':spacing"]');
-        if (!(await group.evaluate(element => element.open))) await group.locator('summary').click();
+        if (!(await group.evaluate(element => element.open))) await group.locator('summary').press('Enter');
     };
     const publish = async () => {
         const [response] = await Promise.all([page.waitForResponse(base + '/admin/design/publish'),

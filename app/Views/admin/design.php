@@ -42,7 +42,6 @@
             <div class="nx-design-preview-bar">
                 <strong>サイトプレビュー</strong>
                 <div class="nx-design-actions">
-                    <button type="button" class="nx-design-small" data-action="toggle-widget-highlight" aria-pressed="true" hidden>配置範囲</button>
                     <div class="nx-design-switch" role="group" aria-label="表示するデザイン">
                         <button type="button" data-mode="draft" aria-pressed="true">編集中</button>
                         <button type="button" data-mode="published" aria-pressed="false">公開版</button>

@@ -27,7 +27,7 @@ module.exports = async function checkCategoryWidgets(page, base, output) {
         const kind = area === 'sidebar' ? 'columns' : 'header';
         await page.locator('[data-pane="' + kind + '"]').click();
         const details = page.locator('[data-chrome-details="' + kind + ':widgets"]');
-        if (!(await details.evaluate(element => element.open))) await details.locator('> summary').click();
+        if (!(await details.evaluate(element => element.open))) await details.locator('> summary').press('Enter');
         if (kind === 'header') await selectWidgetLocation(details, area);
         await details.locator('[data-action="edit"][data-index="' + index + '"]').click();
     }

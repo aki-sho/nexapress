@@ -107,7 +107,7 @@ module.exports = async function checkDesign(page, base, output) {
         await page.locator('[data-pane="columns"]').click();
         await page.locator('[data-setting="columns"]').selectOption('left');
         const sidebar = page.locator('[data-chrome-details="columns:widgets"]');
-        await sidebar.locator('> summary').click();
+        await sidebar.locator('> summary').press('Enter');
         await sidebar.locator('[data-action="add"]').click();
         const form = page.locator('[data-designer-form]');
         await form.locator('[name="title"]').fill('移動するウィジェット');
@@ -146,7 +146,7 @@ module.exports = async function checkDesign(page, base, output) {
         await links.locator('[data-action="remove"][data-index="' + menuCount + '"]').click();
         await page.locator('[data-pane="footer"]').click();
         const footerWidgets = page.locator('[data-chrome-details="footer:widgets"]');
-        await footerWidgets.locator('> summary').click();
+        await footerWidgets.locator('> summary').press('Enter');
         await footerWidgets.locator('[data-widget-row="list"]').selectOption('footer_before');
         const movedIndex = stored.themes[theme].state.layout.widgets.footer_before.findIndex(item => item.title === '移動するウィジェット');
         await footerWidgets.locator('[data-action="remove"][data-index="' + movedIndex + '"]').click();
