@@ -1,5 +1,6 @@
 const assert = require('assert/strict');
 const path = require('path');
+const selectWidgetLocation = require('./widget-location.cjs');
 
 module.exports = async function checkChromeLayouts(page, base, output) {
     const control = (kind, row, field) => page.locator(
@@ -28,15 +29,16 @@ module.exports = async function checkChromeLayouts(page, base, output) {
         await page.waitForFunction(() => document.querySelector('[data-action="publish"]').disabled);
         return response.json();
     }
-    async function addWidget(kind, area, text) {
+    async function addWidget(kind, area, text, destination = area) {
         await open(kind);
         const widgets = await openGroup(kind, 'widgets');
-        await widgets.locator('[data-setting="area"]').selectOption(area);
+        await selectWidgetLocation(widgets, area);
         await widgets.locator('[data-action="add"]').click();
         const form = page.locator('[data-designer-form]');
         await form.locator('[data-form-setting="type"]').selectOption('text');
         await form.locator('[name="title"]').fill(text);
         await form.locator('[name="text"]').fill(text + 'の内容');
+        if (destination !== area) await selectWidgetLocation(form, destination, true);
         await form.getByRole('button', {name: '追加', exact: true}).click();
     }
     async function waitRows(counts) {
@@ -54,7 +56,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     assert.deepEqual(await page.locator('.nx-design-tabs > button').allTextContents(),
         ['ヘッダー', '本文カラム', 'フッター', 'ページ毎のレイアウト']);
     const headerWidgets = await openGroup('header', 'widgets');
-    await headerWidgets.locator('[data-setting="area"]').selectOption('header1');
+    await selectWidgetLocation(headerWidgets, 'header1');
     assert.equal(await page.locator('[data-action="publish"]').isDisabled(), true, 'selecting a header slot keeps the layout clean');
     await links('header');
     assert.equal(await page.locator('[data-action="publish"]').isDisabled(), true, 'opening link settings does not change the layout');
@@ -122,11 +124,11 @@ module.exports = async function checkChromeLayouts(page, base, output) {
         const source = Object.entries(initial.themes[initial.active].state.layout.widgets)
             .find(([area, list]) => area.startsWith('header') && list.some(item => item.type === type))[0];
         const widgets = await openGroup('header', 'widgets');
-        await widgets.locator('[data-setting="area"]').selectOption(source);
+        await selectWidgetLocation(widgets, source);
         const row = widgets.locator('.nx-design-item').filter({has: page.locator('span.nx-design-note', {hasText: initial.widgets[type]})});
         await row.locator('[data-action="edit"]').click();
         const form = page.locator('[data-designer-form]');
-        await form.locator('[name="area"]').selectOption(destination);
+        await selectWidgetLocation(form, destination, true);
         assert.equal(await form.locator('[name="area"]').evaluate(el => el === document.activeElement), true);
         await form.getByRole('button', {name: '反映', exact: true}).click();
     }
@@ -135,14 +137,28 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     await addWidget('header', 'header_bottom2', 'ヘッダー下段2');
     await addWidget('header', 'header_after', 'ヘッダー直下の案内');
     await open('footer');
-    await set('footer', '', 'split', 2);
+    const footerRow = row => page.locator('[data-action="footer-row"][data-row="' + row + '"]');
+    const footerStructure = page.locator('[data-chrome-details="footer:structure"]');
+    assert((await footerStructure.textContent()).includes('フッター本体'));
+    const frame = page.frameLocator('#nx-design-frame');
+    const footerBody = frame.locator('.site-footer > [data-chrome-row="top"]');
+    const originalBody = await footerBody.evaluate(node => [getComputedStyle(node).display, node.offsetHeight, node.textContent]);
+    await footerRow('above').click();
+    await frame.locator('.site-footer > [data-chrome-row="above"]').waitFor();
+    assert.deepEqual(await footerBody.evaluate(node => [getComputedStyle(node).display, node.offsetHeight, node.textContent]), originalBody);
+    await footerRow('below').click();
+    await frame.locator('.site-footer > [data-chrome-row="bottom"]').waitFor();
+    assert.deepEqual(await footerBody.evaluate(node => [getComputedStyle(node).display, node.offsetHeight, node.textContent]), originalBody);
+    await set('footer', 'above', 'columns', 3);
+    await set('footer', 'above', 'align', 'flex-start');
     await set('footer', 'top', 'columns', 4);
     await set('footer', 'bottom', 'columns', 5);
     await set('footer', 'top', 'align', 'flex-end');
     await set('footer', 'bottom', 'align', 'space-between');
     assert.equal(await control('footer', 'bottom', 'columns').locator('option').count(), 5);
     assert.equal(await control('footer', 'bottom', 'align').locator('option').count(), 4);
-    await addWidget('footer', 'footer4', 'フッター上段4');
+    await addWidget('footer', 'footer4', 'フッター本体4');
+    await addWidget('footer', 'footer1', 'フッター上段3', 'footer_above3');
     await addWidget('footer', 'footer_bottom5', 'フッター下段5');
     await addWidget('footer', 'footer_before', 'フッター直前の案内');
     await waitRows([5, 2, 4, 5]);
@@ -157,6 +173,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     assert.equal(await control('header', 'bottom', 'columns').inputValue(), '2');
     await open('footer');
     assert.equal(await control('footer', 'top', 'columns').inputValue(), '4');
+    assert.equal(await control('footer', 'above', 'columns').inputValue(), '3');
     assert.equal(await control('footer', 'bottom', 'columns').inputValue(), '5');
     const data = JSON.parse(await page.locator('#nx-design-data').textContent());
     assert(data.themes.default.state.menus.footer.some(item => item.label === 'フッター配置確認' && item.url === '/posts'));
@@ -172,7 +189,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     await visitor.goto(base + '/');
     const expected = [
         ['header', 'top', 5, 'flex-start'], ['header', 'bottom', 2, 'center'],
-        ['footer', 'top', 4, 'flex-end'], ['footer', 'bottom', 5, 'space-between'],
+        ['footer', 'above', 3, 'flex-start'], ['footer', 'top', 4, 'flex-end'], ['footer', 'bottom', 5, 'space-between'],
     ];
     for (const [kind, row, count, align] of expected) {
         const element = visitor.locator('[data-chrome="' + kind + '"][data-chrome-row="' + row + '"]');
@@ -197,6 +214,10 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     assert.equal(await visitor.locator('[data-widget-area="header_bottom1"] .site-nav').count(), 1);
     assert((await visitor.locator('[data-widget-area="header_bottom2"]').textContent()).includes('ヘッダー下段2'));
     assert((await visitor.locator('[data-widget-area="footer_bottom5"]').textContent()).includes('フッター下段5'));
+    assert((await visitor.locator('[data-widget-area="footer_above3"]').textContent()).includes('フッター上段3'));
+    assert.deepEqual(await visitor.locator('.site-footer > [data-chrome-row]').evaluateAll(nodes =>
+        nodes.map(node => node.dataset.chromeRow)), ['above', 'top', 'bottom']);
+    assert.equal(await visitor.locator('[data-design-area="footer_before"] + .site-footer').count(), 1);
     await visitor.screenshot({path: path.join(output, 'chrome-public-desktop.png'), fullPage: true});
     await visitor.setViewportSize({width: 390, height: 844});
     assert(await visitor.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
@@ -210,6 +231,8 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     for (const mutate of [
         state => { state.layout.headerRows.top.columns = 6; },
         state => { state.layout.footer = 6; },
+        state => { state.layout.footerAbove.columns = 6; },
+        state => { state.layout.footerAbove.enabled = 'yes'; },
         state => { state.layout.footerRows.bottom.align = 'url(https://example.test/)'; },
         state => { state.layout.headerRows.positions.menu.row = 'other'; },
     ]) {
@@ -221,13 +244,17 @@ module.exports = async function checkChromeLayouts(page, base, output) {
         assert.equal(response.status(), 422);
     }
     await open('footer');
-    await set('footer', '', 'split', 1);
+    await footerRow('below').click();
+    await footerRow('above').click();
     await publish();
     await page.reload();
     await open('footer');
-    assert.equal(await control('footer', '', 'split').inputValue(), '1');
-    await set('footer', '', 'split', 2);
+    assert.match(await footerRow('below').textContent(), /下に段を追加/);
+    assert.match(await footerRow('above').textContent(), /上に段を追加/);
+    await footerRow('above').click();
+    await footerRow('below').click();
     await waitRows([5, 2, 4, 5]);
+    await frame.locator('[data-widget-area="footer_above3"]', {hasText: 'フッター上段3'}).waitFor();
     await publish();
     await page.locator('[data-setting="theme"]').selectOption('monoedge');
     await open('header');
@@ -235,7 +262,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     await set('header', 'top', 'columns', 5);
     await set('header', 'bottom', 'columns', 1);
     await open('footer');
-    await set('footer', '', 'split', 2);
+    await footerRow('below').click();
     await set('footer', 'top', 'columns', 2);
     await set('footer', 'bottom', 'columns', 5);
     await page.waitForFunction(() => {

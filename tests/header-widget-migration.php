@@ -79,7 +79,7 @@ foreach (\app\Core\Design::headerWidgetAreas() as $area) {
     checkHeader(count($validate->invoke(null, [['type' => 'site_icon'], ['type' => 'site_name']], $area)) === 2,
         $area . ': accepts header types');
 }
-foreach (['sidebar', 'header_after', 'footer_before', 'footer1', 'footer_bottom5'] as $area) {
+foreach (['sidebar', 'header_after', 'footer_before', 'footer1', 'footer_above5', 'footer_bottom5'] as $area) {
     foreach (['site_icon', 'site_name'] as $type) {
         rejectsHeader(static fn() => $validate->invoke(null, [['type' => $type]], $area), $area . ': rejects ' . $type);
     }

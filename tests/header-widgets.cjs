@@ -1,5 +1,6 @@
 const assert = require('assert/strict');
 const path = require('path');
+const selectWidgetLocation = require('./widget-location.cjs');
 
 module.exports = async function checkHeaderWidgets(page, base, output) {
     const endpoint = base + '/admin/design/publish';
@@ -34,7 +35,7 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
         await page.locator('[data-pane="' + pane + '"]').click();
         const group = page.locator('[data-chrome-details="' + pane + ':widgets"]');
         if (!(await group.evaluate(node => node.open))) await group.locator('summary').click();
-        await group.locator('[data-setting="area"]').selectOption(area);
+        await selectWidgetLocation(group, area);
         if (index === undefined) await group.locator('[data-action="add"]').click();
         else await group.locator('[data-action="edit"]').nth(index).click();
         return group;
@@ -79,24 +80,24 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             await form.locator('[data-action="cancel"]').click();
             await widgets('header1', 1);
             assert.equal(await form.locator('[name="type"]').inputValue(), 'site_name');
-            await form.locator('[name="area"]').selectOption('header2');
+            await selectWidgetLocation(form, 'header2', true);
             await apply();
             await widgets('header3', 0);
-            await form.locator('[name="area"]').selectOption('footer1');
-            const heading = '検索 <img data-widget-attack src=x> & "確認"';
-            await form.locator('[name="title"]').fill(heading);
-            await apply();
+            const headerLocations = form.locator('[data-widget-row="form"] option');
+            assert((await headerLocations.allTextContents()).includes('ヘッダー本体'));
+            assert((await headerLocations.allTextContents()).includes('ヘッダー直下'));
+            assert(!(await headerLocations.allTextContents()).some(label => label.includes('フッター')));
+            await form.locator('[data-action="cancel"]').click();
             await widgets('footer1');
             const footerTypes = await form.locator('[name="type"] option').evaluateAll(nodes => nodes.map(node => node.value));
             assert(footerTypes.includes('search') && !footerTypes.includes('site_icon') && !footerTypes.includes('site_name'));
-            await form.locator('[name="area"]').selectOption('header3');
-            assert.equal(await form.locator('[name="type"] option[value="site_name"]').count(), 1);
-            await form.locator('[name="type"]').selectOption('site_name');
-            assert((await form.locator('[name="area"] option').evaluateAll(nodes => nodes.map(node => node.value)))
-                .every(area => initial.headerWidgetAreas.includes(area)));
-            await form.locator('[data-action="cancel"]').click();
-            await widgets('header3');
+            const footerLocations = form.locator('[data-widget-row="form"] option');
+            assert((await footerLocations.allTextContents()).includes('フッター本体'));
+            assert((await footerLocations.allTextContents()).includes('フッター直前'));
+            assert(!(await footerLocations.allTextContents()).some(label => label.includes('ヘッダー')));
             await form.locator('[name="type"]').selectOption('search');
+            const heading = '検索 <img data-widget-attack src=x> & "確認"';
+            await form.locator('[name="title"]').fill(heading);
             await apply();
             await publish();
             await page.reload();
@@ -125,7 +126,7 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             await page.locator('[data-pane="header"]').click();
             const group = page.locator('[data-chrome-details="header:widgets"]');
             if (!(await group.evaluate(node => node.open))) await group.locator('summary').click();
-            await group.locator('[data-setting="area"]').selectOption('header2');
+            await selectWidgetLocation(group, 'header2');
             await group.locator('[data-action="remove"]').nth(1).click();
             await publish();
             await page.reload();

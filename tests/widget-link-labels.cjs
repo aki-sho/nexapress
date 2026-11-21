@@ -1,5 +1,6 @@
 const assert = require('assert/strict');
 const path = require('path');
+const selectWidgetLocation = require('./widget-location.cjs');
 
 module.exports = async function checkWidgetLabels(page, base, output) {
     async function catalog() {
@@ -42,8 +43,7 @@ module.exports = async function checkWidgetLabels(page, base, output) {
         await page.locator('[data-pane="' + pane + '"]').click();
         const group = page.locator('[data-chrome-details="' + pane + ':widgets"]');
         if (!(await group.evaluate(element => element.open))) await group.locator('summary').click();
-        const areaChoice = group.locator('[data-setting="area"]');
-        if (await areaChoice.count()) await areaChoice.selectOption(area);
+        await selectWidgetLocation(group, area);
         if (index === undefined) await group.locator('[data-action="add"]').click();
         else await group.locator('[data-action="edit"]').nth(index).click();
     }

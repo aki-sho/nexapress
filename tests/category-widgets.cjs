@@ -1,5 +1,6 @@
 const assert = require('assert/strict');
 const path = require('path');
+const selectWidgetLocation = require('./widget-location.cjs');
 
 module.exports = async function checkCategoryWidgets(page, base, output) {
     async function catalog() {
@@ -27,7 +28,7 @@ module.exports = async function checkCategoryWidgets(page, base, output) {
         await page.locator('[data-pane="' + kind + '"]').click();
         const details = page.locator('[data-chrome-details="' + kind + ':widgets"]');
         if (!(await details.evaluate(element => element.open))) await details.locator('> summary').click();
-        if (kind === 'header') await details.locator('[data-setting="area"]').selectOption(area);
+        if (kind === 'header') await selectWidgetLocation(details, area);
         await details.locator('[data-action="edit"][data-index="' + index + '"]').click();
     }
     const initial = await catalog();

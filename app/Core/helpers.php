@@ -120,10 +120,24 @@ function nx_design_region(string $area): void
 function nx_design_footer(): void
 {
     $design = nx_design_settings();
-    $columns = $design['footer'];
     $rows = $design['footerRows'];
+    $above = $design['footerAbove'];
+    $sections = [];
+    if ($above['enabled']) {
+        $visible = \app\Core\Design::isDraftPreview();
+        for ($column = 1; $column <= $above['columns'] && !$visible; $column++) {
+            $visible = (bool)$design['widgets']['footer_above' . $column];
+        }
+        if ($visible) {
+            $sections['above'] = ['prefix' => 'footer_above', 'columns' => $above['columns'], 'align' => $above['align']];
+        }
+    }
+    $sections['top'] = ['prefix' => 'footer', 'columns' => $design['footer'], 'align' => $rows['top']['align'] ?? null];
+    if ($rows['split'] ?? false) {
+        $sections['bottom'] = ['prefix' => 'footer_bottom'] + $rows['bottom'];
+    }
     $width = $design['footerWidth'];
-    require BASE_PATH . ($rows === null ? '/app/Views/design/footer.php' : '/app/Views/design/footer-rows.php');
+    require BASE_PATH . '/app/Views/design/footer.php';
 }
 
 function nx_archive_page_url(int $page, string $path = '', string $query = ''): string

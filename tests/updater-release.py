@@ -247,6 +247,21 @@ function curl_setopt_array($handle, array $options): bool {
                         check('site-title' in public_header and 'Retained updater test site' in public_header
                               and 'Retained header content' in public_header and 'site-icon-link' not in public_header,
                               ref + ': migrated site identity and existing header content render publicly')
+                    if (2, 21, 0) <= tuple(map(int, version.split('.'))) < (2, 22, 0) <= tuple(map(int, target.split('.'))):
+                        layout = data['themes']['default']['state']['layout']
+                        check(layout['footer'] == 3
+                              and layout['footerRows'] == {'split': True, 'top': {'align': 'flex-end'},
+                                                          'bottom': {'columns': 2, 'align': 'center'}}
+                              and layout['footerAbove'] == {'enabled': False, 'columns': 1, 'align': 'center'}
+                              and layout['widgets']['footer2'][0]['text'] == 'Retained footer body'
+                              and layout['widgets']['footer_bottom2'][0]['text'] == 'Retained footer lower row'
+                              and layout['widgets']['footer_before'][0]['text'] == 'Retained footer outside',
+                              ref + ': footer columns, alignment and outside widgets survive the real update')
+                        public = guest.request('/')[1]
+                        footer = public.split('<footer class="site-footer"', 1)[1].split('</footer>', 1)[0]
+                        check('Retained footer body' in footer and 'Retained footer lower row' in footer
+                              and 'data-chrome-row="above"' not in footer and 'Retained footer outside' in public,
+                              ref + ': existing footer placements render after the update')
                     status, body, _ = admin.request('/admin/design/post-layout/1')
                     check(status == 200 and json.loads(body)['kind'] == 'post',
                           ref + ': updated post layout schema and route work')

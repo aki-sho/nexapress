@@ -59,7 +59,7 @@ module.exports = async function checkDesignAppearance(page, base, output) {
     const widgets = page.locator('[data-chrome-details="header:widgets"]');
     async function addText(place, label, text) {
         assert.equal(await widgets.locator('[data-setting="area"]').inputValue(), place);
-        assert.equal(await widgets.locator('[data-setting="area"] option:checked').textContent(), label);
+        assert.equal(await widgets.locator('[data-widget-row="list"] option:checked').textContent(), label);
         await widgets.locator('[data-action="add"]').click();
         const form = page.locator('[data-designer-form]');
         await form.locator('[name="text"]').fill(text);

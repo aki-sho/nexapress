@@ -132,6 +132,7 @@ module.exports = async function checkDesignReset(page, base, output) {
         assert.equal(state.layout.headerWidth, 'theme');
         assert.equal(state.layout.footerWidth, 'theme');
         assert.equal(state.layout.footer, 1);
+        assert.deepEqual(state.layout.footerAbove, {enabled: false, columns: 1, align: 'center'});
         assert.equal(state.background.mode, 'theme');
         assert.deepEqual(state.layout.widgets.sidebar, []);
         assert.equal(state.layout.widgets.footer1[0].type, 'copyright');

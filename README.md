@@ -5,7 +5,7 @@
 NexaPressは、PHPとMySQL／MariaDBで動作するWeb CMSです。  
 ブラウザからの初期セットアップに対応し、投稿、固定ページ、メディア、テーマ、ユーザー、拡張機能を管理画面から一元管理できます。
 
-![Version](https://img.shields.io/badge/version-v2.21.0-2563eb)
+![Version](https://img.shields.io/badge/version-v2.22.0-2563eb)
 ![PHP](https://img.shields.io/badge/PHP-8.x-777bb4)
 ![Database](https://img.shields.io/badge/MySQL%20%2F%20MariaDB-supported-f59e0b)
 ![Architecture](https://img.shields.io/badge/Architecture-MVC-111827)
@@ -194,7 +194,7 @@ NexaPressを動作させるには、以下の環境が必要です。
 GitHub Releasesから最新版の本体ZIPをダウンロードします。
 
 ```text
-nexapress-2.21.0.zip
+nexapress-2.22.0.zip
 ```
 
 ### 2. サーバーへ配置
@@ -203,7 +203,7 @@ ZIPを展開し、Webサーバーの公開可能なディレクトリへ配置�
 
 ```text
 htdocs/
-└─ nexapress-2.21.0/
+└─ nexapress-2.22.0/
 ```
 
 ### 3. データベースを作成
@@ -215,7 +215,7 @@ NexaPressで使用するMySQLまたはMariaDBのデータベースを作成し�
 ブラウザからNexaPressのURLへアクセスします。
 
 ```text
-http://localhost/nexapress-2.21.0/
+http://localhost/nexapress-2.22.0/
 ```
 
 未インストールの場合は、自動的にインストーラーへ移動します。
@@ -246,13 +246,13 @@ http://localhost/nexapress-2.21.0/
 
 ```text
 サイト：
-http://localhost/nexapress-2.21.0/
+http://localhost/nexapress-2.22.0/
 
 ログイン画面：
-http://localhost/nexapress-2.21.0/admin/login
+http://localhost/nexapress-2.22.0/admin/login
 
 管理画面：
-http://localhost/nexapress-2.21.0/admin
+http://localhost/nexapress-2.22.0/admin
 ```
 
 ---
@@ -280,10 +280,10 @@ NexaPress 2.2.0以降では、管理画面から本体をアップデートで�
 - バージョン情報の更新
 - 更新失敗時のバックアップ復元
 
-NexaPress 2.21.0の更新用ファイル名は以下です。
+NexaPress 2.22.0の更新用ファイル名は以下です。
 
 ```text
-nexapress-update-2.21.0.zip
+nexapress-update-2.22.0.zip
 ```
 
 ---
@@ -453,7 +453,7 @@ NexaPressには、2つのテーマが同梱されています。
 
 「ヘッダー」の「段構成」で、ヘッダー本体の上と下にそれぞれ段を追加できます。中身はフッターと共通の「ウィジェット」で編集し、「種類」と「表示場所」を選んで配置します。「サイトアイコン」「サイト名」はヘッダー内だけで選べる種類です。アイコンと名前は「設定 → 一般設定」の登録内容を表示します。「メニュー」「検索」も種類から選べ、検索はフッターにも配置できます。従来のサイト情報・メニュー・検索欄は、表示状態と配置先を引き継ぎます。
 
-「フッター」では1段・上下2段、各段のカラム数と配置を選べます。段やカラムを減らしたときも、ウィジェットは元の場所に保持されます。1か所に配置できる数は通常12個、ヘッダー内は従来のパーツを引き継ぐため16個です。
+「フッター」も「段構成」で本体の上下に段を追加でき、各段でカラム数と配置を選べます。「ウィジェット」の「表示場所」で本体・上段・下段を選び、列を指定します。外側の「ヘッダー直下」はヘッダーから、「フッター直前」はフッターから編集できます。段やカラムを減らしたときも、ウィジェットは元の場所に保持されます。1か所に配置できる数は通常12個、ヘッダー内は従来のパーツを引き継ぐため16個です。
 
 ヘッダーとフッターの幅は「テーマの既定幅」が初期値です。「標準」「ワイド（最大1440px）」「全幅」を個別に選べます。「全体設定」で背景画像を選ぶと、メディアの画像を選択したり、その場でPCから画像を追加したりできます。全体とセクションの背景色には、RGBAの入力と不透明度の調整を使用できます。
 
@@ -486,9 +486,9 @@ NexaPressには、2つのテーマが同梱されています。
 | `page_layout` | 固定ページ・投稿詳細のセクションと本文幅、共通設定の継承に対応します。テーマの `templates/layout.php` で `nx_design_main($content ?? '', $pageDesign ?? null)` を呼び、`site-design.css` を読み込みます。 |
 | `footer_before` | 本文とフッターの間で `nx_design_region('footer_before')` を呼び出します。 |
 | `footer` | `nx_design_footer()` と `site-design.css` を使用すると、フッターの幅・カラム・ウィジェットを反映できます。 |
-| `footer_rows` | `footer` と併せて宣言し、`nx_design_footer()` と `site-design.css` を使用します。上下2段・各1〜5カラム・配置に対応します。 |
+| `footer_rows` | `footer` と併せて宣言し、`nx_design_footer()` と `site-design.css` を使用します。本体・上段・下段の各1〜5カラムと配置に対応します。 |
 
-各カラムのウィジェットは、ヘッダー上段が `header1`〜`header5`、下段が `header_bottom1`〜`header_bottom5`、フッター上段が `footer1`〜`footer5`、下段が `footer_bottom1`〜`footer_bottom5` に保存されます。既存の1段設定とフッターのウィジェットを引き継ぎます。
+ウィジェットの保存先は、ヘッダー本体が `header1`〜`header5`、上段が `header_above`、下段が `header_bottom1`〜`header_bottom5` です。フッター本体は `footer1`〜`footer5`、上段は `footer_above1`〜`footer_above5`、下段は `footer_bottom1`〜`footer_bottom5` です。既存の1段設定とフッターのウィジェットを引き継ぎます。
 
 標準の部品を使う場合は、同梱テーマと同様に `public/assets/css/site-design.css` を読み込めます。対応箇所の宣言がないテーマは既存のテンプレートで表示され、従来の `nx_navigation()` も引き続き使えます。
 
@@ -568,13 +568,13 @@ NexaPressを安定して運用するため、以下を推奨します。
 リリースには、用途の異なる2種類のZIPが含まれます。
 
 ```text
-nexapress-2.21.0.zip
+nexapress-2.22.0.zip
 ```
 
 新規インストール用の本体パッケージです。
 
 ```text
-nexapress-update-2.21.0.zip
+nexapress-update-2.22.0.zip
 ```
 
 既存のNexaPress 2.2.0以上を更新するためのパッケージです。

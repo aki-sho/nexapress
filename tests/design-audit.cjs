@@ -147,7 +147,7 @@ module.exports = async function checkDesign(page, base, output) {
         await page.locator('[data-pane="footer"]').click();
         const footerWidgets = page.locator('[data-chrome-details="footer:widgets"]');
         await footerWidgets.locator('> summary').click();
-        await footerWidgets.locator('[data-setting="area"]').selectOption('footer_before');
+        await footerWidgets.locator('[data-widget-row="list"]').selectOption('footer_before');
         const movedIndex = stored.themes[theme].state.layout.widgets.footer_before.findIndex(item => item.title === '移動するウィジェット');
         await footerWidgets.locator('[data-action="remove"][data-index="' + movedIndex + '"]').click();
         const [removed] = await Promise.all([page.waitForResponse(base + '/admin/design/publish'),

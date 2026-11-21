@@ -27,7 +27,7 @@ final class Design
     {
         $areas = self::REGIONS + ['sidebar' => 'サイドバー', 'header_above' => '上段'];
         foreach (['header' => 'ヘッダー本体', 'header_bottom' => '下段',
-            'footer' => 'フッター上段', 'footer_bottom' => 'フッター下段'] as $prefix => $label) {
+            'footer' => 'フッター本体', 'footer_above' => 'フッター上段', 'footer_bottom' => 'フッター下段'] as $prefix => $label) {
             for ($column = 1; $column <= 5; $column++) {
                 $areas[$prefix . $column] = $label . '・' . $column . '列目';
             }
@@ -61,7 +61,7 @@ final class Design
 
     public static function footerRowDefaults(): array
     {
-        return ['split' => false, 'top' => ['align' => 'center'],
+        return ['split' => false, 'top' => null,
             'bottom' => ['columns' => 1, 'align' => 'center']];
     }
 
@@ -263,10 +263,17 @@ final class Design
                         $defaults['headerBelow'] = false;
                         $defaults['header']['placement'] = $defaults['headerRows']['split'] ? 'stack' : 'row';
                     }
+                } else {
+                    $above = $layout['footerAbove'] ?? $defaults['footerAbove'];
+                    if (!is_array($above) || !is_bool($above['enabled'] ?? null)) {
+                        throw new InvalidArgumentException('フッターの上段設定を確認してください。');
+                    }
+                    $defaults['footerAbove'] = ['enabled' => $above['enabled']] +
+                        self::rowSettings(array_diff_key($above, ['enabled' => true]), true);
                 }
                 foreach (array_keys(self::widgetAreas()) as $key) {
                     if (($kind === 'header' && preg_match('/^header(?:_bottom)?[1-5]$/D', $key)) ||
-                        ($kind === 'footer' && preg_match('/^footer_bottom[1-5]$/D', $key))) {
+                        ($kind === 'footer' && preg_match('/^footer_(?:above|bottom)[1-5]$/D', $key))) {
                         $defaults['widgets'][$key] = self::widgets($layout['widgets'][$key] ?? [], $key);
                     }
                 }
@@ -577,6 +584,7 @@ final class Design
             'width' => 'standard',
             'footer' => 1,
             'footerRows' => null,
+            'footerAbove' => ['enabled' => false, 'columns' => 1, 'align' => 'center'],
             'footerWidth' => 'theme',
             'spacing' => DesignSpacing::defaults(),
             'widgets' => $widgets,
@@ -607,16 +615,11 @@ final class Design
         }
         $result = ['split' => $input['split']];
         foreach (['top', 'bottom'] as $row) {
-            $value = $input[$row] ?? null;
-            $hasColumns = $kind === 'header' || $row === 'bottom';
-            if (!is_array($value) || array_diff(array_keys($value), $hasColumns ? ['columns', 'align'] : ['align']) ||
-                !in_array($value['align'] ?? null, array_keys(self::ALIGNMENTS), true) ||
-                ($hasColumns && !in_array($value['columns'] ?? null, [1, 2, 3, 4, 5], true))) {
-                throw new InvalidArgumentException('各段のカラム数・配置を確認してください。');
+            if ($kind === 'footer' && $row === 'top' && array_key_exists('top', $input) && $input['top'] === null) {
+                $result[$row] = null;
+                continue;
             }
-            $result[$row] = $hasColumns
-                ? ['columns' => $value['columns'], 'align' => $value['align']]
-                : ['align' => $value['align']];
+            $result[$row] = self::rowSettings($input[$row] ?? null, $kind === 'header' || $row === 'bottom');
         }
         if ($kind === 'header') {
             $positions = $input['positions'] ?? null;
@@ -636,6 +639,16 @@ final class Design
             }
         }
         return $result;
+    }
+
+    private static function rowSettings(mixed $value, bool $hasColumns): array
+    {
+        if (!is_array($value) || array_diff(array_keys($value), $hasColumns ? ['columns', 'align'] : ['align']) ||
+            !in_array($value['align'] ?? null, array_keys(self::ALIGNMENTS), true) ||
+            ($hasColumns && !in_array($value['columns'] ?? null, [1, 2, 3, 4, 5], true))) {
+            throw new InvalidArgumentException('各段のカラム数・配置を確認してください。');
+        }
+        return $hasColumns ? ['columns' => $value['columns'], 'align' => $value['align']] : ['align' => $value['align']];
     }
 
     private static function menu(mixed $items, int $limit): array

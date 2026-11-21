@@ -19,10 +19,10 @@
     const areas = data.widgetAreas;
     const menus = {header: 'ヘッダーのリンク', footer: 'フッターのリンク'};
     const labels = {header: 'ヘッダー', header_rows: 'ヘッダーの段構成', columns: '本文カラム',
-        footer: 'フッター', footer_rows: 'フッターの上下分割', page_layout: 'ページ毎のレイアウト', ...regions};
+        footer: 'フッター', footer_rows: 'フッターの段構成', page_layout: 'ページ毎のレイアウト', ...regions};
     const designColor = window.NexaPressDesignColor;
     const chromeOpen = new Map();
-    const selectedWidgetAreas = {header: 'header1', columns: 'sidebar', footer: 'footer_before'};
+    const selectedWidgetAreas = {header: 'header1', columns: 'sidebar', footer: 'footer1'};
     const clone = value => JSON.parse(JSON.stringify(value));
     const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
     const isHeaderWidgetArea = area => data.headerWidgetAreas.includes(area);
@@ -80,21 +80,33 @@
         }
         return layout[key];
     }
+    const widgetColumn = /^(header|footer)(?:_(above|bottom))?([1-5])$/;
+    const widgetLocation = area => {
+        if (area === 'header_above') return {row: 'above', column: 1};
+        const match = widgetColumn.exec(area);
+        return match ? {row: match[2] || 'top', column: Number(match[3])} : {row: area, column: null};
+    };
     const activeAreas = () => Object.keys(areas).filter(key => {
         if (regionIds.includes(key)) return supports(key);
         if (key === 'sidebar') return supports('columns') && layouts[theme].columns !== 'none';
         if (key === 'header_above') return supports('header_rows') && layouts[theme].headerAbove;
-        const match = /^(header|footer)(_bottom)?([1-5])$/.exec(key);
+        const match = widgetColumn.exec(key);
         if (!match) return false;
-        const [, kind, bottom, number] = match;
-        if (!supports(kind === 'header' && !bottom ? kind : bottom ? kind + '_rows' : kind)) return false;
+        const [, kind, row, number] = match;
+        if (!supports(row ? kind + '_rows' : kind)) return false;
+        if (row === 'above') {
+            const above = layouts[theme].footerAbove;
+            return above.enabled && Number(number) <= above.columns;
+        }
         const rows = chromeRows(kind);
-        return (!bottom || rows.split) && Number(number) <=
-            (kind === 'footer' && !bottom ? layouts[theme].footer : rows[bottom ? 'bottom' : 'top'].columns);
+        return (!row || rows.split) && Number(number) <=
+            (kind === 'footer' && !row ? layouts[theme].footer : rows[row || 'top'].columns);
     });
     const widgetAreaLabel = area => area === 'header_bottom1' && chromeRows('header').bottom.columns === 1 ? '下段' : areas[area];
     const hasChanges = id => !same(menuItems, published[id].menus) || !same(layouts[id], published[id].layout);
     const widgetPane = area => area === 'sidebar' ? 'columns' : area.startsWith('header') ? 'header' : 'footer';
+    const widgetDestinations = (kind, type) => activeAreas().filter(area =>
+        (kind === 'columns' || widgetPane(area) === kind) && (!isHeaderWidgetType(type) || isHeaderWidgetArea(area)));
     const currentList = list => list === 'links' ? menuItems[pane] : layouts[theme].widgets[selectedWidgetAreas[pane]];
     const itemControl = (list, selector) => '[data-chrome-details="' + pane + ':' + list + '"] ' + selector;
     const categoryIds = item => item.reference_ids ?? (item.reference_id ? [item.reference_id] : []);
@@ -190,11 +202,12 @@
                 linkField(item) +
                 `<label>表示名<input name="label" maxlength="255" required value="${escape(item.label)}"></label>`;
         } else {
-            const destinations = activeAreas().filter(area => !isHeaderWidgetType(item.type) || isHeaderWidgetArea(area));
+            const destinations = widgetDestinations(pane, item.type);
             const destination = destinations.includes(item.area) ? item.area : selectedWidgetAreas[pane];
             const types = Object.entries(data.widgets).filter(([type]) => !isHeaderWidgetType(type) || isHeaderWidgetArea(destination));
             fields = field('種類', 'type', types, item.type, 'data-form-setting="type"') +
-                field('表示場所', 'area', destinations.map(id => [id, widgetAreaLabel(id)]), destination, 'required');
+                (pane === 'columns' ? field('表示場所', 'area', destinations.map(id => [id, widgetAreaLabel(id)]), destination, 'required')
+                    : widgetLocationFields(pane, destinations, destination, 'form'));
             if (isHeaderWidgetType(item.type)) {
                 fields += '<p class="nx-design-note">サイトに登録した' + escape(data.widgets[item.type]) + 'を表示します。</p>';
             } else if (item.type === 'category') {
@@ -356,6 +369,22 @@
             '<div>' + button('add', links ? '＋ 項目を追加' : '＋ ウィジェットを追加') + '</div>');
     }
 
+    function widgetLocationFields(kind, available, current, picker) {
+        const {row, column} = widgetLocation(current);
+        const names = {above: '上段', top: labels[kind] + '本体', bottom: '下段', ...regions};
+        const rows = Object.entries(names).filter(([key]) => available.some(area => widgetLocation(area).row === key));
+        const place = field('表示場所', '', rows, row, 'data-widget-row="' + picker + '"');
+        const editing = picker === 'form';
+        if (column === null) {
+            return place + (editing ? '<input type="hidden" name="area" value="' + escape(current) + '">' : '');
+        }
+        const columns = available.filter(area => widgetLocation(area).row === row)
+            .map(area => [area, widgetLocation(area).column + '列目']);
+        const select = field('列', editing ? 'area' : 'widget-area', columns, current,
+            editing ? 'required' : 'data-setting="area"');
+        return '<div class="nx-chrome-form-row">' + place + select + '</div>';
+    }
+
     function widgetGroup(kind) {
         const available = activeAreas().filter(area => widgetPane(area) === kind);
         if (!available.includes(selectedWidgetAreas[kind])) {
@@ -367,20 +396,21 @@
         const area = selectedWidgetAreas[kind];
         const sidebar = kind === 'columns';
         const picker = sidebar || editor?.list === 'widgets' ? '' :
-            field('表示場所', 'widget-area', available.map(id => [id, widgetAreaLabel(id)]), area, 'data-setting="area"');
+            widgetLocationFields(kind, available, area, 'list');
         return chromeGroup(kind, 'widgets', sidebar ? 'サイドバーのウィジェット' : 'ウィジェット',
             picker + renderList(layouts[theme].widgets[area], 'widgets'));
     }
 
-    function headerStructure(hasAbove, hasBelow) {
+    function chromeStructure(kind, hasAbove, hasBelow) {
+        const action = kind + '-row';
         const toggle = (row, label, direction, enabled) => {
             const attributes = 'data-row="' + row + '"';
             return enabled ? '<div class="nx-header-row-label"><strong>' + label + '</strong>' +
-                button('header-row', '削除', attributes + ' aria-label="' + label + 'を削除"') + '</div>'
-                : button('header-row', '＋ ' + direction + 'に段を追加', attributes);
+                button(action, '削除', attributes + ' aria-label="' + label + 'を削除"') + '</div>'
+                : button(action, '＋ ' + direction + 'に段を追加', attributes);
         };
         return '<div class="nx-header-structure">' + toggle('above', '上段', '上', hasAbove) +
-            '<div class="nx-header-base-row"><strong>ヘッダー本体</strong><span class="nx-design-note">ウィジェットを配置</span></div>' +
+            '<div class="nx-header-base-row"><strong>' + labels[kind] + '本体</strong><span class="nx-design-note">ウィジェットを配置</span></div>' +
             toggle('below', '下段', '下', hasBelow) + '</div>';
     }
 
@@ -402,15 +432,19 @@
         html += chromeGroup(kind, 'links', 'リンク', renderList(menuItems[kind], 'links'));
         if (!supports(kind)) return html + widgetGroup(kind);
         if (capable) {
-            const structure = kind === 'header' ? headerStructure(layout.headerAbove, rows.split)
-                : control('段数', '', 'split', [[1, '1段'], [2, '上下2段']], rows.split ? 2 : 1);
+            const above = kind === 'header' ? layout.headerAbove : layout.footerAbove.enabled;
+            const structure = chromeStructure(kind, above, rows.split);
             html += chromeGroup(kind, 'structure', '段構成', structure, true);
-            for (const row of rows.split ? ['top', 'bottom'] : ['top']) {
-                const count = kind === 'footer' && row === 'top' ? layout.footer : rows[row].columns;
-                const label = row === 'bottom' ? '下段' : kind === 'header' ? 'ヘッダー本体' : '上段';
+            const shownRows = ['top'];
+            if (kind === 'footer' && above) shownRows.unshift('above');
+            if (rows.split) shownRows.push('bottom');
+            for (const row of shownRows) {
+                const settings = row === 'above' ? layout.footerAbove : rows[row] ?? {align: 'center'};
+                const count = kind === 'footer' && row === 'top' ? layout.footer : settings.columns;
+                const label = {above: '上段', top: title + '本体', bottom: '下段'}[row];
                 html += chromeGroup(kind, row, label + 'のカラム・配置',
                     '<div class="nx-chrome-form-row">' + control('カラム数', row, 'columns', columnChoices, count) +
-                    control('配置', row, 'align', Object.entries(data.alignments), rows[row].align) + '</div>', kind === 'footer');
+                    control('配置', row, 'align', Object.entries(data.alignments), settings.align) + '</div>', kind === 'footer');
             }
         } else if (kind === 'footer') {
             html += field('カラム数', 'footer', columnChoices, layout.footer, 'data-setting="footer"');
@@ -708,15 +742,24 @@
         }
     }
 
-    function toggleHeaderRow(row) {
+    function toggleChromeRow(kind, row) {
         const layout = layouts[theme];
         const above = row === 'above';
-        const enabled = above ? !layout.headerAbove : !chromeRows('header').split;
-        if (above) {
-            layout.headerAbove = enabled;
+        let enabled;
+        if (kind === 'footer') {
+            if (above) {
+                layout.footerAbove.enabled = !layout.footerAbove.enabled;
+                enabled = layout.footerAbove.enabled;
+            } else {
+                const rows = ensureChrome(kind);
+                rows.split = !rows.split;
+                enabled = rows.split;
+            }
+        } else if (above) {
+            enabled = layout.headerAbove = !layout.headerAbove;
         } else if (layout.headerRows) {
             const rows = layout.headerRows;
-            rows.split = enabled;
+            enabled = rows.split = !rows.split;
             layout.header.placement = enabled ? 'stack' : 'row';
             if (!enabled) {
                 for (const position of Object.values(rows.positions)) {
@@ -727,15 +770,15 @@
                 }
             }
         } else {
-            layout.headerBelow = enabled;
+            enabled = layout.headerBelow = !layout.headerBelow;
         }
         if (enabled && !editor) {
-            selectedWidgetAreas.header = above ? 'header_above' : 'header_bottom1';
-            const group = panel.querySelector('[data-chrome-details="header:widgets"]');
+            selectedWidgetAreas[kind] = above ? (kind === 'header' ? 'header_above' : 'footer_above1') : kind + '_bottom1';
+            const group = panel.querySelector('[data-chrome-details="' + kind + ':widgets"]');
             if (group) group.open = true;
-            else chromeOpen.set('header:widgets', true);
+            else chromeOpen.set(kind + ':widgets', true);
         }
-        changed('[data-action="header-row"][data-row="' + row + '"]');
+        changed('[data-action="' + kind + '-row"][data-row="' + row + '"]');
     }
 
     root.addEventListener('click', event => {
@@ -759,8 +802,8 @@
             publish();
         } else if (target.action === 'reset') {
             if (!resetButton.disabled) toggleResetPreview();
-        } else if (target.action === 'header-row') {
-            toggleHeaderRow(target.row);
+        } else if (target.action === 'header-row' || target.action === 'footer-row') {
+            toggleChromeRow(pane, target.row);
         } else if (target.action === 'toggle-spacing') {
             const area = target.spacingTarget;
             if (!['header', 'body', 'footer'].includes(area)) return;
@@ -842,22 +885,39 @@
     root.addEventListener('change', event => {
         if (publishing) return;
         const input = event.target;
-        const {setting, formSetting, chrome, chromeRow, chromeField} = input.dataset;
+        const {setting, formSetting, chrome, chromeRow, chromeField, widgetRow} = input.dataset;
         if (chrome) {
-            const rows = ensureChrome(chrome);
-            if (chromeField === 'split') rows.split = input.value === '2';
-            else if (chrome === 'footer' && chromeRow === 'top' && chromeField === 'columns') {
+            if (chrome === 'footer' && chromeRow === 'above') {
+                layouts[theme].footerAbove[chromeField] = chromeField === 'columns' ? Number(input.value) : input.value;
+            } else if (chrome === 'footer' && chromeRow === 'top' && chromeField === 'columns') {
                 layouts[theme].footer = Number(input.value);
-            } else rows[chromeRow][chromeField] = chromeField === 'columns' ? Number(input.value) : input.value;
-            if (chrome === 'header') {
-                for (const position of Object.values(rows.positions)) {
-                    if (!rows.split) position.row = 'top';
-                    position.column = Math.min(position.column, rows[position.row].columns);
+            } else if (chrome === 'footer' && chromeRow === 'top') {
+                ensureChrome(chrome).top = {align: input.value};
+            } else {
+                const rows = ensureChrome(chrome);
+                rows[chromeRow][chromeField] = chromeField === 'columns' ? Number(input.value) : input.value;
+                if (chrome === 'header') {
+                    for (const position of Object.values(rows.positions)) {
+                        if (!rows.split) position.row = 'top';
+                        position.column = Math.min(position.column, rows[position.row].columns);
+                    }
+                    layouts[theme].header.placement = rows.split ? 'stack' : 'row';
                 }
-                layouts[theme].header.placement = rows.split ? 'stack' : 'row';
             }
-            if (chromeField === 'split' && rows.split) chromeOpen.set(chrome + ':bottom', true);
             changed(`[data-chrome="${chrome}"][data-chrome-row="${chromeRow ?? ''}"][data-chrome-field="${chromeField}"]`);
+        } else if (widgetRow) {
+            const editing = widgetRow === 'form';
+            const destination = widgetDestinations(pane, editing ? editor.item.type : undefined)
+                .find(area => widgetLocation(area).row === input.value);
+            if (!destination) return;
+            if (editing) {
+                rememberForm(input.form);
+                editor.item.area = destination;
+            } else {
+                selectedWidgetAreas[pane] = destination;
+            }
+            renderPanel('[data-widget-row="' + widgetRow + '"]');
+            if (!editing) revealPreviewArea();
         } else if (setting === 'theme') {
             theme = input.value;
             if (resetDraft) {
@@ -946,7 +1006,7 @@
             if (index < 0) list.push(item);
             else list[index] = item;
         } else {
-            if (!activeAreas().includes(values.area) || (isHeaderWidgetType(values.type) && !isHeaderWidgetArea(values.area))) {
+            if (!widgetDestinations(pane, values.type).includes(values.area)) {
                 showError('表示場所を選び直してください。');
                 return;
             }

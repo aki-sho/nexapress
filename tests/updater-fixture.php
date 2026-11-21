@@ -86,6 +86,21 @@ if ($mode === 'setup') {
             }
         }
     }
+    if (version_compare($installedVersion['version'], '2.21.0', '>=') &&
+        version_compare($installedVersion['version'], '2.22.0', '<')) {
+        $design = \app\Core\Design::snapshot('default');
+        $design['layout']['footer'] = 3;
+        $design['layout']['footerRows'] = ['split' => true, 'top' => ['align' => 'flex-end'],
+            'bottom' => ['columns' => 2, 'align' => 'center']];
+        foreach (['footer2' => 'body', 'footer_bottom2' => 'lower row', 'footer_before' => 'outside'] as $area => $label) {
+            $design['layout']['widgets'][$area] = [
+                ['type' => 'text', 'title' => '', 'text' => 'Retained footer ' . $label, 'menu' => 'footer'],
+            ];
+        }
+        if (!\app\Core\Design::publish(\app\Core\Design::validate($design), $design['revision'])) {
+            throw new RuntimeException('Could not seed the legacy footer design.');
+        }
+    }
 }
 if ($mode === 'restore') {
     \app\Core\UpdateBackup::restore($argv[3]);
