@@ -42,6 +42,7 @@
             <div class="nx-design-preview-bar">
                 <strong>サイトプレビュー</strong>
                 <div class="nx-design-actions">
+                    <button type="button" class="nx-design-small" data-action="toggle-widget-highlight" aria-pressed="true" hidden>配置範囲</button>
                     <div class="nx-design-switch" role="group" aria-label="表示するデザイン">
                         <button type="button" data-mode="draft" aria-pressed="true">編集中</button>
                         <button type="button" data-mode="published" aria-pressed="false">公開版</button>
@@ -51,11 +52,15 @@
                         <button type="button" data-device="mobile" aria-pressed="false">スマホ</button>
                     </div>
                 </div>
+                <p id="nx-design-widget-note" class="nx-design-note nx-widget-preview-note" role="status" hidden></p>
             </div>
             <div id="nx-design-stage" class="nx-design-stage" role="region" aria-label="サイトプレビュー" aria-busy="true">
                 <div id="nx-design-canvas">
                     <iframe id="nx-design-frame" title="公開サイトの見た目" sandbox="allow-same-origin"></iframe>
-                    <div id="nx-design-spacing-overlay" class="nx-spacing-overlay" aria-hidden="true" hidden></div>
+                    <div id="nx-design-preview-overlay" class="nx-preview-overlay" aria-hidden="true">
+                        <div id="nx-design-spacing-overlay" class="nx-spacing-overlay" hidden></div>
+                        <div id="nx-design-widget-highlight" class="nx-widget-highlight" hidden></div>
+                    </div>
                 </div>
             </div>
         </div>

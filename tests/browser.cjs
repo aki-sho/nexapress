@@ -796,6 +796,7 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
         await checkInheritedLayouts(page, base, output);
         await checkCommonLayoutFeedback(page, base, output);
         await require('./design-spacing-overlay.cjs')(page, base, output);
+        await require('./widget-highlight.cjs')(page, base, output);
         await require('./design-spacing.cjs')(page, base, output);
         await require('./header-widgets.cjs')(page, base, output);
         await require('./design-appearance.cjs')(page, base, output);

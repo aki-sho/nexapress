@@ -166,8 +166,8 @@ module.exports = async function checkDesignAppearance(page, base, output) {
         await visitor.screenshot({path: path.join(output, 'appearance-mobile-background.png'), fullPage: true});
         await open('header');
         await page.getByRole('button', {name: '上段を削除'}).click();
+        await preview.locator(slot('header_above')).waitFor({state: 'detached'});
         await settled();
-        assert.equal(await preview.locator(slot('header_above')).count(), 0);
         assert.equal(await preview.locator(slot('header_bottom1')).count(), 1);
         await page.getByRole('button', {name: '下段を削除'}).click();
         await publish();

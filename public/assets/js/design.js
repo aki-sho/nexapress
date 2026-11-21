@@ -12,7 +12,11 @@
     const stage = root.querySelector('#nx-design-stage');
     const canvas = root.querySelector('#nx-design-canvas');
     const frame = root.querySelector('#nx-design-frame');
+    const previewOverlay = root.querySelector('#nx-design-preview-overlay');
     const spacingOverlay = root.querySelector('#nx-design-spacing-overlay');
+    const widgetHighlight = root.querySelector('#nx-design-widget-highlight');
+    const widgetNote = root.querySelector('#nx-design-widget-note');
+    const widgetHighlightButton = root.querySelector('[data-action="toggle-widget-highlight"]');
     const {linkTypes, targets, regions} = data;
     const regionIds = Object.keys(regions);
     const linkTypeIds = Object.keys(linkTypes);
@@ -50,8 +54,9 @@
     let previewTimer;
     let previewRequest;
     let spacingOverlayArea = null;
-    let spacingOverlayFrame = 0;
-    let spacingOverlayObserver;
+    let showWidgetHighlight = true;
+    let previewOverlayFrame = 0;
+    let previewOverlayObserver;
 
     const supports = feature => data.themes[theme].areas.includes(feature);
     const state = () => ({
@@ -262,7 +267,7 @@
     }
 
     function syncSpacingValues() {
-        if (stage.getAttribute('aria-busy') !== 'false' || frame.dataset.spacingTheme !== theme) return;
+        if (stage.getAttribute('aria-busy') !== 'false' || frame.dataset.previewTheme !== theme) return;
         const preview = frame.contentDocument;
         const view = frame.contentWindow;
         if (!preview || !view) return;
@@ -326,9 +331,8 @@
         const preview = frame.contentDocument;
         const element = area && preview?.querySelector(area === 'body' ? '.site-main' : '.site-' + area);
         spacingOverlay.hidden = !element || area !== currentArea || resetDraft !== null ||
-            stage.getAttribute('aria-busy') !== 'false' || frame.dataset.spacingTheme !== theme;
+            stage.getAttribute('aria-busy') !== 'false' || frame.dataset.previewTheme !== theme;
         if (spacingOverlay.hidden) return;
-        Object.assign(spacingOverlay.style, {width: frame.style.width, height: frame.style.height, transform: frame.style.transform});
         spacingOverlay.dataset.spacingArea = area;
         const fragment = document.createDocumentFragment();
         const box = element.getBoundingClientRect();
@@ -355,11 +359,42 @@
         spacingOverlay.replaceChildren(fragment);
     }
 
-    function scheduleSpacingOverlay() {
-        if (spacingOverlayFrame) return;
-        spacingOverlayFrame = requestAnimationFrame(() => {
-            spacingOverlayFrame = 0;
+    function previewWidgetArea() {
+        const group = panel.querySelector('[data-chrome-details="' + pane + ':widgets"][open]');
+        if (!group || resetDraft || editor?.list === 'links') return null;
+        return editor?.list === 'widgets' ? group.querySelector('[name="area"]')?.value : selectedWidgetAreas[pane];
+    }
+
+    function previewWidgetTarget(area) {
+        if (!area || frame.dataset.previewTheme !== theme || (mode === 'published' && theme !== data.active)) return null;
+        const attribute = regionIds.includes(area) ? 'data-design-area' : 'data-widget-area';
+        return frame.contentDocument?.querySelector('[' + attribute + '="' + CSS.escape(area) + '"]');
+    }
+
+    function renderWidgetHighlight() {
+        const area = previewWidgetArea();
+        widgetHighlightButton.hidden = !area;
+        const ready = area && showWidgetHighlight && stage.getAttribute('aria-busy') === 'false' &&
+            frame.dataset.previewTheme === theme;
+        const bounds = ready ? previewWidgetTarget(area)?.getBoundingClientRect() : null;
+        widgetHighlight.hidden = !bounds?.width || !bounds.height;
+        if (!widgetHighlight.hidden) {
+            Object.assign(widgetHighlight.style, {top: bounds.top + 'px', left: bounds.left + 'px',
+                width: bounds.width + 'px', height: bounds.height + 'px'});
+        }
+        const message = ready && widgetHighlight.hidden
+            ? mode === 'published' ? 'この場所は「編集中」で確認できます。'
+                : 'このプレビューでは配置範囲を表示できません。' : '';
+        widgetNote.hidden = !message;
+        if (widgetNote.textContent !== message) widgetNote.textContent = message;
+    }
+
+    function schedulePreviewOverlays() {
+        if (previewOverlayFrame) return;
+        previewOverlayFrame = requestAnimationFrame(() => {
+            previewOverlayFrame = 0;
             renderSpacingOverlay();
+            renderWidgetHighlight();
         });
     }
 
@@ -473,7 +508,10 @@
         const id = event.target.dataset.chromeDetails;
         if (id && event.target.isConnected) {
             chromeOpen.set(id, event.target.open);
-            if (id === pane + ':widgets' && event.target.open) revealPreviewArea();
+            if (id === pane + ':widgets') {
+                if (event.target.open) revealPreviewArea();
+                schedulePreviewOverlays();
+            }
         }
     }, true);
 
@@ -517,7 +555,7 @@
         }
         renderStatus();
         syncSpacingValues();
-        scheduleSpacingOverlay();
+        schedulePreviewOverlays();
         if (focus) root.querySelector(focus)?.focus();
     }
 
@@ -528,12 +566,12 @@
         const available = stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
         if (available <= 0) return;
         const scale = Math.min(1, available / width);
-        frame.style.width = width + 'px';
-        frame.style.height = canvas.clientHeight / scale + 'px';
-        frame.style.transform = `scale(${scale})`;
+        const geometry = {width: width + 'px', height: canvas.clientHeight / scale + 'px', transform: `scale(${scale})`};
+        Object.assign(frame.style, geometry);
+        Object.assign(previewOverlay.style, geometry);
         canvas.style.width = width * scale + 'px';
         syncSpacingValues();
-        scheduleSpacingOverlay();
+        schedulePreviewOverlays();
     }
 
     function syncPreviewButtons() {
@@ -546,27 +584,27 @@
         pageEditor.refreshPreviewStatus();
     }
 
-    function revealPreviewArea() {
+    function revealPreviewArea(preferSpacing = false) {
         if (resetDraft) return;
         const footer = pane === 'footer';
         const body = pane === 'columns';
         const document = frame.contentDocument;
-        const widgetGroupOpen = panel.querySelector('[data-chrome-details="' + pane + ':widgets"][open]');
-        const area = widgetGroupOpen && editor?.list !== 'links' ? selectedWidgetAreas[pane] : null;
-        const headerSlot = pane === 'header' && area && !regionIds.includes(area);
-        const region = area && !headerSlot
-            ? document?.querySelector(regionIds.includes(area) ? `[data-design-area="${area}"]` : `[data-widget-area="${area}"]`)
-            : pane === 'page_layout' ? document?.querySelector(`[data-layout-section="${pageEditor.sectionIndex()}"]`) : null;
+        const widgetTarget = previewWidgetTarget(previewWidgetArea());
+        const section = pane === 'page_layout' ? document?.querySelector(`[data-layout-section="${pageEditor.sectionIndex()}"]`) : null;
         const currentArea = pane === 'columns' ? 'body' : pane;
         const spacingTarget = spacingOverlayArea === currentArea
             ? document?.querySelector(currentArea === 'body' ? '.site-main' : '.site-' + currentArea) : null;
-        const anchor = spacingTarget || region || (footer ? (document?.querySelector('.site-footer') || document?.querySelector('footer'))
+        const highlightTarget = preferSpacing ? spacingTarget || widgetTarget : widgetTarget || spacingTarget;
+        const anchor = highlightTarget || section || (footer ? (document?.querySelector('.site-footer') || document?.querySelector('footer'))
             : body ? document?.querySelector('.site-main, main') : (document?.querySelector('.site-header') || document?.querySelector('header')));
         const scroller = document?.scrollingElement;
         if (anchor && scroller) {
-            const margin = spacingTarget ? Math.max(0, parseFloat(frame.contentWindow.getComputedStyle(anchor).marginTop) || 0) + 12 : 0;
+            const margin = anchor === spacingTarget
+                ? Math.max(0, parseFloat(frame.contentWindow.getComputedStyle(anchor).marginTop) || 0) + 12
+                : anchor === widgetTarget ? 12 : 0;
             scroller.scrollTop += anchor.getBoundingClientRect().top - margin;
         }
+        schedulePreviewOverlays();
     }
 
     function body(extra) {
@@ -625,8 +663,11 @@
     function updatePreview() {
         clearTimeout(previewTimer);
         previewRequest?.abort();
+        delete frame.dataset.previewTheme;
         stage.setAttribute('aria-busy', 'true');
         spacingOverlay.hidden = true;
+        widgetHighlight.hidden = true;
+        widgetNote.hidden = true;
         if (resetDraft) {
             resetDraft.ready = false;
             renderStatus();
@@ -641,7 +682,7 @@
                 const html = await response.text();
                 if (!controller.signal.aborted) {
                     if (resetDraft) resetDraft.ready = mode === 'draft';
-                    frame.dataset.spacingTheme = previewTheme;
+                    frame.dataset.previewTheme = previewTheme;
                     frame.srcdoc = html;
                 }
             } catch (cause) {
@@ -804,6 +845,11 @@
             if (!resetButton.disabled) toggleResetPreview();
         } else if (target.action === 'header-row' || target.action === 'footer-row') {
             toggleChromeRow(pane, target.row);
+        } else if (target.action === 'toggle-widget-highlight') {
+            showWidgetHighlight = !showWidgetHighlight;
+            control.setAttribute('aria-pressed', String(showWidgetHighlight));
+            if (showWidgetHighlight) revealPreviewArea();
+            schedulePreviewOverlays();
         } else if (target.action === 'toggle-spacing') {
             const area = target.spacingTarget;
             if (!['header', 'body', 'footer'].includes(area)) return;
@@ -811,8 +857,8 @@
             control.textContent = spacingOverlayArea ? '余白を非表示' : '余白を表示';
             control.setAttribute('aria-pressed', String(spacingOverlayArea !== null));
             panel.querySelector('[data-spacing-key]').hidden = spacingOverlayArea === null;
-            if (spacingOverlayArea) revealPreviewArea();
-            scheduleSpacingOverlay();
+            if (spacingOverlayArea) revealPreviewArea(true);
+            schedulePreviewOverlays();
         } else if (target.action) {
             const group = control.closest('[data-chrome-details]');
             const kind = group?.dataset.chromeDetails.split(':')[1];
@@ -825,6 +871,7 @@
                 editor = null;
                 showError();
                 renderPanel(add);
+                if (!forMenu) revealPreviewArea();
             } else if (target.action === 'add' || target.action === 'edit') {
                 if (index < 0 && list.length >= (forMenu ? 100 : widgetLimit(selectedWidgetAreas[pane]))) {
                     showError('登録できる項目数の上限に達しました。');
@@ -839,6 +886,7 @@
                     if (choice) editor.item.title = choice.name ?? choice.label;
                 }
                 renderPanel('[data-designer-form] select');
+                if (!forMenu) revealPreviewArea();
             } else if (target.action === 'remove') {
                 list.splice(index, 1);
                 editor = null;
@@ -917,7 +965,7 @@
                 selectedWidgetAreas[pane] = destination;
             }
             renderPanel('[data-widget-row="' + widgetRow + '"]');
-            if (!editing) revealPreviewArea();
+            revealPreviewArea();
         } else if (setting === 'theme') {
             theme = input.value;
             if (resetDraft) {
@@ -958,6 +1006,7 @@
         } else if (input.name === 'area' && editor?.list === 'widgets') {
             rememberForm(input.form);
             renderPanel('[data-designer-form] [name="area"]');
+            revealPreviewArea();
         } else if (input.name === 'reference_id' && editor) {
             const choice = targets[editor.item.type]?.find(item => item.id === Number(input.value));
             const fieldName = editor.list === 'links' ? 'label' : 'title';
@@ -1037,18 +1086,20 @@
     }
     window.addEventListener('beforeunload', warnBeforeUnload);
     frame.addEventListener('load', () => {
-        if (!frame.hasAttribute('srcdoc')) return;
+        if (!frame.dataset.previewTheme) return;
         // Keep the site controls read-only while allowing the iframe's native scrolling.
         const body = frame.contentDocument?.body;
         if (body) body.inert = true;
-        spacingOverlayObserver?.disconnect();
-        spacingOverlayObserver = new ResizeObserver(scheduleSpacingOverlay);
-        if (body) spacingOverlayObserver.observe(body);
-        frame.contentDocument.addEventListener('scroll', scheduleSpacingOverlay, {capture: true, passive: true});
+        previewOverlayObserver?.disconnect();
+        previewOverlayObserver = new ResizeObserver(schedulePreviewOverlays);
+        if (body) previewOverlayObserver.observe(body);
+        frame.contentDocument.addEventListener('scroll', schedulePreviewOverlays, {capture: true, passive: true});
+        frame.contentDocument.addEventListener('load', schedulePreviewOverlays, true);
+        frame.contentDocument.fonts.ready.then(schedulePreviewOverlays);
         revealPreviewArea();
         stage.setAttribute('aria-busy', 'false');
         syncSpacingValues();
-        scheduleSpacingOverlay();
+        schedulePreviewOverlays();
         if (resetDraft) renderStatus();
     });
     window.addEventListener('resize', resizePreview);

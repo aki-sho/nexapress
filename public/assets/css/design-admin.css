@@ -88,8 +88,15 @@
 .nx-design-stage { height: min(70vh, calc(100vh - 96px)); overflow: clip; padding: 12px; }
 #nx-design-canvas { position: relative; height: 100%; margin: 0 auto; overflow: clip; background: #fff; box-shadow: 0 6px 20px #18294b22; }
 #nx-design-frame { display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; transform-origin: top left; }
-.nx-spacing-overlay { position: absolute; top: 0; left: 0; z-index: 1; overflow: hidden; pointer-events: none; transform-origin: top left; }
-.nx-spacing-band, .nx-spacing-outline { position: absolute; pointer-events: none; }
+.nx-preview-overlay { position: absolute; top: 0; left: 0; z-index: 1; overflow: hidden; pointer-events: none; transform-origin: top left; }
+.nx-spacing-overlay { position: absolute; inset: 0; }
+.nx-spacing-band, .nx-spacing-outline, .nx-widget-highlight { position: absolute; pointer-events: none; }
+.nx-widget-highlight {
+    background: rgb(37 99 235 / .12);
+    outline: 3px solid #2563eb;
+    outline-offset: -3px;
+}
+.nx-widget-preview-note { flex-basis: 100%; }
 .nx-spacing-margin { background: rgb(245 158 11 / .4); }
 .nx-spacing-padding { background: rgb(34 197 94 / .35); }
 .nx-spacing-outline { outline: 2px dashed #64748b; outline-offset: -2px; }
