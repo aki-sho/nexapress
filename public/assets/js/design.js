@@ -222,13 +222,38 @@
             ['marginLeft', '外側・左'], ['marginRight', '外側・右'],
             ['paddingTop', '内側・上'], ['paddingBottom', '内側・下'],
             ['paddingLeft', '内側・左'], ['paddingRight', '内側・右'],
-        ].map(([key, label]) => `<label>${label}（px）
-            <input type="number" min="0" max="${data.spacingLimit}" step="1"
-                value="${escape(spacing[key])}" placeholder="テーマの既定値"
+        ].map(([key, label]) => `<label><span class="nx-spacing-label">${label}（px）
+                <small class="nx-design-note" data-spacing-origin>${spacing[key] === null ? 'テーマ' : '指定'}</small></span>
+            <input type="number" ${spacing[key] === null ? 'step="any"' : `min="0" max="${data.spacingLimit}" step="1"`}
+                value="${escape(spacing[key])}" placeholder="プレビューを確認中"
                 data-spacing-area="${area}" data-spacing-field="${key}">
             </label>`).join('');
         return chromeGroup(kind, 'spacing', '余白',
-            '<div class="nx-chrome-form-row">' + fields + '</div>');
+            '<div class="nx-chrome-form-row">' + fields + '</div>' +
+            '<p class="nx-design-note">空欄にするとテーマの値に戻ります。</p>');
+    }
+
+    function syncSpacingValues() {
+        if (stage.getAttribute('aria-busy') !== 'false' || frame.dataset.spacingTheme !== theme) return;
+        const preview = frame.contentDocument;
+        const view = frame.contentWindow;
+        if (!preview || !view) return;
+        for (const input of panel.querySelectorAll('[data-spacing-area]')) {
+            const {spacingArea, spacingField} = input.dataset;
+            if (layouts[theme].spacing[spacingArea][spacingField] !== null ||
+                input === document.activeElement || !input.validity.valid) continue;
+            const selector = spacingArea === 'body' ? '.site-main' : '.site-' + spacingArea;
+            const element = preview.querySelector(selector);
+            if (!element) continue;
+            let value = parseFloat(view.getComputedStyle(element)[spacingField]);
+            if (spacingArea !== 'body' && spacingField.startsWith('padding')) {
+                // Themes place header/footer padding on their inner rows.
+                const rows = Array.from(element.children).filter(row => row.classList.contains('site-' + spacingArea + '-inner'));
+                const row = spacingField === 'paddingBottom' ? rows.at(-1) : rows[0];
+                if (row) value += parseFloat(view.getComputedStyle(row)[spacingField]);
+            }
+            if (Number.isFinite(value)) input.value = String(Number(value.toFixed(3)));
+        }
     }
 
     function renderList(list, kind) {
@@ -384,6 +409,7 @@
             panel.innerHTML = generalPanel();
         }
         renderStatus();
+        syncSpacingValues();
         if (focus) root.querySelector(focus)?.focus();
     }
 
@@ -398,6 +424,7 @@
         frame.style.height = canvas.clientHeight / scale + 'px';
         frame.style.transform = `scale(${scale})`;
         canvas.style.width = width * scale + 'px';
+        syncSpacingValues();
     }
 
     function syncPreviewButtons() {
@@ -493,12 +520,14 @@
         previewTimer = setTimeout(async () => {
             const controller = new AbortController();
             previewRequest = controller;
+            const previewTheme = theme;
             try {
                 const response = await fetch(data.preview, {method: 'POST', body: body({mode}), signal: controller.signal});
                 await checkResponse(response);
                 const html = await response.text();
                 if (!controller.signal.aborted) {
                     if (resetDraft) resetDraft.ready = mode === 'draft';
+                    frame.dataset.spacingTheme = previewTheme;
                     frame.srcdoc = html;
                 }
             } catch (cause) {
@@ -689,18 +718,30 @@
         const input = event.target;
         const {spacingArea, spacingField} = input.dataset;
         if (!spacingArea || publishing) return;
-        if (!input.validity.valid) {
-            showError('余白は0〜' + data.spacingLimit + 'の整数で入力してください。');
+        input.setCustomValidity('');
+        const value = input.value === '' ? null : input.valueAsNumber;
+        if (!input.validity.valid || (value !== null &&
+            (!Number.isInteger(value) || value < 0 || value > data.spacingLimit))) {
+            const message = '余白は0〜' + data.spacingLimit + 'の整数で入力してください。';
+            input.setCustomValidity(message);
+            showError(message);
             return;
         }
+        input.min = value === null ? '' : '0';
+        input.max = value === null ? '' : String(data.spacingLimit);
+        input.step = value === null ? 'any' : '1';
+        input.closest('label').querySelector('[data-spacing-origin]').textContent = value === null ? 'テーマ' : '指定';
         const spacing = layouts[theme].spacing[spacingArea];
-        const value = input.value === '' ? null : input.valueAsNumber;
         if (spacing[spacingField] === value) {
             showError();
             return;
         }
         spacing[spacingField] = value;
         changed(undefined, false);
+    });
+
+    panel.addEventListener('focusout', event => {
+        if (event.target.matches('[data-spacing-area]')) requestAnimationFrame(syncSpacingValues);
     });
 
     root.addEventListener('change', event => {
@@ -851,6 +892,7 @@
         if (body) body.inert = true;
         revealPreviewArea();
         stage.setAttribute('aria-busy', 'false');
+        syncSpacingValues();
         if (resetDraft) renderStatus();
     });
     window.addEventListener('resize', resizePreview);
