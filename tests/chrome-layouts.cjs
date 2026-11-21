@@ -8,15 +8,11 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     const group = (kind, key) => page.locator('[data-chrome-details="' + kind + ':' + key + '"]');
     const frame = page.frameLocator('#nx-design-frame');
     const region = (surface, area) => surface.locator('[data-design-area="' + area + '"]');
-    async function open(kind) { await page.locator('[data-pane="' + kind + '"]').click(); }
+    async function open(kind) { await page.locator('[data-pane="' + kind.split('_')[0] + '"]').click(); }
     async function openGroup(kind, key) {
         const details = group(kind, key);
         if (!(await details.evaluate(element => element.open))) await details.locator('> summary').press('Enter');
         return details;
-    }
-    async function links(kind) {
-        await open(kind);
-        return openGroup(kind, 'links');
     }
     async function set(kind, row, field, value) {
         if (row) await openGroup(kind, row);
@@ -60,64 +56,28 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     const headerWidgets = await openGroup('header', 'widgets');
     await selectWidgetLocation(headerWidgets, 'header1');
     assert.equal(await page.locator('[data-action="publish"]').isDisabled(), true, 'selecting a header slot keeps the layout clean');
-    await links('header');
-    assert.equal(await page.locator('[data-action="publish"]').isDisabled(), true, 'opening link settings does not change the layout');
-    await group('header', 'links').locator('[data-action="add"]').click();
-    const menuForm = page.locator('[data-designer-form]');
-    const fixed = initial.targets.page.find(item => item.label === '既存ページ');
-    assert(fixed);
-    await menuForm.locator('[name="reference_id"]').selectOption(String(fixed.id));
-    assert.equal(await menuForm.locator('[name="label"]').inputValue(), '既存ページ');
-    await menuForm.locator('[data-form-setting="type"]').selectOption('custom');
-    await menuForm.locator('[name="label"]').fill('ヘッダー配置確認');
-    await menuForm.locator('[name="url"]').fill('/');
-    await menuForm.getByRole('button', {name: '追加', exact: true}).click();
-    await links('footer');
-    assert.equal(await page.locator('[data-pane="header"]').getAttribute('aria-pressed'), 'false');
-    assert.equal(await page.locator('[data-pane="footer"]').getAttribute('aria-pressed'), 'true');
-    assert.equal(await page.locator('#nx-design-panel > h2').textContent(), 'フッター');
-    await group('footer', 'links').locator('[data-action="add"]').click();
-    await menuForm.locator('[data-form-setting="type"]').selectOption('category');
-    const category = initial.targets.category.find(item => item.label === 'ニュース');
-    assert(category);
-    await menuForm.locator('[name="reference_id"]').selectOption(String(category.id));
-    assert.equal(await menuForm.locator('[name="label"]').inputValue(), category.label);
-    await menuForm.locator('[data-form-setting="type"]').selectOption('custom');
-    await menuForm.locator('[name="label"]').fill('フッター配置確認');
-    await menuForm.locator('[name="url"]').fill('/posts');
-    await menuForm.getByRole('button', {name: '追加', exact: true}).click();
-    await links('header');
-    assert.equal(await page.locator('#nx-design-panel > h2').textContent(), 'ヘッダー');
-    assert((await group('header', 'links').locator('.nx-design-item-list').textContent()).includes('ヘッダー配置確認'));
-    assert(!(await group('header', 'links').locator('.nx-design-item-list').textContent()).includes('フッター配置確認'));
-    const linkPublication = await publish();
-    for (const [id, saved] of Object.entries(initial.themes)) {
-        assert.deepEqual(linkPublication.states[id].layout, saved.state.layout, id + ': editing links preserves every existing layout and widget setting');
-        assert.deepEqual(linkPublication.states[id].contentLayouts, saved.state.contentLayouts);
+    for (const [kind, scope, label] of [['header', 'header_after', 'ヘッダー直下'], ['footer', 'footer_before', 'フッター直前']]) {
+        await open(kind);
+        const main = await openGroup(kind, 'widgets');
+        assert.equal(await group(kind, 'links').count(), 0);
+        assert.equal(await main.locator('[data-widget-row="list"] option[value="' + scope + '"]').count(), 0);
+        const separate = page.locator('[data-chrome-details="' + kind + ':widgets"] + [data-region-settings="' + scope + '"]');
+        assert.equal(await separate.locator('h3').textContent(), label);
+        for (const key of ['spacing', 'structure', 'top', 'widgets']) {
+            assert.equal(await separate.locator('[data-chrome-details="' + scope + ':' + key + '"]').count(), 1);
+        }
     }
-    assert(linkPublication.states[initial.active].menus.header.some(item => item.label === 'ヘッダー配置確認'));
-    assert(linkPublication.states[initial.active].menus.footer.some(item => item.label === 'フッター配置確認'));
-    for (const kind of ['header', 'footer']) {
-        const previous = initial.themes[initial.active].state.menus[kind];
-        assert.deepEqual(linkPublication.states[initial.active].menus[kind].slice(0, previous.length), previous);
-    }
-    await page.reload();
-    await links('footer');
-    assert((await group('footer', 'links').locator('.nx-design-item-list').textContent()).includes('フッター配置確認'));
-    console.log('PASS: integrated header/footer link editing preserves all existing theme layouts, widgets and shared page layouts');
     await open('header');
     for (const section of ['structure', 'top', 'widgets']) {
         assert.equal(await page.locator('[data-chrome-details="header:' + section + '"]').count(), 1);
     }
-    await links('header');
-    await group('header', 'links').locator('.nx-design-item-list [data-action="edit"]').last().click();
-    assert.equal(await menuForm.locator('[name="label"]').inputValue(), 'ヘッダー配置確認');
-    await menuForm.locator('[name="url"]').fill('/editing-link');
-    await page.getByRole('button', {name: '＋ 下に段を追加', exact: true}).click();
-    assert.equal(await menuForm.locator('[name="url"]').inputValue(), '/editing-link',
-        'a layout control redraw retains the unfinished link form');
-    await menuForm.locator('[name="url"]').fill('/');
-    await menuForm.getByRole('button', {name: '反映', exact: true}).click();
+    await headerWidgets.locator('[data-action="add"]').click();
+    const draftWidget = headerWidgets.locator('[data-designer-form]');
+    await draftWidget.locator('[name="title"]').fill('編集中のウィジェット');
+    await page.locator('[data-action="header-row"][data-row="below"]').click();
+    assert.equal(await draftWidget.locator('[name="title"]').inputValue(), '編集中のウィジェット',
+        'a layout control redraw retains the unfinished widget form');
+    await draftWidget.locator('[data-action="cancel"]').click();
     await set('header', 'top', 'columns', 5);
     await set('header', 'bottom', 'columns', 2);
     await set('header', 'top', 'align', 'flex-start');
@@ -137,19 +97,21 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     await moveWidget('menu', 'header_bottom1');
     await moveWidget('search', 'header5');
     await addWidget('header', 'header_bottom2', 'ヘッダー下段2');
-    await addWidget('header', 'header_after', 'ヘッダー直下の案内');
-    const direction = page.locator('[data-region-field="direction"]');
-    const regionAlign = page.locator('[data-region-field="align"]');
-    assert.equal(await direction.inputValue(), 'column');
-    assert.equal(await regionAlign.inputValue(), 'auto');
-    await regionAlign.selectOption('flex-end');
+    await addWidget('header_after', 'header_after', 'ヘッダー直下の案内');
+    const regionalField = (scope, row, field) => group(scope, row).locator('[data-region-field="' + field + '"]');
+    await openGroup('header_after', 'top');
+    const headerDirection = regionalField('header_after', 'top', 'direction');
+    const headerAlign = regionalField('header_after', 'top', 'align');
+    assert.equal(await headerDirection.inputValue(), 'column');
+    assert.equal(await headerAlign.inputValue(), 'auto');
+    await headerAlign.selectOption('flex-end');
     await frame.locator('[data-design-area="header_after"][data-region-direction="column"][data-region-align="flex-end"]').waitFor();
     await page.locator('#nx-design-stage[aria-busy="false"]').waitFor();
     assert.equal(await region(frame, 'header_after').evaluate(node => getComputedStyle(node).justifyItems), 'end');
-    await direction.selectOption('row');
-    assert.equal(await regionAlign.inputValue(), 'flex-end', 'shared alignment is retained when switching direction');
-    assert.deepEqual(await regionAlign.locator('option').allTextContents(), ['左寄せ', '中央寄せ', '右寄せ', '両端揃え']);
-    await regionAlign.selectOption('center');
+    await headerDirection.selectOption('row');
+    assert.equal(await headerAlign.inputValue(), 'flex-end', 'shared alignment is retained when switching direction');
+    assert.deepEqual(await headerAlign.locator('option').allTextContents(), ['左寄せ', '中央寄せ', '右寄せ', '両端揃え']);
+    await headerAlign.selectOption('center');
     await frame.locator('[data-design-area="header_after"][data-region-direction="row"][data-region-align="center"]').waitFor();
     await page.locator('#nx-design-stage[aria-busy="false"]').waitFor();
     assert.equal(await region(frame, 'header_after').evaluate(node => getComputedStyle(node).justifyContent), 'center');
@@ -176,8 +138,11 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     await addWidget('footer', 'footer4', 'フッター本体4');
     await addWidget('footer', 'footer1', 'フッター上段3', 'footer_above3');
     await addWidget('footer', 'footer_bottom5', 'フッター下段5');
-    await addWidget('footer', 'footer_before', 'フッター直前の案内');
-    await addWidget('footer', 'footer_before', 'フッター直前のウィジェット配置確認用の見出し');
+    await addWidget('footer_before', 'footer_before', 'フッター直前の案内');
+    await addWidget('footer_before', 'footer_before', 'フッター直前のウィジェット配置確認用の見出し');
+    await openGroup('footer_before', 'top');
+    const direction = regionalField('footer_before', 'top', 'direction');
+    const regionAlign = regionalField('footer_before', 'top', 'align');
     assert.equal(await direction.inputValue(), 'column', 'footer retains its own default direction');
     await direction.selectOption('row');
     await regionAlign.selectOption('space-between');
@@ -201,16 +166,16 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     assert.equal(await control('footer', 'above', 'columns').inputValue(), '3');
     assert.equal(await control('footer', 'bottom', 'columns').inputValue(), '5');
     const data = JSON.parse(await page.locator('#nx-design-data').textContent());
-    assert(data.themes.default.state.menus.footer.some(item => item.label === 'フッター配置確認' && item.url === '/posts'));
+    assert.deepEqual(data.themes.default.state.menus, initial.themes.default.state.menus, 'legacy links survive publication');
     assert(data.themes.default.state.layout.widgets.header_after.some(item => item.title === 'ヘッダー直下の案内'));
     assert(data.themes.default.state.layout.widgets.footer_before.some(item => item.title === 'フッター直前の案内'));
+    const initialRegions = initial.themes.default.state.layout.regions;
     assert.deepEqual(data.themes.default.state.layout.regions, {
-        header_after: {direction: 'row', align: 'center'}, footer_before: {direction: 'row', align: 'space-between'},
+        header_after: {...initialRegions.header_after, direction: 'row', align: 'center'},
+        footer_before: {...initialRegions.footer_before, direction: 'row', align: 'space-between'},
     });
-    assert.deepEqual(data.themes.monoedge.state.layout.regions, {
-        header_after: {direction: 'column', align: 'auto'}, footer_before: {direction: 'column', align: 'auto'},
-    });
-    await selectWidgetLocation(await openGroup('footer', 'widgets'), 'footer_before');
+    assert.deepEqual(data.themes.monoedge.state.layout.regions, initial.themes.monoedge.state.layout.regions);
+    await openGroup('footer_before', 'top');
     assert.equal(await direction.inputValue(), 'row');
     assert.equal(await regionAlign.inputValue(), 'space-between');
     assert.equal(data.themes.default.state.layout.widgets.header5[0].type, 'search');
@@ -334,6 +299,54 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     await open('footer');
     assert.equal(await control('footer', 'top', 'columns').inputValue(), '4');
     assert.equal(await control('footer', 'bottom', 'columns').inputValue(), '5');
+    const structure = await openGroup('footer_before', 'structure');
+    const upper = structure.locator('[data-action="region-row"][data-row="above"]');
+    await upper.click();
+    await structure.locator('[data-action="region-row"][data-row="below"]').click();
+    await openGroup('footer_before', 'above');
+    await regionalField('footer_before', 'above', 'columns').selectOption('3');
+    await openGroup('footer_before', 'top');
+    await regionalField('footer_before', 'top', 'columns').selectOption('2');
+    await addWidget('footer_before', 'footer_before_above3', '独立した上段3列目');
+    await addWidget('footer_before', 'footer_before_top2', '独立した本体2列目');
+    await addWidget('footer_before', 'footer_before_bottom1', '独立した下段');
+    const outsideSpacing = await openGroup('footer_before', 'spacing');
+    await outsideSpacing.locator('[data-spacing-field="paddingTop"]').fill('35');
+    await outsideSpacing.locator('[data-spacing-target="footer_before"]').click();
+    await page.waitForFunction(() => {
+        const overlay = document.querySelector('#nx-design-spacing-overlay');
+        const element = document.querySelector('#nx-design-frame').contentDocument.querySelector('[data-design-area="footer_before"]');
+        return !overlay.hidden && overlay.dataset.spacingArea === 'footer_before' &&
+            element?.ownerDocument.defaultView.getComputedStyle(element).paddingTop === '35px';
+    });
+    await page.screenshot({path: path.join(output, 'independent-region-settings.png')});
+    await upper.click();
+    await frame.locator('[data-widget-area="footer_before_above3"]').waitFor({state: 'detached'});
+    await upper.click();
+    await frame.locator('[data-widget-area="footer_before_above3"]', {hasText: '独立した上段3列目'}).waitFor();
+    const separated = await publish();
+    const layout = separated.states.default.layout;
+    assert.equal(layout.regions.footer_before.columns, 2);
+    assert.equal(layout.regions.footer_before.above.columns, 3);
+    assert.equal(layout.regions.footer_before.bottom.enabled, true);
+    assert.equal(layout.spacing.footer_before.paddingTop, 35);
+    assert.equal(layout.spacing.footer.paddingTop, data.themes.default.state.layout.spacing.footer.paddingTop);
+    assert.deepEqual(separated.states.default.menus, initial.themes.default.state.menus);
+    const publishedPage = await page.context().browser().newPage({viewport: {width: 1440, height: 920}, javaScriptEnabled: false});
+    try {
+        await publishedPage.goto(base + '/');
+        const columns = region(publishedPage, 'footer_before').locator('[data-region-row="top"] > [data-widget-area]');
+        const geometry = async () => columns.evaluateAll(slots =>
+            slots.map(slot => [slot.getBoundingClientRect().x, slot.getBoundingClientRect().y]));
+        const desktop = await geometry();
+        assert.equal(desktop.length, 2);
+        assert(desktop[1][0] > desktop[0][0] && desktop[1][1] === desktop[0][1]);
+        await publishedPage.setViewportSize({width: 390, height: 844});
+        const mobile = await geometry();
+        assert(mobile[1][0] === mobile[0][0] && mobile[1][1] > mobile[0][1]);
+    } finally {
+        await publishedPage.close();
+    }
     console.log('PASS: upper/lower header/footer columns (1–5), four Flex alignments, content slots, strict CSP, responsive layout, validation, retained rows and independent themes');
-    console.log('PASS: outside widget regions switch between vertical and horizontal, align independently, persist and wrap on mobile');
+    console.log('PASS: independent outside region editors, retained links, per-column widgets, spacing, responsive rows and persistence');
 };

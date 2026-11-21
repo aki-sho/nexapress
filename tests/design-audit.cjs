@@ -3,10 +3,11 @@ const path = require('path');
 
 module.exports = async function checkDesign(page, base, output) {
     const request = page.request;
-    async function headerLinks() {
+    async function headerAfterWidgets() {
         await page.locator('[data-pane="header"]').click();
-        const details = page.locator('[data-chrome-details="header:links"]');
-        if (!(await details.evaluate(element => element.open))) await details.locator('> summary').click();
+        const details = page.locator('[data-chrome-details="header_after:widgets"]');
+        if (!(await details.evaluate(element => element.open))) await details.locator('> summary').press('Enter');
+        return details;
     }
     async function catalog() {
         const response = await request.get(base + '/admin/design');
@@ -119,17 +120,16 @@ module.exports = async function checkDesign(page, base, output) {
         await form.locator('[name="area"]').selectOption('footer_before');
         await form.getByRole('button', {name: '反映', exact: true}).click();
         assert.equal(await page.locator('[data-pane="footer"]').getAttribute('aria-pressed'), 'true');
-        assert((await page.locator('[data-chrome-details="footer:widgets"][open]').textContent()).includes('移動するウィジェット'));
-        await headerLinks();
-        const links = page.locator('[data-chrome-details="header:links"]');
-        const menuCount = await links.locator('.nx-design-item').count();
+        assert((await page.locator('[data-chrome-details="footer_before:widgets"][open]').textContent()).includes('移動するウィジェット'));
+        const links = await headerAfterWidgets();
+        const widgetCount = await links.locator('.nx-design-item').count();
         await links.locator('[data-action="add"]').click();
         await form.locator('[data-form-setting="type"]').selectOption('post');
         await form.locator('[name="reference_id"]').selectOption(String(post.id));
-        assert.equal(await form.locator('[name="label"]').inputValue(), '既存投稿');
-        await form.locator('[name="label"]').fill('投稿メニュー確認');
+        assert.equal(await form.locator('[name="title"]').inputValue(), '既存投稿');
+        await form.locator('[name="title"]').fill('投稿リンク確認');
         await form.getByRole('button', {name: '追加', exact: true}).click();
-        await page.waitForFunction(() => document.querySelector('#nx-design-frame').contentDocument.querySelector('.site-nav')?.textContent.includes('投稿メニュー確認'));
+        await page.frameLocator('#nx-design-frame').locator('[data-design-area="header_after"] a', {hasText: '投稿リンク確認'}).waitFor();
         const [published] = await Promise.all([page.waitForResponse(base + '/admin/design/publish'),
             page.locator('[data-action="publish"]').click()]);
         assert.equal(published.status(), 200);
@@ -140,14 +140,13 @@ module.exports = async function checkDesign(page, base, output) {
         assert.equal(stored.themes[theme].state.layout.widgets.sidebar.length, 5);
         assert(stored.themes[theme].state.layout.widgets.footer_before.some(item => item.title === '移動するウィジェット'));
         await visitor.goto(base + '/page/legacy');
-        assert((await visitor.locator('.site-nav').textContent()).includes('投稿メニュー確認'));
+        assert.equal(await visitor.locator('[data-design-area="header_after"] a', {hasText: '投稿リンク確認'}).count(), 1);
         assert.equal(await visitor.locator('[data-design-area="footer_before"] a').last().getAttribute('href'), '/posts');
-        await headerLinks();
-        await links.locator('[data-action="remove"][data-index="' + menuCount + '"]').click();
+        await headerAfterWidgets();
+        await links.locator('[data-action="remove"][data-index="' + widgetCount + '"]').click();
         await page.locator('[data-pane="footer"]').click();
-        const footerWidgets = page.locator('[data-chrome-details="footer:widgets"]');
+        const footerWidgets = page.locator('[data-chrome-details="footer_before:widgets"]');
         await footerWidgets.locator('> summary').press('Enter');
-        await footerWidgets.locator('[data-widget-row="list"]').selectOption('footer_before');
         const movedIndex = stored.themes[theme].state.layout.widgets.footer_before.findIndex(item => item.title === '移動するウィジェット');
         await footerWidgets.locator('[data-action="remove"][data-index="' + movedIndex + '"]').click();
         const [removed] = await Promise.all([page.waitForResponse(base + '/admin/design/publish'),
@@ -156,9 +155,10 @@ module.exports = async function checkDesign(page, base, output) {
         await page.waitForFunction(() => document.querySelector('[data-action="publish"]').disabled);
         await page.reload();
         stored = await catalog();
-        assert.equal(stored.themes[theme].state.menus.header.length, menuCount);
+        assert.deepEqual(stored.themes[theme].state.menus, original.themes[theme].state.menus);
+        assert.equal(stored.themes[theme].state.layout.widgets.header_after.length, widgetCount);
         assert(!stored.themes[theme].state.layout.widgets.footer_before.some(item => item.title === '移動するウィジェット'));
-        console.log('PASS: widget addition/editing/type change/movement/deletion and post-menu addition/deletion persist after publishing');
+        console.log('PASS: widget addition/editing/type change/movement/deletion and direct post links persist after publishing');
 
         for (const id of ['default', 'monoedge']) {
             await request.post(base + '/admin/themes/update', {form: {_csrf_token: original.token, theme: id}});

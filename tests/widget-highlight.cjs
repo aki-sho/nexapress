@@ -5,7 +5,7 @@ const selectWidgetLocation = require('./widget-location.cjs');
 module.exports = async function checkWidgetHighlight(page, base, output) {
     await page.goto(base + '/admin/design');
     const highlight = page.locator('#nx-design-widget-highlight');
-    const toggle = page.locator('[data-action="toggle-widget-highlight"]');
+    let toggle = page.locator('[data-chrome-details="header:widgets"] [data-action="toggle-widget-highlight"]');
     const note = page.locator('#nx-design-widget-note');
     const frame = page.locator('#nx-design-frame');
     const publish = page.locator('[data-action="publish"]');
@@ -41,17 +41,16 @@ module.exports = async function checkWidgetHighlight(page, base, output) {
     await header.locator('summary').click({position: {x: 8, y: 12}});
     await aligned('header1');
     assert.equal(await toggle.textContent(), '非表示');
-    await selectWidgetLocation(header, 'header_after');
+    await open('header_after');
     await aligned('header_after');
+    assert.equal(await toggle.textContent(), '表示');
     assert.equal(await highlight.evaluate(element => getComputedStyle(element).pointerEvents), 'none');
     assert(await publish.isDisabled(), 'checking locations does not change the design');
     await toggle.click();
+    await aligned('header1');
+    await toggle.click();
     await highlight.waitFor({state: 'hidden'});
     assert.equal(await toggle.textContent(), '表示');
-    await selectWidgetLocation(header, 'header1');
-    assert(await highlight.isHidden(), 'turning off the highlight persists while switching locations');
-    await toggle.click();
-    await aligned('header1');
     assert(await publish.isDisabled());
 
     await page.locator('[data-pane="footer"]').click();
@@ -60,6 +59,7 @@ module.exports = async function checkWidgetHighlight(page, base, output) {
     const columns = await open('footer', 'above');
     await columns.locator('[data-chrome-field="columns"]').selectOption('2');
     const footer = await open('footer');
+    toggle = footer.locator('[data-action="toggle-widget-highlight"]');
     await selectWidgetLocation(footer, 'footer_above2');
     await aligned('footer_above2');
     assert.equal(await frame.evaluate(iframe =>
@@ -69,8 +69,9 @@ module.exports = async function checkWidgetHighlight(page, base, output) {
     await footer.locator('[data-action="add"]').click();
     const form = footer.locator('[data-designer-form]');
     await form.locator('[name="title"]').fill('確認用の見出し');
-    await selectWidgetLocation(form, 'footer_before', true);
-    await aligned('footer_before');
+    assert.equal(await form.locator('[data-widget-row="form"] option[value="footer_before"]').count(), 0);
+    await selectWidgetLocation(form, 'footer1', true);
+    await aligned('footer1');
     await selectWidgetLocation(form, 'footer_above1', true);
     await aligned('footer_above1');
     assert.equal(await form.locator('[name="title"]').inputValue(), '確認用の見出し');
@@ -95,7 +96,7 @@ module.exports = async function checkWidgetHighlight(page, base, output) {
     await note.waitFor({state: 'visible'});
     assert.match(await note.textContent(), /「編集中」で確認/);
     assert(await highlight.isHidden(), 'a draft-only row is not highlighted in the published preview');
-    await selectWidgetLocation(footer, 'footer_before');
+    await open('footer_before');
     await aligned('footer_before');
     assert(await note.isHidden());
     await selectWidgetLocation(footer, 'footer_above2');

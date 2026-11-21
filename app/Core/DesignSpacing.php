@@ -6,7 +6,10 @@ use InvalidArgumentException;
 
 final class DesignSpacing
 {
-    public const AREAS = ['header' => 'header', 'body' => 'columns', 'footer' => 'footer'];
+    public const AREAS = [
+        'header' => 'header', 'body' => 'columns', 'footer' => 'footer',
+        'header_after' => 'header_after', 'footer_before' => 'footer_before',
+    ];
     public const MAX_PIXELS = 9999;
 
     private const PROPERTIES = [
@@ -24,6 +27,8 @@ final class DesignSpacing
         'header' => '.site-header, .site-header[data-design-width]',
         'body' => '.site-main, .site-main.nx-section-page',
         'footer' => '.site-footer, .site-footer[data-design-width]',
+        'header_after' => '.nx-design-region[data-design-area="header_after"]',
+        'footer_before' => '.nx-design-region[data-design-area="footer_before"]',
     ];
 
     public static function defaults(): array
@@ -75,7 +80,7 @@ final class DesignSpacing
                 continue;
             }
             $css .= self::SELECTORS[$area] . ' { ' . implode(' ', $rules) . " }\n";
-            if ($area !== 'body') {
+            if ($area === 'header' || $area === 'footer') {
                 // Apply the requested padding at the wrapper edge, keeping the space between rows.
                 if ($spacing['marginLeft'] !== null || $spacing['marginRight'] !== null) {
                     $css .= ".site-{$area}[data-design-width] { width: auto; }\n";

@@ -26,7 +26,7 @@ module.exports = async function checkCategoryWidgets(page, base, output) {
     async function openWidget(area, index = 0) {
         const kind = area === 'sidebar' ? 'columns' : 'header';
         await page.locator('[data-pane="' + kind + '"]').click();
-        const details = page.locator('[data-chrome-details="' + kind + ':widgets"]');
+        const details = page.locator('[data-chrome-details="' + (area === 'header_after' ? area : kind) + ':widgets"]');
         if (!(await details.evaluate(element => element.open))) await details.locator('> summary').press('Enter');
         if (kind === 'header') await selectWidgetLocation(details, area);
         await details.locator('[data-action="edit"][data-index="' + index + '"]').click();
@@ -112,7 +112,7 @@ module.exports = async function checkCategoryWidgets(page, base, output) {
         await visitor.goto(base + '/posts');
         assert.equal(await visitor.getByRole('link', {name: 'クルマ表示名', exact: true}).count(), 1);
 
-        await page.locator('[data-chrome-details="header:widgets"] [data-action="add"]').click();
+        await page.locator('[data-chrome-details="header_after:widgets"] [data-action="add"]').click();
         await form.locator('[data-form-setting="type"]').selectOption('category');
         assert.equal(await form.locator('[name="reference_ids"]:checked').count(), 0);
         await selected(first.id).check();
@@ -124,14 +124,7 @@ module.exports = async function checkCategoryWidgets(page, base, output) {
         await visitor.goto(base + '/posts');
         assert.equal(await visitor.locator('[data-design-area="header_after"] .nx-design-widget-categories li').count(), 2);
         assert.equal(await visitor.locator('[data-design-area="header_after"] .nx-design-widget-categories h2').count(), 0);
-        await page.locator('[data-pane="header"]').click();
-        const headerLinks = page.locator('[data-chrome-details="header:links"]');
-        if (!(await headerLinks.evaluate(element => element.open))) await headerLinks.locator('> summary').click();
-        await headerLinks.locator('[data-action="add"]').click();
-        await form.locator('[data-form-setting="type"]').selectOption('category');
-        assert.equal(await form.locator('[name="reference_id"]').count(), 1);
-        assert.equal(await form.locator('[name="reference_ids"]').count(), 0);
-        await page.locator('[data-action="cancel"]').click();
+        assert.deepEqual((await catalog()).themes[theme].state.menus, initial.themes[theme].state.menus);
 
         for (const id of ['default', 'monoedge']) {
             await save(id, state => {

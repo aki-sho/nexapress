@@ -133,9 +133,9 @@ module.exports = async function checkDesignReset(page, base, output) {
         assert.equal(state.layout.footerWidth, 'theme');
         assert.equal(state.layout.footer, 1);
         assert.deepEqual(state.layout.footerAbove, {enabled: false, columns: 1, align: 'center'});
-        assert.deepEqual(state.layout.regions, {
-            header_after: {direction: 'column', align: 'auto'}, footer_before: {direction: 'column', align: 'auto'},
-        });
+        const row = {direction: 'column', align: 'auto', columns: 1};
+        const region = {...row, above: {enabled: false, ...row}, bottom: {enabled: false, ...row}};
+        assert.deepEqual(state.layout.regions, {header_after: region, footer_before: region});
         assert.equal(state.background.mode, 'theme');
         assert.deepEqual(state.layout.widgets.sidebar, []);
         assert.equal(state.layout.widgets.footer1[0].type, 'copyright');

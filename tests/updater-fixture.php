@@ -87,7 +87,7 @@ if ($mode === 'setup') {
         }
     }
     if (version_compare($installedVersion['version'], '2.21.0', '>=') &&
-        version_compare($installedVersion['version'], '2.23.0', '<')) {
+        version_compare($installedVersion['version'], '2.24.0', '<')) {
         $design = \app\Core\Design::snapshot('default');
         $design['layout']['footer'] = 3;
         $design['layout']['footerRows'] = ['split' => true, 'top' => ['align' => 'flex-end'],
@@ -95,6 +95,13 @@ if ($mode === 'setup') {
         foreach (['footer2' => 'body', 'footer_bottom2' => 'lower row', 'footer_before' => 'outside'] as $area => $label) {
             $design['layout']['widgets'][$area] = [
                 ['type' => 'text', 'title' => '', 'text' => 'Retained footer ' . $label, 'menu' => 'footer'],
+            ];
+        }
+        if (version_compare($installedVersion['version'], '2.23.0', '>=')) {
+            $design['layout']['regions']['header_after'] = ['direction' => 'row', 'align' => 'center'];
+            $design['layout']['regions']['footer_before'] = ['direction' => 'row', 'align' => 'flex-end'];
+            $design['layout']['widgets']['header_after'] = [
+                ['type' => 'text', 'title' => '', 'text' => 'Retained header outside', 'menu' => 'header'],
             ];
         }
         if (!\app\Core\Design::publish(\app\Core\Design::validate($design), $design['revision'])) {

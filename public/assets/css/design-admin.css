@@ -177,6 +177,16 @@
 .nx-spacing-label small { font-size: .75rem; font-weight: normal; }
 .nx-chrome-part { display: grid; gap: 6px; padding-bottom: 8px; border-bottom: 1px solid var(--design-line); }
 .nx-chrome-fields strong { font-size: .88rem; }
+.nx-design-region-settings {
+    display: grid;
+    gap: 9px;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid #ccdaef;
+    border-radius: 8px;
+    background: #f4f7fc;
+}
+.nx-region-row-controls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .nx-header-structure { display: grid; gap: 5px; }
 .nx-header-row-label, .nx-header-base-row { padding: 6px 8px; border: 1px solid var(--design-line); border-radius: 6px; }
 .nx-header-row-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -187,4 +197,8 @@
     .nx-design-editor-grid { grid-template-columns: minmax(0, 1fr); }
     .nx-design-controls { border-inline-end: 0; border-bottom: 1px solid var(--design-line); }
     .nx-design-preview { position: static; }
+}
+
+@media (max-width: 440px) {
+    .nx-region-row-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

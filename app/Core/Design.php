@@ -32,7 +32,25 @@ final class Design
                 $areas[$prefix . $column] = $label . '・' . $column . '列目';
             }
         }
+        foreach (self::REGIONS as $area => $label) {
+            foreach (self::regionWidgetAreas($area) as $row => $slots) {
+                foreach ($slots as $index => $slot) {
+                    $areas[$slot] ??= $label . '・' . self::REGION_ROWS[$row] . '・' . ($index + 1) . '列目';
+                }
+            }
+        }
         return $areas;
+    }
+
+    public static function regionWidgetAreas(string $area): array
+    {
+        $rows = [];
+        foreach (array_keys(self::REGION_ROWS) as $row) {
+            for ($column = 1; $column <= 5; $column++) {
+                $rows[$row][] = $row === 'top' && $column === 1 ? $area : $area . '_' . $row . $column;
+            }
+        }
+        return $rows;
     }
 
     public static function headerRowDefaults(bool $stacked = false): array
@@ -69,6 +87,7 @@ final class Design
         'header_after' => 'ヘッダー直下',
         'footer_before' => 'フッター直前',
     ];
+    public const REGION_ROWS = ['above' => '上段', 'top' => '本体', 'bottom' => '下段'];
     public const REGION_DIRECTIONS = ['column' => '縦並び', 'row' => '横並び'];
     public const REGION_ALIGNMENTS = [
         'column' => [
@@ -84,7 +103,12 @@ final class Design
             'space-between' => self::ALIGNMENTS['space-between'],
         ],
     ];
-    private const REGION_DEFAULT = ['direction' => 'column', 'align' => 'auto'];
+    private const REGION_ROW_DEFAULT = ['direction' => 'column', 'align' => 'auto', 'columns' => 1];
+    private const REGION_EXTRA_ROW_DEFAULT = ['enabled' => false] + self::REGION_ROW_DEFAULT;
+    private const REGION_DEFAULT = self::REGION_ROW_DEFAULT + [
+        'above' => self::REGION_EXTRA_ROW_DEFAULT,
+        'bottom' => self::REGION_EXTRA_ROW_DEFAULT,
+    ];
     public const HEADER_WIDGETS = ['site_icon' => 'サイトアイコン', 'site_name' => 'サイト名'];
     public const WIDGETS = self::HEADER_WIDGETS + [
         'recent' => '新着記事',
@@ -298,7 +322,11 @@ final class Design
                     }
                 }
             } elseif (isset(self::REGIONS[$area])) {
-                $defaults['widgets'][$area] = self::widgets($layout['widgets'][$area] ?? [], $area);
+                foreach (self::regionWidgetAreas($area) as $slots) {
+                    foreach ($slots as $slot) {
+                        $defaults['widgets'][$slot] = self::widgets($layout['widgets'][$slot] ?? [], $slot);
+                    }
+                }
                 $defaults['regions'][$area] = self::regionLayout($regionLayouts[$area] ?? self::REGION_DEFAULT);
             }
         }
@@ -551,7 +579,7 @@ final class Design
         $saved = $stored['themes'][$theme] ?? [];
         $layout = array_replace($defaults, $saved);
         $layout['widgets'] = array_replace($defaults['widgets'], $saved['widgets'] ?? []);
-        $layout['regions'] = array_replace($defaults['regions'], $saved['regions'] ?? []);
+        $layout['regions'] = array_replace_recursive($defaults['regions'], $saved['regions'] ?? []);
         $layout['spacing'] = DesignSpacing::validate($saved['spacing'] ?? []);
         return self::headerWidgetLayout($layout);
     }
@@ -666,12 +694,32 @@ final class Design
 
     private static function regionLayout(mixed $value): array
     {
-        if (!is_array($value) || array_diff_key($value, self::REGION_DEFAULT) ||
-            !is_string($value['direction'] ?? null) || !is_string($value['align'] ?? null) ||
-            !isset(self::REGION_ALIGNMENTS[$value['direction']][$value['align']])) {
+        if (!is_array($value) || array_diff_key($value, self::REGION_DEFAULT)) {
             throw new InvalidArgumentException('ウィジェットの並び方と配置を確認してください。');
         }
-        return ['direction' => $value['direction'], 'align' => $value['align']];
+        $layout = self::regionRow(array_intersect_key($value, self::REGION_ROW_DEFAULT));
+        foreach (['above', 'bottom'] as $row) {
+            $settings = $value[$row] ?? self::REGION_EXTRA_ROW_DEFAULT;
+            if (!is_array($settings) || array_diff_key($settings, self::REGION_EXTRA_ROW_DEFAULT) ||
+                !is_bool($settings['enabled'] ?? null)) {
+                throw new InvalidArgumentException('ウィジェットの段構成を確認してください。');
+            }
+            $layout[$row] = ['enabled' => $settings['enabled']] +
+                self::regionRow(array_intersect_key($settings, self::REGION_ROW_DEFAULT));
+        }
+        return $layout;
+    }
+
+    private static function regionRow(array $value): array
+    {
+        $direction = $value['direction'] ?? null;
+        $align = $value['align'] ?? null;
+        $columns = $value['columns'] ?? 1;
+        if (!is_string($direction) || !is_string($align) || !isset(self::REGION_ALIGNMENTS[$direction][$align]) ||
+            !in_array($columns, [1, 2, 3, 4, 5], true)) {
+            throw new InvalidArgumentException('ウィジェットのカラム数・並び方・配置を確認してください。');
+        }
+        return ['direction' => $direction, 'align' => $align, 'columns' => $columns];
     }
 
     private static function rowSettings(mixed $value, bool $hasColumns): array

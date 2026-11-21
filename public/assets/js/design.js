@@ -16,8 +16,12 @@
     const spacingOverlay = root.querySelector('#nx-design-spacing-overlay');
     const widgetHighlight = root.querySelector('#nx-design-widget-highlight');
     const widgetNote = root.querySelector('#nx-design-widget-note');
-    const {linkTypes, targets, regions} = data;
+    const {linkTypes, targets, regions, regionRows, regionWidgetAreas} = data;
     const regionIds = Object.keys(regions);
+    const regionParents = {header_after: 'header', footer_before: 'footer'};
+    const regionLocations = Object.fromEntries(regionIds.flatMap(scope =>
+        Object.entries(regionWidgetAreas[scope]).flatMap(([row, slots]) =>
+            slots.map((slot, index) => [slot, {scope, row, column: index + 1}]))));
     const linkTypeIds = Object.keys(linkTypes);
     const areas = data.widgetAreas;
     const menus = {header: 'ヘッダーのリンク', footer: 'フッターのリンク'};
@@ -26,7 +30,8 @@
     const designColor = window.NexaPressDesignColor;
     const chromeOpen = new Map();
     const widgetHighlights = new Map();
-    const selectedWidgetAreas = {header: 'header1', columns: 'sidebar', footer: 'footer1'};
+    const selectedWidgetAreas = {header: 'header1', columns: 'sidebar', footer: 'footer1',
+        header_after: 'header_after', footer_before: 'footer_before'};
     const clone = value => JSON.parse(JSON.stringify(value));
     const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
     const isHeaderWidgetArea = area => data.headerWidgetAreas.includes(area);
@@ -41,9 +46,9 @@
     let published = Object.fromEntries(Object.entries(data.themes).map(([id, item]) => [id, item.state]));
     const layouts = Object.fromEntries(Object.entries(published).map(([id, item]) => [id, clone(item.layout)]));
     const conflicts = new Set();
-    let menuItems = clone(published[theme].menus);
     let background = clone(published[theme].background);
     let pane = 'header';
+    let previewScope = pane;
     let mode = 'draft';
     let device = 'desktop';
     let editor = null;
@@ -59,7 +64,7 @@
 
     const supports = feature => data.themes[theme].areas.includes(feature);
     const state = () => ({
-        theme, layout: layouts[theme], menus: menuItems, background,
+        theme, layout: layouts[theme], menus: published[theme].menus, background,
         contentLayouts: pageEditor.commonPayload(),
         content: pageEditor.payload(),
     });
@@ -86,12 +91,19 @@
     }
     const widgetColumn = /^(header|footer)(?:_(above|bottom))?([1-5])$/;
     const widgetLocation = area => {
+        if (regionLocations[area]) return regionLocations[area];
         if (area === 'header_above') return {row: 'above', column: 1};
         const match = widgetColumn.exec(area);
         return match ? {row: match[2] || 'top', column: Number(match[3])} : {row: area, column: null};
     };
+    const regionRow = (scope, row) => row === 'top' ? layouts[theme].regions[scope] : layouts[theme].regions[scope][row];
     const activeAreas = () => Object.keys(areas).filter(key => {
-        if (regionIds.includes(key)) return supports(key);
+        const location = regionLocations[key];
+        if (location) {
+            const {scope, row, column} = location;
+            const settings = regionRow(scope, row);
+            return supports(scope) && (row === 'top' || settings.enabled) && column <= settings.columns;
+        }
         if (key === 'sidebar') return supports('columns') && layouts[theme].columns !== 'none';
         if (key === 'header_above') return supports('header_rows') && layouts[theme].headerAbove;
         const match = widgetColumn.exec(key);
@@ -107,12 +119,16 @@
             (kind === 'footer' && !row ? layouts[theme].footer : rows[row || 'top'].columns);
     });
     const widgetAreaLabel = area => area === 'header_bottom1' && chromeRows('header').bottom.columns === 1 ? '下段' : areas[area];
-    const hasChanges = id => !same(menuItems, published[id].menus) || !same(layouts[id], published[id].layout);
-    const widgetPane = area => area === 'sidebar' ? 'columns' : area.startsWith('header') ? 'header' : 'footer';
-    const widgetDestinations = (kind, type) => activeAreas().filter(area =>
-        (kind === 'columns' || widgetPane(area) === kind) && (!isHeaderWidgetType(type) || isHeaderWidgetArea(area)));
-    const currentList = list => list === 'links' ? menuItems[pane] : layouts[theme].widgets[selectedWidgetAreas[pane]];
-    const itemControl = (list, selector) => '[data-chrome-details="' + pane + ':' + list + '"] ' + selector;
+    const hasChanges = id => !same(layouts[id], published[id].layout);
+    const widgetScope = area => regionLocations[area]?.scope ??
+        (area === 'sidebar' ? 'columns' : area.startsWith('header') ? 'header' : 'footer');
+    const scopePane = scope => regionParents[scope] ?? scope;
+    const widgetDestinations = (scope, type) => activeAreas().filter(area =>
+        (scope === 'columns' || widgetScope(area) === scope) && (!isHeaderWidgetType(type) || isHeaderWidgetArea(area)));
+    const currentList = scope => layouts[theme].widgets[selectedWidgetAreas[scope]];
+    const widgetGroupSelector = scope => '[data-chrome-details="' + scope + ':widgets"]';
+    const itemControl = (scope, selector) => widgetGroupSelector(scope) + ' ' + selector;
+    const widgetGroupScope = element => element.closest('[data-chrome-details$=":widgets"]')?.dataset.chromeDetails.split(':')[0];
     const categoryIds = item => item.reference_ids ?? (item.reference_id ? [item.reference_id] : []);
     const button = (action, label, attributes = '') =>
         `<button type="button" class="nx-design-small" data-action="${action}" ${attributes}>${label}</button>`;
@@ -149,15 +165,15 @@
         root.querySelector('[data-setting="theme"]').disabled = publishing;
     }
 
-    function renderRows(list, forMenu) {
+    function renderRows(list) {
         if (!list.length) {
-            return `<p class="nx-design-note">${forMenu ? 'リンク' : 'ウィジェット'}はまだありません。</p>`;
+            return '<p class="nx-design-note">ウィジェットはまだありません。</p>';
         }
         return `<ol class="nx-design-item-list">${list.map((item, index) => {
-            const kind = (forMenu ? linkTypes : data.widgets)[item.type];
+            const kind = data.widgets[item.type];
             const target = targets[item.type]?.find(choice => choice.id === item.reference_id);
-            const count = !forMenu && item.type === 'category' ? categoryIds(item).length : 0;
-            const label = escape(item.label || item.title || (count > 1 ? 'カテゴリ（' + count + '件）' : target?.label) || kind);
+            const count = item.type === 'category' ? categoryIds(item).length : 0;
+            const label = escape(item.title || (count > 1 ? 'カテゴリ（' + count + '件）' : target?.label) || kind);
             const attrs = `data-index="${index}"`;
             return `<li class="nx-design-item">
                 <div><strong>${label}</strong><span class="nx-design-note">${escape(kind)}</span></div>
@@ -199,35 +215,28 @@
     const categoryTitleLabel = count => count > 1 ? '見出し（任意）' : '表示名（省略するとカテゴリ名）';
 
     function renderForm() {
-        const item = editor.item;
-        let fields;
-        if (editor.list === 'links') {
-            fields = field('種類', 'type', Object.entries(linkTypes), item.type, 'data-form-setting="type"') +
-                linkField(item) +
-                `<label>表示名<input name="label" maxlength="255" required value="${escape(item.label)}"></label>`;
+        const {item, scope} = editor;
+        const destinations = widgetDestinations(scope, item.type);
+        const destination = destinations.includes(item.area) ? item.area : selectedWidgetAreas[scope];
+        const types = Object.entries(data.widgets).filter(([type]) => !isHeaderWidgetType(type) || isHeaderWidgetArea(destination));
+        let fields = field('種類', 'type', types, item.type, 'data-form-setting="type"') +
+            (scope === 'columns' ? field('表示場所', 'area', destinations.map(id => [id, widgetAreaLabel(id)]), destination, 'required')
+                : widgetLocationFields(scope, destinations, destination, 'form'));
+        if (isHeaderWidgetType(item.type)) {
+            fields += '<p class="nx-design-note">サイトに登録した' + escape(data.widgets[item.type]) + 'を表示します。</p>';
+        } else if (item.type === 'category') {
+            fields += categoryField(item) + `<label><span data-category-title-label>${categoryTitleLabel(categoryIds(item).length)}</span>
+                <input name="title" maxlength="255" value="${escape(item.title)}"></label>`;
+        } else if (linkTypeIds.includes(item.type)) {
+            fields += linkField(item) + `<label>表示名
+                <input name="title" maxlength="255" value="${escape(item.title)}" ${item.type === 'custom' ? 'required' : ''}></label>`;
         } else {
-            const destinations = widgetDestinations(pane, item.type);
-            const destination = destinations.includes(item.area) ? item.area : selectedWidgetAreas[pane];
-            const types = Object.entries(data.widgets).filter(([type]) => !isHeaderWidgetType(type) || isHeaderWidgetArea(destination));
-            fields = field('種類', 'type', types, item.type, 'data-form-setting="type"') +
-                (pane === 'columns' ? field('表示場所', 'area', destinations.map(id => [id, widgetAreaLabel(id)]), destination, 'required')
-                    : widgetLocationFields(pane, destinations, destination, 'form'));
-            if (isHeaderWidgetType(item.type)) {
-                fields += '<p class="nx-design-note">サイトに登録した' + escape(data.widgets[item.type]) + 'を表示します。</p>';
-            } else if (item.type === 'category') {
-                fields += categoryField(item) + `<label><span data-category-title-label>${categoryTitleLabel(categoryIds(item).length)}</span>
-                    <input name="title" maxlength="255" value="${escape(item.title)}"></label>`;
-            } else if (linkTypeIds.includes(item.type)) {
-                fields += linkField(item) + `<label>表示名
-                    <input name="title" maxlength="255" value="${escape(item.title)}" ${item.type === 'custom' ? 'required' : ''}></label>`;
-            } else {
-                fields += `<label>見出し<input name="title" maxlength="255" value="${escape(item.title)}"></label>`;
-            }
-            if (['text', 'copyright'].includes(item.type)) {
-                fields += `<label>テキスト<textarea rows="3" name="text" maxlength="1000">${escape(item.text)}</textarea></label>`;
-            } else if (item.type === 'menu') {
-                fields += field('表示するリンク', 'menu', Object.entries(menus), item.menu);
-            }
+            fields += `<label>見出し<input name="title" maxlength="255" value="${escape(item.title)}"></label>`;
+        }
+        if (['text', 'copyright'].includes(item.type)) {
+            fields += `<label>テキスト<textarea rows="3" name="text" maxlength="1000">${escape(item.text)}</textarea></label>`;
+        } else if (item.type === 'menu') {
+            fields += field('表示するリンク', 'menu', Object.entries(menus), item.menu);
         }
         return `<form class="nx-design-form" data-designer-form>
             <h3>${editor.index < 0 ? '追加' : '編集'}</h3>${fields}
@@ -280,6 +289,11 @@
             overlayButton('toggle-spacing', '余白', highlighted, `data-spacing-target="${area}"`));
     }
 
+    const spacingScope = area => area === 'body' ? 'columns' : area;
+    const hasInnerSpacing = area => area === 'header' || area === 'footer';
+    const spacingElement = (doc, area) => doc?.querySelector(regionIds.includes(area)
+        ? '[data-design-area="' + area + '"]' : area === 'body' ? '.site-main' : '.site-' + area);
+
     function syncSpacingValues() {
         if (stage.getAttribute('aria-busy') !== 'false' || frame.dataset.previewTheme !== theme) return;
         const preview = frame.contentDocument;
@@ -289,11 +303,10 @@
             const {spacingArea, spacingField} = input.dataset;
             if (layouts[theme].spacing[spacingArea][spacingField] !== null ||
                 input === document.activeElement || !input.validity.valid) continue;
-            const selector = spacingArea === 'body' ? '.site-main' : '.site-' + spacingArea;
-            const element = preview.querySelector(selector);
+            const element = spacingElement(preview, spacingArea);
             if (!element) continue;
             let value = parseFloat(view.getComputedStyle(element)[spacingField]);
-            if (spacingArea !== 'body' && spacingField.startsWith('padding')) {
+            if (hasInnerSpacing(spacingArea) && spacingField.startsWith('padding')) {
                 // Themes place header/footer padding on their inner rows.
                 const rows = Array.from(element.children).filter(row => row.classList.contains('site-' + spacingArea + '-inner'));
                 const row = spacingField === 'paddingBottom' ? rows.at(-1) : rows[0];
@@ -341,10 +354,9 @@
 
     function renderSpacingOverlay() {
         const area = spacingOverlayArea;
-        const currentArea = pane === 'columns' ? 'body' : pane;
         const preview = frame.contentDocument;
-        const element = area && preview?.querySelector(area === 'body' ? '.site-main' : '.site-' + area);
-        spacingOverlay.hidden = !element || area !== currentArea || resetDraft !== null ||
+        const element = area && spacingElement(preview, area);
+        spacingOverlay.hidden = !element || scopePane(spacingScope(area)) !== pane || resetDraft !== null ||
             stage.getAttribute('aria-busy') !== 'false' || frame.dataset.previewTheme !== theme;
         if (spacingOverlay.hidden) return;
         spacingOverlay.dataset.spacingArea = area;
@@ -357,7 +369,7 @@
             right: box.right + margin('Right'), bottom: box.bottom + margin('Bottom'),
         }, box);
         appendPaddingOverlay(fragment, element);
-        if (area !== 'body') {
+        if (hasInnerSpacing(area)) {
             const rows = Array.from(element.children).filter(row => row.classList.contains('site-' + area + '-inner'));
             for (const [index, row] of rows.entries()) {
                 const sides = ['left', 'right'];
@@ -373,24 +385,33 @@
         spacingOverlay.replaceChildren(fragment);
     }
 
-    const widgetDetails = () => panel.querySelector('[data-chrome-details="' + pane + ':widgets"]');
-    const widgetHighlightVisible = (kind, expanded) => widgetHighlights.get(kind) ?? Boolean(expanded);
+    const widgetDetails = (scope = previewScope) => panel.querySelector(widgetGroupSelector(scope));
+    const widgetHighlightVisible = (scope, expanded) => previewScope === scope &&
+        (widgetHighlights.get(scope) ?? Boolean(expanded));
+
+    function showPreviewScope(scope) {
+        previewScope = scope;
+        for (const control of panel.querySelectorAll('[data-action="toggle-widget-highlight"]')) {
+            syncOverlayButton(control, widgetHighlightVisible(widgetGroupScope(control), control.closest('details').open));
+        }
+    }
 
     function previewWidgetArea(group = widgetDetails()) {
-        if (!group || resetDraft || (!group.open && !widgetHighlightVisible(pane, group.open))) return null;
-        return editor?.list === 'widgets' ? group.querySelector('[name="area"]')?.value : selectedWidgetAreas[pane];
+        if (!group || resetDraft || (!group.open && !widgetHighlightVisible(previewScope, group.open))) return null;
+        return editor?.scope === previewScope ? group.querySelector('[name="area"]')?.value : selectedWidgetAreas[previewScope];
     }
 
     function previewWidgetTarget(area) {
         if (!area || frame.dataset.previewTheme !== theme || (mode === 'published' && theme !== data.active)) return null;
-        const attribute = regionIds.includes(area) ? 'data-design-area' : 'data-widget-area';
-        return frame.contentDocument?.querySelector('[' + attribute + '="' + CSS.escape(area) + '"]');
+        const slot = '[data-widget-area="' + CSS.escape(area) + '"]';
+        const selector = regionIds.includes(area) ? slot + ', [data-design-area="' + area + '"][data-region-direction]' : slot;
+        return frame.contentDocument?.querySelector(selector);
     }
 
     function renderWidgetHighlight() {
         const group = widgetDetails();
         const area = previewWidgetArea(group);
-        const ready = area && widgetHighlightVisible(pane, group.open) && stage.getAttribute('aria-busy') === 'false' &&
+        const ready = area && widgetHighlightVisible(previewScope, group.open) && stage.getAttribute('aria-busy') === 'false' &&
             frame.dataset.previewTheme === theme;
         const bounds = ready ? previewWidgetTarget(area)?.getBoundingClientRect() : null;
         widgetHighlight.hidden = !bounds?.width || !bounds.height;
@@ -414,15 +435,14 @@
         });
     }
 
-    function renderList(list, kind) {
-        const links = kind === 'links';
-        return renderRows(list, links) + (editor?.list === kind ? renderForm() :
-            '<div>' + button('add', links ? '＋ 項目を追加' : '＋ ウィジェットを追加') + '</div>');
+    function renderList(scope) {
+        return renderRows(currentList(scope)) + (editor?.scope === scope ? renderForm() :
+            '<div>' + button('add', '＋ ウィジェットを追加') + '</div>');
     }
 
     function widgetLocationFields(kind, available, current, picker) {
         const {row, column} = widgetLocation(current);
-        const names = {above: '上段', top: labels[kind] + '本体', bottom: '下段', ...regions};
+        const names = regionIds.includes(kind) ? regionRows : {above: '上段', top: labels[kind] + '本体', bottom: '下段'};
         const rows = Object.entries(names).filter(([key]) => available.some(area => widgetLocation(area).row === key));
         const place = field('表示場所', '', rows, row, 'data-widget-row="' + picker + '"');
         const editing = picker === 'form';
@@ -436,44 +456,63 @@
         return '<div class="nx-chrome-form-row">' + place + select + '</div>';
     }
 
-    function widgetRegionFields(area) {
-        if (!regionIds.includes(area)) return '';
-        const {direction, align} = layouts[theme].regions[area];
-        return '<div class="nx-chrome-form-row">' +
-            field('並び方', 'region-direction', Object.entries(data.regionDirections), direction, 'data-region-field="direction"') +
-            field('配置', 'region-align', Object.entries(data.regionAlignments[direction]), align, 'data-region-field="align"') +
+    const columnChoices = Array.from({length: 5}, (_, index) => [index + 1, (index + 1) + 'カラム']);
+
+    function regionRowFields(scope, row) {
+        const {columns, direction, align} = regionRow(scope, row);
+        const control = (label, key, choices, value) => field(label, 'region-' + key, choices, value,
+            `data-region-scope="${scope}" data-region-row="${row}" data-region-field="${key}"`);
+        return '<div class="nx-chrome-form-row nx-region-row-controls">' +
+            control('カラム数', 'columns', columnChoices, columns) +
+            control('並び方', 'direction', Object.entries(data.regionDirections), direction) +
+            control('配置', 'align', Object.entries(data.regionAlignments[direction]), align) +
             '</div>';
     }
 
     function widgetGroup(kind) {
-        const available = activeAreas().filter(area => widgetPane(area) === kind);
+        const available = activeAreas().filter(area => widgetScope(area) === kind);
         if (!available.includes(selectedWidgetAreas[kind])) {
-            if (editor?.list === 'widgets') editor = null;
+            if (editor?.scope === kind) editor = null;
             selectedWidgetAreas[kind] = available[0];
         }
         if (!available.length) return '';
 
         const area = selectedWidgetAreas[kind];
         const sidebar = kind === 'columns';
-        const picker = sidebar || editor?.list === 'widgets' ? '' :
-            widgetLocationFields(kind, available, area, 'list') + widgetRegionFields(area);
+        const picker = sidebar || editor?.scope === kind ? '' : widgetLocationFields(kind, available, area, 'list');
         const highlighted = widgetHighlightVisible(kind, chromeOpen.get(kind + ':widgets'));
         return chromeGroup(kind, 'widgets', sidebar ? 'サイドバーのウィジェット' : 'ウィジェット',
-            picker + renderList(layouts[theme].widgets[area], 'widgets'), false,
+            picker + renderList(kind), false,
             overlayButton('toggle-widget-highlight', 'ウィジェットの配置範囲', highlighted));
     }
 
     function chromeStructure(kind, hasAbove, hasBelow) {
-        const action = kind + '-row';
+        const isRegion = regionIds.includes(kind);
+        const action = isRegion ? 'region-row' : kind + '-row';
         const toggle = (row, label, direction, enabled) => {
-            const attributes = 'data-row="' + row + '"';
+            const attributes = 'data-row="' + row + '"' + (isRegion ? ' data-region-scope="' + kind + '"' : '');
             return enabled ? '<div class="nx-header-row-label"><strong>' + label + '</strong>' +
                 button(action, '削除', attributes + ' aria-label="' + label + 'を削除"') + '</div>'
                 : button(action, '＋ ' + direction + 'に段を追加', attributes);
         };
         return '<div class="nx-header-structure">' + toggle('above', '上段', '上', hasAbove) +
-            '<div class="nx-header-base-row"><strong>' + labels[kind] + '本体</strong><span class="nx-design-note">ウィジェットを配置</span></div>' +
+            '<div class="nx-header-base-row"><strong>' + (isRegion ? '本体' : labels[kind] + '本体') +
+            '</strong><span class="nx-design-note">ウィジェットを配置</span></div>' +
             toggle('below', '下段', '下', hasBelow) + '</div>';
+    }
+
+    function regionPanel(scope) {
+        const layout = layouts[theme].regions[scope];
+        const heading = 'nx-design-' + scope;
+        let html = `<section class="nx-design-region-settings" data-region-settings="${scope}" aria-labelledby="${heading}">
+            <h3 id="${heading}">${regions[scope]}</h3>` + spacingGroup(scope) +
+            chromeGroup(scope, 'structure', '段構成', chromeStructure(scope, layout.above.enabled, layout.bottom.enabled));
+        for (const [row, label] of Object.entries(regionRows)) {
+            if (row === 'top' || layout[row].enabled) {
+                html += chromeGroup(scope, row, label + 'のカラム・配置', regionRowFields(scope, row));
+            }
+        }
+        return html + widgetGroup(scope) + '</section>';
     }
 
     function chromePanel(kind) {
@@ -481,7 +520,6 @@
         const rows = chromeRows(kind);
         const title = kind === 'header' ? 'ヘッダー' : 'フッター';
         const capable = supports(kind + '_rows');
-        const columnChoices = Array.from({length: 5}, (_, index) => [index + 1, (index + 1) + 'カラム']);
         const control = (label, row, name, choices, value) => field(label, kind + '-' + row + '-' + name, choices, value,
             `data-chrome="${kind}" data-chrome-row="${row}" data-chrome-field="${name}"` +
             (kind === 'footer' && row === 'top' && name === 'columns' ? ' data-setting="footer"' : ''));
@@ -491,8 +529,9 @@
             html += field(title + 'の幅', width, Object.entries(data.chromeWidths), layout[width], 'data-setting="' + width + '"');
             html += spacingGroup(kind);
         }
-        html += chromeGroup(kind, 'links', 'リンク', renderList(menuItems[kind], 'links'));
-        if (!supports(kind)) return html + widgetGroup(kind);
+        const outside = regionIds.find(id => regionParents[id] === kind && supports(id));
+        const widgets = widgetGroup(kind) + (outside ? regionPanel(outside) : '');
+        if (!supports(kind)) return html + widgets;
         if (capable) {
             const above = kind === 'header' ? layout.headerAbove : layout.footerAbove.enabled;
             const structure = chromeStructure(kind, above, rows.split);
@@ -511,8 +550,7 @@
         } else if (kind === 'footer') {
             html += field('カラム数', 'footer', columnChoices, layout.footer, 'data-setting="footer"');
         }
-        html += widgetGroup(kind);
-        return html;
+        return html + widgets;
     }
 
     function generalPanel() {
@@ -534,10 +572,11 @@
     panel.addEventListener('toggle', event => {
         const id = event.target.dataset.chromeDetails;
         if (id && event.target.isConnected) {
+            const wasOpen = chromeOpen.get(id);
             chromeOpen.set(id, event.target.open);
-            if (id === pane + ':widgets') {
-                syncOverlayButton(event.target.querySelector('[data-action="toggle-widget-highlight"]'),
-                    widgetHighlightVisible(pane, event.target.open));
+            if (id.endsWith(':widgets') && wasOpen !== event.target.open) {
+                const scope = id.split(':')[0];
+                showPreviewScope(event.target.open ? scope : previewScope);
                 if (event.target.open) revealPreviewArea();
                 schedulePreviewOverlays();
             }
@@ -620,10 +659,10 @@
         const document = frame.contentDocument;
         const widgetTarget = previewWidgetTarget(previewWidgetArea());
         const section = pane === 'page_layout' ? document?.querySelector(`[data-layout-section="${pageEditor.sectionIndex()}"]`) : null;
-        const currentArea = pane === 'columns' ? 'body' : pane;
-        const spacingTarget = spacingOverlayArea === currentArea
-            ? document?.querySelector(currentArea === 'body' ? '.site-main' : '.site-' + currentArea) : null;
-        const highlightTarget = preferSpacing ? spacingTarget || widgetTarget : widgetTarget || spacingTarget;
+        const spacingTarget = spacingOverlayArea && scopePane(spacingScope(spacingOverlayArea)) === pane
+            ? spacingElement(document, spacingOverlayArea) : null;
+        const region = regionIds.includes(previewScope) ? spacingElement(document, previewScope) : null;
+        const highlightTarget = preferSpacing ? spacingTarget || widgetTarget || region : widgetTarget || region || spacingTarget;
         const anchor = highlightTarget || section || (footer ? (document?.querySelector('.site-footer') || document?.querySelector('footer'))
             : body ? document?.querySelector('.site-main, main') : (document?.querySelector('.site-header') || document?.querySelector('header')));
         const scroller = document?.scrollingElement;
@@ -731,7 +770,7 @@
         const formData = new FormData(form);
         const draft = Object.fromEntries(formData);
         if ('reference_id' in draft) draft.reference_id = Number(draft.reference_id) || null;
-        if (editor.list === 'widgets' && draft.type === 'category') {
+        if (draft.type === 'category') {
             draft.reference_ids = formData.getAll('reference_ids').map(Number);
         }
         Object.assign(editor.item, draft);
@@ -799,7 +838,6 @@
                 }
             }
             published = nextStates;
-            menuItems = clone(published[theme].menus);
             background = clone(published[theme].background);
             pageEditor.saved(result);
             editor = null;
@@ -810,6 +848,13 @@
             publishing = false;
             renderPanel();
         }
+    }
+
+    function openWidgetGroup(scope) {
+        previewScope = scope;
+        const group = widgetDetails(scope);
+        if (group) group.open = true;
+        else chromeOpen.set(scope + ':widgets', true);
     }
 
     function toggleChromeRow(kind, row) {
@@ -844,11 +889,21 @@
         }
         if (enabled && !editor) {
             selectedWidgetAreas[kind] = above ? (kind === 'header' ? 'header_above' : 'footer_above1') : kind + '_bottom1';
-            const group = panel.querySelector('[data-chrome-details="' + kind + ':widgets"]');
-            if (group) group.open = true;
-            else chromeOpen.set(kind + ':widgets', true);
+            openWidgetGroup(kind);
         }
         changed('[data-action="' + kind + '-row"][data-row="' + row + '"]');
+    }
+
+    function toggleRegionRow(scope, position) {
+        const row = position === 'above' ? 'above' : 'bottom';
+        const settings = regionRow(scope, row);
+        settings.enabled = !settings.enabled;
+        previewScope = scope;
+        if (settings.enabled && !editor) {
+            selectedWidgetAreas[scope] = regionWidgetAreas[scope][row][0];
+            openWidgetGroup(scope);
+        }
+        changed(`[data-action="region-row"][data-region-scope="${scope}"][data-row="${position}"]`);
     }
 
     root.addEventListener('click', event => {
@@ -859,6 +914,7 @@
             spacingOverlayArea = null;
             spacingOverlay.hidden = true;
             pane = target.pane;
+            previewScope = pane;
             editor = null;
             renderPanel();
             revealPreviewArea();
@@ -874,50 +930,56 @@
             if (!resetButton.disabled) toggleResetPreview();
         } else if (target.action === 'header-row' || target.action === 'footer-row') {
             toggleChromeRow(pane, target.row);
+        } else if (target.action === 'region-row') {
+            toggleRegionRow(target.regionScope, target.row);
         } else if (target.action === 'toggle-widget-highlight') {
             event.preventDefault();
-            const visible = !widgetHighlightVisible(pane, control.closest('details').open);
-            widgetHighlights.set(pane, visible);
-            syncOverlayButton(control, visible);
+            const scope = widgetGroupScope(control);
+            const visible = !widgetHighlightVisible(scope, control.closest('details').open);
+            widgetHighlights.set(scope, visible);
+            showPreviewScope(scope);
             if (visible) revealPreviewArea();
             schedulePreviewOverlays();
         } else if (target.action === 'toggle-spacing') {
             event.preventDefault();
             const area = target.spacingTarget;
-            if (!['header', 'body', 'footer'].includes(area)) return;
             spacingOverlayArea = spacingOverlayArea === area ? null : area;
-            syncOverlayButton(control, spacingOverlayArea !== null);
-            panel.querySelector('[data-spacing-key]').hidden = spacingOverlayArea === null;
-            if (spacingOverlayArea) revealPreviewArea(true);
+            for (const toggle of panel.querySelectorAll('[data-spacing-target]')) {
+                const visible = spacingOverlayArea === toggle.dataset.spacingTarget;
+                syncOverlayButton(toggle, visible);
+                toggle.closest('details').querySelector('[data-spacing-key]').hidden = !visible;
+            }
+            if (spacingOverlayArea) {
+                showPreviewScope(spacingScope(area));
+                revealPreviewArea(true);
+            }
             schedulePreviewOverlays();
         } else if (target.action) {
-            const group = control.closest('[data-chrome-details]');
-            const kind = group?.dataset.chromeDetails.split(':')[1];
-            if (kind !== 'links' && kind !== 'widgets') return;
-            const list = currentList(kind);
-            const forMenu = kind === 'links';
-            const add = itemControl(kind, '[data-action="add"]');
+            const scope = widgetGroupScope(control);
+            if (!scope) return;
+            const list = currentList(scope);
+            const add = itemControl(scope, '[data-action="add"]');
             const index = Number(target.index ?? -1);
+            previewScope = scope;
             if (target.action === 'cancel') {
                 editor = null;
                 showError();
                 renderPanel(add);
-                if (!forMenu) revealPreviewArea();
+                revealPreviewArea();
             } else if (target.action === 'add' || target.action === 'edit') {
-                if (index < 0 && list.length >= (forMenu ? 100 : widgetLimit(selectedWidgetAreas[pane]))) {
+                const area = selectedWidgetAreas[scope];
+                if (index < 0 && list.length >= widgetLimit(area)) {
                     showError('登録できる項目数の上限に達しました。');
                     return;
                 }
-                const empty = forMenu
-                    ? {id: null, type: 'page', label: '', reference_id: null, url: ''}
-                    : {type: 'text', title: '', text: '', menu: pane === 'header' ? 'header' : 'footer', area: selectedWidgetAreas[pane]};
-                editor = {list: kind, index, item: {...empty, ...list[index]}};
-                if (!forMenu && !editor.item.title && ['page', 'post'].includes(editor.item.type)) {
+                const empty = {type: 'text', title: '', text: '', menu: pane === 'header' ? 'header' : 'footer', area};
+                editor = {scope, index, item: {...empty, ...list[index]}};
+                if (!editor.item.title && ['page', 'post'].includes(editor.item.type)) {
                     const choice = targets[editor.item.type]?.find(item => item.id === editor.item.reference_id);
                     if (choice) editor.item.title = choice.name ?? choice.label;
                 }
                 renderPanel('[data-designer-form] select');
-                if (!forMenu) revealPreviewArea();
+                revealPreviewArea();
             } else if (target.action === 'remove') {
                 list.splice(index, 1);
                 editor = null;
@@ -926,7 +988,7 @@
                 const next = index + (target.action === 'up' ? -1 : 1);
                 [list[index], list[next]] = [list[next], list[index]];
                 editor = null;
-                changed(itemControl(kind, `[data-action="edit"][data-index="${next}"]`));
+                changed(itemControl(scope, `[data-action="edit"][data-index="${next}"]`));
             }
         }
     });
@@ -954,6 +1016,7 @@
             return;
         }
         spacing[spacingField] = value;
+        showPreviewScope(spacingScope(spacingArea));
         changed(undefined, false);
     });
 
@@ -964,7 +1027,7 @@
     root.addEventListener('change', event => {
         if (publishing) return;
         const input = event.target;
-        const {setting, formSetting, chrome, chromeRow, chromeField, widgetRow, regionField} = input.dataset;
+        const {setting, formSetting, chrome, chromeRow, chromeField, widgetRow, regionScope, regionRow: row, regionField} = input.dataset;
         if (chrome) {
             if (chrome === 'footer' && chromeRow === 'above') {
                 layouts[theme].footerAbove[chromeField] = chromeField === 'columns' ? Number(input.value) : input.value;
@@ -985,25 +1048,28 @@
             }
             changed(`[data-chrome="${chrome}"][data-chrome-row="${chromeRow ?? ''}"][data-chrome-field="${chromeField}"]`);
         } else if (widgetRow) {
+            const scope = widgetGroupScope(input);
             const editing = widgetRow === 'form';
-            const destination = widgetDestinations(pane, editing ? editor.item.type : undefined)
+            const destination = widgetDestinations(scope, editing ? editor.item.type : undefined)
                 .find(area => widgetLocation(area).row === input.value);
             if (!destination) return;
+            rememberForm();
             if (editing) {
-                rememberForm(input.form);
                 editor.item.area = destination;
             } else {
-                selectedWidgetAreas[pane] = destination;
+                selectedWidgetAreas[scope] = destination;
             }
-            renderPanel('[data-widget-row="' + widgetRow + '"]');
+            previewScope = scope;
+            renderPanel(itemControl(scope, '[data-widget-row="' + widgetRow + '"]'));
             revealPreviewArea();
         } else if (regionField) {
-            const region = layouts[theme].regions[selectedWidgetAreas[pane]];
-            region[regionField] = input.value;
-            if (regionField === 'direction' && !Object.hasOwn(data.regionAlignments[region.direction], region.align)) {
-                region.align = 'auto';
+            const settings = regionRow(regionScope, row);
+            settings[regionField] = regionField === 'columns' ? Number(input.value) : input.value;
+            if (regionField === 'direction' && !Object.hasOwn(data.regionAlignments[settings.direction], settings.align)) {
+                settings.align = 'auto';
             }
-            changed('[data-region-field="' + regionField + '"]');
+            previewScope = regionScope;
+            changed(`[data-region-scope="${regionScope}"][data-region-row="${row}"][data-region-field="${regionField}"]`);
         } else if (setting === 'theme') {
             theme = input.value;
             if (resetDraft) {
@@ -1014,6 +1080,7 @@
             editor = null;
             if ((pane === 'columns' || pane === 'page_layout') && !supports(pane)) {
                 pane = 'header';
+                previewScope = pane;
             }
             changed('[data-setting="theme"]');
         } else if (setting === 'reset-target' && resetDraft) {
@@ -1022,10 +1089,11 @@
             showError();
             updatePreview();
         } else if (setting === 'area') {
-            selectedWidgetAreas[pane] = input.value;
-            if (editor?.list === 'widgets') editor = null;
+            const scope = widgetGroupScope(input);
+            selectedWidgetAreas[scope] = input.value;
             rememberForm();
-            renderPanel('[data-setting="area"]');
+            previewScope = scope;
+            renderPanel(itemControl(scope, '[data-setting="area"]'));
             revealPreviewArea();
         } else if (setting === 'background-file') {
             uploadBackgroundImage(input);
@@ -1041,14 +1109,14 @@
             editor.item.reference_id = null;
             delete editor.item.reference_ids;
             renderPanel('[data-form-setting="type"]');
-        } else if (input.name === 'area' && editor?.list === 'widgets') {
+        } else if (input.name === 'area' && editor) {
             rememberForm(input.form);
+            previewScope = editor.scope;
             renderPanel('[data-designer-form] [name="area"]');
             revealPreviewArea();
         } else if (input.name === 'reference_id' && editor) {
             const choice = targets[editor.item.type]?.find(item => item.id === Number(input.value));
-            const fieldName = editor.list === 'links' ? 'label' : 'title';
-            if (choice) input.form.elements.namedItem(fieldName).value = choice.name ?? choice.label;
+            if (choice) input.form.elements.namedItem('title').value = choice.name ?? choice.label;
         } else if (input.name === 'reference_ids' && editor) {
             const count = new FormData(input.form).getAll('reference_ids').length;
             panel.querySelector('[data-category-count]').textContent = count + '件';
@@ -1070,13 +1138,11 @@
         if (!editor || publishing) return;
         const formData = new FormData(event.target);
         const values = Object.fromEntries(formData);
-        const kind = editor.list;
-        const list = currentList(kind);
-        const index = editor.index;
-        const forMenu = kind === 'links';
-        const name = ((forMenu ? values.label : values.title) || '').trim();
+        const {scope, index} = editor;
+        const list = currentList(scope);
+        const name = (values.title || '').trim();
         const isLink = linkTypeIds.includes(values.type);
-        const categories = !forMenu && values.type === 'category' ? formData.getAll('reference_ids').map(Number) : null;
+        const categories = values.type === 'category' ? formData.getAll('reference_ids').map(Number) : null;
         if (categories && (!categories.length || categories.length > data.categoryLimit ||
             categories.some(id => !Number.isInteger(id) || id < 1))) {
             showError('カテゴリは1〜' + data.categoryLimit + '件で選択してください。');
@@ -1084,37 +1150,32 @@
         }
         const link = categories ? {reference_id: categories[0], reference_ids: categories, url: ''} :
             isLink ? linkDestination(values) : null;
-        if (isLink && (!link || ((forMenu || values.type === 'custom') && !name))) {
+        if (isLink && (!link || (values.type === 'custom' && !name))) {
             showError('表示名とリンク先を確認してください。');
             return;
         }
-        if (forMenu) {
-            const item = {id: editor.item.id, label: name, type: values.type, ...link};
-            if (index < 0) list.push(item);
-            else list[index] = item;
-        } else {
-            if (!widgetDestinations(pane, values.type).includes(values.area)) {
-                showError('表示場所を選び直してください。');
-                return;
-            }
-            const destination = layouts[theme].widgets[values.area];
-            if ((destination !== list || index < 0) && destination.length >= widgetLimit(values.area)) {
-                showError('この場所には' + widgetLimit(values.area) + '個まで配置できます。');
-                return;
-            }
-            const item = {type: values.type, title: name, text: values.text?.trim() || '', menu: values.menu || 'footer', ...link};
-            if (destination === list && index >= 0) list[index] = item;
-            else {
-                if (index >= 0) list.splice(index, 1);
-                destination.push(item);
-            }
-            const destinationPane = widgetPane(values.area);
-            if (pane !== destinationPane) chromeOpen.set(destinationPane + ':widgets', true);
-            pane = destinationPane;
-            selectedWidgetAreas[pane] = values.area;
+        if (!widgetDestinations(scope, values.type).includes(values.area)) {
+            showError('表示場所を選び直してください。');
+            return;
         }
+        const destination = layouts[theme].widgets[values.area];
+        if ((destination !== list || index < 0) && destination.length >= widgetLimit(values.area)) {
+            showError('この場所には' + widgetLimit(values.area) + '個まで配置できます。');
+            return;
+        }
+        const item = {type: values.type, title: name, text: values.text?.trim() || '', menu: values.menu || 'footer', ...link};
+        if (destination === list && index >= 0) list[index] = item;
+        else {
+            if (index >= 0) list.splice(index, 1);
+            destination.push(item);
+        }
+        const nextScope = widgetScope(values.area);
+        if (scope !== nextScope) openWidgetGroup(nextScope);
+        pane = scopePane(nextScope);
+        previewScope = nextScope;
+        selectedWidgetAreas[nextScope] = values.area;
         editor = null;
-        changed(itemControl(kind, '[data-action="add"]'));
+        changed(itemControl(nextScope, '[data-action="add"]'));
     });
 
     function warnBeforeUnload(event) {

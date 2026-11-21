@@ -5,12 +5,13 @@ module.exports = async function checkSpacingOverlay(page, base, output) {
     await page.goto(base + '/admin/design');
     const original = JSON.parse(await page.locator('#nx-design-data').textContent());
     const overlay = page.locator('#nx-design-spacing-overlay');
-    const toggle = page.locator('[data-action="toggle-spacing"]');
+    let toggle = page.locator('[data-spacing-target="header"]');
     const settled = () => page.waitForFunction(() => document.querySelector('#nx-design-stage').getAttribute('aria-busy') === 'false'
         && document.querySelector('#nx-design-frame').contentDocument.querySelector('.site-footer'));
     const open = async pane => {
         await page.locator('[data-pane="' + pane + '"]').click();
         const details = page.locator('[data-chrome-details="' + pane + ':spacing"]');
+        toggle = details.locator('[data-action="toggle-spacing"]');
         if (!(await details.evaluate(element => element.open))) await details.locator('summary').press('Enter');
         assert.equal(await details.locator('summary > [data-action="toggle-spacing"]').count(), 1);
     };
@@ -89,12 +90,13 @@ module.exports = async function checkSpacingOverlay(page, base, output) {
         await open('header');
         await toggle.click();
         await aligned('header');
-        await page.locator('[data-spacing-field="paddingTop"]').fill('48');
+        const padding = page.locator('[data-spacing-area="header"][data-spacing-field="paddingTop"]');
+        await padding.fill('48');
         await settled();
         await aligned('header');
         assert.equal(await overlay.locator('[data-spacing-type="padding"][data-spacing-side="top"]').first().evaluate(element => parseFloat(element.style.height)), 48);
-        await page.locator('[data-spacing-field="paddingTop"]').fill('');
-        await page.locator('[data-spacing-field="paddingTop"]').press('Tab');
+        await padding.fill('');
+        await padding.press('Tab');
         await settled();
         await aligned('header');
         assert(await page.locator('[data-action="publish"]').isDisabled());

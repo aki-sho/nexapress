@@ -105,18 +105,35 @@ function nx_design_region(string $area): void
         return;
     }
 
-    ob_start();
-    try {
-        nx_design_widgets($area);
-        $content = trim(ob_get_contents());
-    } finally {
-        ob_end_clean();
+    $design = nx_design_settings();
+    $layout = $design['regions'][$area];
+    $draft = \app\Core\Design::isDraftPreview();
+    $rows = [];
+    foreach (\app\Core\Design::regionWidgetAreas($area) as $row => $slots) {
+        $settings = $row === 'top' ? $layout : $layout[$row];
+        if ($row !== 'top' && !$settings['enabled']) {
+            continue;
+        }
+        $contents = [];
+        foreach (array_slice($slots, 0, $settings['columns']) as $slot) {
+            $contents[$slot] = '';
+            if (!$draft && !$design['widgets'][$slot]) {
+                continue;
+            }
+            ob_start();
+            try {
+                nx_design_widgets($slot);
+                $contents[$slot] = trim(ob_get_contents());
+            } finally {
+                ob_end_clean();
+            }
+        }
+        if (array_filter($contents)) {
+            $rows[$row] = ['settings' => $settings, 'contents' => $contents];
+        }
     }
-    if ($content !== '') {
-        $layout = nx_design_settings()['regions'][$area];
-        echo '<section class="nx-design-region" data-design-area="' . e($area) . '" aria-label="' . e($label) . '"' .
-            ' data-region-direction="' . e($layout['direction']) . '" data-region-align="' . e($layout['align']) . '">' .
-            $content . '</section>';
+    if ($rows) {
+        require BASE_PATH . '/app/Views/design/region.php';
     }
 }
 

@@ -41,7 +41,8 @@ module.exports = async function checkWidgetLabels(page, base, output) {
     async function openWidget(area, index) {
         const pane = area === 'sidebar' ? 'columns' : area.startsWith('header') ? 'header' : 'footer';
         await page.locator('[data-pane="' + pane + '"]').click();
-        const group = page.locator('[data-chrome-details="' + pane + ':widgets"]');
+        const scope = ['header_after', 'footer_before'].includes(area) ? area : pane;
+        const group = page.locator('[data-chrome-details="' + scope + ':widgets"]');
         if (!(await group.evaluate(element => element.open))) await group.locator('summary').press('Enter');
         await selectWidgetLocation(group, area);
         if (index === undefined) await group.locator('[data-action="add"]').click();

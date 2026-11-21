@@ -6,12 +6,13 @@ module.exports = async function checkSpacingValues(page, base, output) {
     const data = JSON.parse(await page.locator('#nx-design-data').textContent());
     const settled = () => page.waitForFunction(() => document.querySelector('#nx-design-stage').getAttribute('aria-busy') === 'false'
         && document.querySelector('#nx-design-frame').contentDocument.querySelector('.site-footer'));
-    const input = field => page.locator('[data-spacing-field="' + field + '"]');
+    let spacing;
+    const input = field => spacing.locator('[data-spacing-field="' + field + '"]');
     const origin = field => input(field).locator('..').locator('[data-spacing-origin]');
     const open = async pane => {
         await page.locator('[data-pane="' + pane + '"]').click();
-        const group = page.locator('[data-chrome-details="' + pane + ':spacing"]');
-        if (!(await group.evaluate(element => element.open))) await group.locator('summary').press('Enter');
+        spacing = page.locator('[data-chrome-details="' + pane + ':spacing"]');
+        if (!(await spacing.evaluate(element => element.open))) await spacing.locator('summary').press('Enter');
     };
     const publish = async () => {
         const [response] = await Promise.all([page.waitForResponse(base + '/admin/design/publish'),
@@ -30,7 +31,7 @@ module.exports = async function checkSpacingValues(page, base, output) {
         await settled();
         for (const pane of ['header', 'columns', 'footer']) {
             await open(pane);
-            const fields = await page.locator('[data-spacing-area]').evaluateAll(inputs =>
+            const fields = await spacing.locator('[data-spacing-area]').evaluateAll(inputs =>
                 inputs.map(input => ({value: input.value, valid: input.validity.valid})));
             assert.equal(fields.length, 8);
             assert(fields.every(field => field.value !== '' && Number.isFinite(Number(field.value)) && field.valid));

@@ -6,8 +6,8 @@ module.exports = async function selectWidgetLocation(container, area, editing = 
         return;
     }
 
-    const match = /^(?:header|footer)(?:_(above|bottom))?[1-5]$/.exec(area);
-    const rowValue = area === 'header_above' ? 'above' : match ? match[1] || 'top' : area;
+    const match = /^(?:header_after|footer_before|header|footer)(?:_(above|top|bottom))?[1-5]$/.exec(area);
+    const rowValue = area === 'header_above' ? 'above' : match?.[1] || 'top';
     if (await row.inputValue() !== rowValue) await row.selectOption(rowValue);
     if (await column.count()) await column.selectOption(area);
 };

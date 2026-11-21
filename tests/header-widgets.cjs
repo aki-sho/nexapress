@@ -85,7 +85,8 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             await widgets('header3', 0);
             const headerLocations = form.locator('[data-widget-row="form"] option');
             assert((await headerLocations.allTextContents()).includes('ヘッダー本体'));
-            assert((await headerLocations.allTextContents()).includes('ヘッダー直下'));
+            assert(!(await headerLocations.allTextContents()).includes('ヘッダー直下'));
+            assert.equal(await page.locator('[data-region-settings="header_after"]').count(), 1);
             assert(!(await headerLocations.allTextContents()).some(label => label.includes('フッター')));
             await form.locator('[data-action="cancel"]').click();
             await widgets('footer1');
@@ -93,7 +94,8 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             assert(footerTypes.includes('search') && !footerTypes.includes('site_icon') && !footerTypes.includes('site_name'));
             const footerLocations = form.locator('[data-widget-row="form"] option');
             assert((await footerLocations.allTextContents()).includes('フッター本体'));
-            assert((await footerLocations.allTextContents()).includes('フッター直前'));
+            assert(!(await footerLocations.allTextContents()).includes('フッター直前'));
+            assert.equal(await page.locator('[data-region-settings="footer_before"]').count(), 1);
             assert(!(await footerLocations.allTextContents()).some(label => label.includes('ヘッダー')));
             await form.locator('[name="type"]').selectOption('search');
             const heading = '検索 <img data-widget-attack src=x> & "確認"';
