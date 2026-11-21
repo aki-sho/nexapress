@@ -81,9 +81,15 @@ function nx_design_background_style(): void
 
 function nx_design_spacing_style(): void
 {
-    $stylesheet = \app\Core\DesignSpacing::stylesheetUrl(nx_design_settings()['spacing']);
-    if ($stylesheet !== null) {
-        echo '<link rel="stylesheet" href="' . e($stylesheet) . '">' . "\n";
+    $layout = nx_design_settings();
+    $stylesheets = [
+        \app\Core\DesignSpacing::stylesheetUrl($layout['spacing']),
+        \app\Core\DesignFrame::stylesheetUrl($layout['frames']),
+    ];
+    foreach ($stylesheets as $stylesheet) {
+        if ($stylesheet !== null) {
+            echo '<link rel="stylesheet" href="' . e($stylesheet) . '">' . "\n";
+        }
     }
 }
 

@@ -234,6 +234,12 @@ function curl_setopt_array($handle, array $options): bool {
                     data = json.loads(re.search(r'<script type="application/json" id="nx-design-data">(.*?)</script>', body, re.S)[1])
                     check(status == 200 and 'ページ毎のレイアウト' in body and len(data['pageLayout']['scopes']) == 3,
                           ref + ': updated design editor offers shared page and post layouts')
+                    if tuple(map(int, version.split('.'))) < (2, 25, 0) <= tuple(map(int, target.split('.'))):
+                        frame = {'mode': 'theme', 'line': None, 'radius': None}
+                        check(all(theme['state']['layout']['frames'] == dict.fromkeys(['header', 'body', 'footer'], frame)
+                                  for theme in data['themes'].values())
+                              and '/nexapress/assets/site-frame?' not in guest.request('/')[1],
+                              ref + ': theme frame styles are inherited after upgrading')
                     if (2, 20, 0) <= tuple(map(int, version.split('.'))) < (2, 21, 0) <= tuple(map(int, target.split('.'))):
                         for theme in ['default', 'monoedge']:
                             layout = data['themes'][theme]['state']['layout']

@@ -141,6 +141,18 @@
         themeWidth: () => layouts[theme].width,
         previewMode: () => mode,
     });
+    const frameEditor = window.NexaPressDesignFrame({
+        panel, options: data.frameOptions, field, escape, showError,
+        theme: () => theme,
+        settings: area => layouts[theme].frames[area],
+        saving: () => publishing,
+        previewElement: area => stage.getAttribute('aria-busy') === 'false' && frame.dataset.previewTheme === theme &&
+            (mode !== 'published' || theme === data.active) ? spacingElement(frame.contentDocument, area) : null,
+        changed: (area, redraw) => {
+            showPreviewScope(spacingScope(area));
+            changed(redraw ? '[data-frame-mode]' : undefined, redraw);
+        },
+    });
     const pageChanges = () => pageEditor.hasChanges();
     const currentChanges = () => hasChanges(theme) || !same(background, published[theme].background) || pageChanges();
 
@@ -289,6 +301,7 @@
             overlayButton('toggle-spacing', '余白', highlighted, `data-spacing-target="${area}"`));
     }
 
+    const frameGroup = kind => chromeGroup(kind, 'frame', '枠', frameEditor.render(kind === 'columns' ? 'body' : kind));
     const spacingScope = area => area === 'body' ? 'columns' : area;
     const hasInnerSpacing = area => area === 'header' || area === 'footer';
     const spacingElement = (doc, area) => doc?.querySelector(regionIds.includes(area)
@@ -528,6 +541,7 @@
             const width = kind + 'Width';
             html += field(title + 'の幅', width, Object.entries(data.chromeWidths), layout[width], 'data-setting="' + width + '"');
             html += spacingGroup(kind);
+            html += frameGroup(kind);
         }
         const outside = regionIds.find(id => regionParents[id] === kind && supports(id));
         const widgets = widgetGroup(kind) + (outside ? regionPanel(outside) : '');
@@ -615,7 +629,7 @@
             panel.innerHTML = '<h2>本文カラム</h2>' + (supports('page_layout')
                 ? field('テーマの本文幅', 'width', pageEditor.widths, layout.width, 'data-setting="width"') : '') + field('レイアウト', 'columns',
                 [['none', '1カラム・本文のみ'], ['left', '2カラム・左サイドバー'], ['right', '2カラム・右サイドバー']],
-                layout.columns, 'data-setting="columns"') + spacingGroup('columns') + widgetGroup('columns');
+                layout.columns, 'data-setting="columns"') + spacingGroup('columns') + frameGroup('columns') + widgetGroup('columns');
         } else if (pane === 'page_layout') {
             panel.innerHTML = pageEditor.render();
         } else if (pane === 'general') {
@@ -623,6 +637,7 @@
         }
         renderStatus();
         syncSpacingValues();
+        frameEditor.sync();
         schedulePreviewOverlays();
         if (focus) root.querySelector(focus)?.focus();
     }
@@ -639,6 +654,7 @@
         Object.assign(previewOverlay.style, geometry);
         canvas.style.width = width * scale + 'px';
         syncSpacingValues();
+        frameEditor.sync();
         schedulePreviewOverlays();
     }
 
@@ -808,7 +824,12 @@
 
     async function publish() {
         if (publishButton.disabled) return;
-        if (panel.querySelector('[data-spacing-area]:invalid')?.reportValidity() === false) return;
+        const invalid = panel.querySelector('[data-spacing-area]:invalid, [data-frame-settings] input[type="number"]:invalid');
+        if (invalid) {
+            invalid.closest('details').open = true;
+            invalid.reportValidity();
+            return;
+        }
         if (resetDraft && !window.confirm('全テーマのデザインを初期状態に戻して公開しますか？登録済みのリンク、ウィジェット、ページのレイアウト設定も初期化されます。')) return;
         if (!resetDraft && conflicts.has(theme)) {
             showError('別の操作でこのテーマの設定が更新されました。画面を開き直してください。');
@@ -1198,6 +1219,7 @@
         revealPreviewArea();
         stage.setAttribute('aria-busy', 'false');
         syncSpacingValues();
+        frameEditor.sync();
         schedulePreviewOverlays();
         if (resetDraft) renderStatus();
     });

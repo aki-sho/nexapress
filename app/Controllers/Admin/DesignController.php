@@ -7,6 +7,7 @@ use app\Core\Controller;
 use app\Core\Csrf;
 use app\Core\Design;
 use app\Core\DesignSpacing;
+use app\Core\DesignFrame;
 use app\Core\PageLayout;
 use app\Core\Theme;
 use app\Models\Category;
@@ -64,6 +65,10 @@ final class DesignController extends Controller
             'widgetLimit' => Design::MAX_WIDGETS, 'headerWidgetLimit' => Design::MAX_HEADER_WIDGETS,
             'chromeWidths' => Design::CHROME_WIDTHS,
             'spacingLimit' => DesignSpacing::MAX_PIXELS,
+            'frameOptions' => [
+                'modes' => DesignFrame::MODES, 'styles' => DesignFrame::STYLES,
+                'lineDefault' => DesignFrame::LINE_DEFAULT, 'limit' => DesignFrame::MAX_PIXELS,
+            ],
             'categoryLimit' => Design::MAX_CATEGORY_LINKS,
             'chromeDefaults' => [
                 'header' => Design::headerRowDefaults(),

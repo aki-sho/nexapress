@@ -34,7 +34,7 @@
 
     const percentage = alpha => Number((alpha * 100).toFixed(2));
 
-    function fields(color, kind, escape) {
+    function fields(color, kind, escape, compact = false) {
         const {hex, alpha} = parts(color);
         const opacity = percentage(alpha);
         return `<div class="nx-design-color" data-design-color="${kind}">
@@ -43,35 +43,41 @@
                     value="${escape(color)}" maxlength="48" spellcheck="false"></label>
                 <label>色を選ぶ<input type="color" data-color-field="picker" value="${hex}"></label>
             </div>
-            <label><span class="nx-design-opacity">不透明度 <output data-color-opacity>${opacity}%</output></span>
-                <input type="range" min="0" max="100" step="0.01" data-color-field="opacity" value="${opacity}"></label>
-            <div class="nx-page-palettes">${palettes.map(([label, colors]) => `<div>
+            ${compact
+                ? `<label>不透明度（％）<input type="number" min="0" max="100" step="0.01" data-color-field="opacity" value="${opacity}"></label>`
+                : `<label><span class="nx-design-opacity">不透明度 <output data-color-opacity>${opacity}%</output></span>
+                    <input type="range" min="0" max="100" step="0.01" data-color-field="opacity" value="${opacity}"></label>`}
+            ${compact ? '' : `<div class="nx-page-palettes">${palettes.map(([label, colors]) => `<div>
                 <span class="nx-design-note">${label}</span>
                 <div class="nx-page-swatches">${colors.map(value => `<button type="button" class="nx-design-small nx-page-swatch"
                     data-page-color="${value}" aria-label="${label} ${value}" aria-pressed="${hex === value}">
                     <span style="background-color:${value}" aria-hidden="true"></span>${value}</button>`).join('')}</div>
-            </div>`).join('')}</div>
+            </div>`).join('')}</div>`}
         </div>`;
     }
 
-    function bind(panel, kind, current, update, showError) {
+    function reflect(group, next, keepCode = false) {
+        const opacity = percentage(next.alpha);
+        if (!keepCode) group.querySelector('[data-color-field="code"]').value = canonical(next);
+        group.querySelector('[data-color-field="picker"]').value = next.hex;
+        group.querySelector('[data-color-field="opacity"]').value = opacity;
+        const output = group.querySelector('[data-color-opacity]');
+        if (output) output.textContent = opacity + '%';
+        group.querySelectorAll('[data-page-color]').forEach(button =>
+            button.setAttribute('aria-pressed', String(button.dataset.pageColor === next.hex)));
+    }
+
+    function bind(panel, kind, current, update, showError, label = '背景色') {
         const editor = target => target.closest('[data-design-color="' + kind + '"]');
         function apply(group, next, keepCode = false) {
-            const color = canonical(next);
-            const opacity = percentage(next.alpha);
-            if (!keepCode) group.querySelector('[data-color-field="code"]').value = color;
-            group.querySelector('[data-color-field="picker"]').value = next.hex;
-            group.querySelector('[data-color-field="opacity"]').value = opacity;
-            group.querySelector('[data-color-opacity]').textContent = opacity + '%';
-            group.querySelectorAll('[data-page-color]').forEach(button =>
-                button.setAttribute('aria-pressed', String(button.dataset.pageColor === next.hex)));
-            update(color);
+            reflect(group, next, keepCode);
+            update(canonical(next), group);
         }
 
         panel.addEventListener('click', event => {
             const swatch = event.target.closest('[data-page-color]');
             const group = swatch && editor(swatch);
-            if (group) apply(group, {...parts(current()), hex: swatch.dataset.pageColor});
+            if (group) apply(group, {...parts(current(group)), hex: swatch.dataset.pageColor});
         });
 
         function onInput(event) {
@@ -79,7 +85,7 @@
             const name = input.dataset.colorField;
             const group = name && editor(input);
             if (!group) return;
-            const color = current();
+            const color = current(group);
             const existing = parts(color);
             if (name === 'code') {
                 if (event.type === 'input' && /^#?[a-f0-9]{3,4}$/i.test(input.value.trim())) return;
@@ -87,17 +93,29 @@
                 if (next) apply(group, next, event.type === 'input');
                 else if (event.type === 'change') {
                     input.value = color;
-                    showError('背景色は #RRGGBB または rgba(255, 255, 255, 0.5) で入力してください。');
+                    showError(label + 'は #RRGGBB または rgba(255, 255, 255, 0.5) で入力してください。');
                 }
             } else if (name === 'picker') {
                 apply(group, {...existing, hex: input.value.toUpperCase()});
-            } else {
+            } else if (input.value !== '' && input.validity.valid) {
                 apply(group, {...existing, alpha: Number(input.value) / 100});
+            } else if (event.type === 'change') {
+                reflect(group, existing);
+                showError('不透明度は0〜100％で入力してください。');
             }
         }
         panel.addEventListener('input', onInput);
         panel.addEventListener('change', onInput);
     }
 
-    window.NexaPressDesignColor = {fields, bind};
+    window.NexaPressDesignColor = {
+        fields, bind,
+        normalize(value) {
+            const next = parts(value);
+            return next ? canonical(next) : null;
+        },
+        sync(group, color) {
+            reflect(group, parts(color));
+        },
+    };
 })();

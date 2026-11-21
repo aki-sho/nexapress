@@ -353,6 +353,12 @@ final class Design
                 $defaults['spacing'][$region] = $spacing[$region];
             }
         }
+        $frames = DesignFrame::validate($layout['frames'] ?? []);
+        foreach (DesignFrame::AREAS as $region => $area) {
+            if (in_array($area, $caps, true)) {
+                $defaults['frames'][$region] = $frames[$region];
+            }
+        }
         $page = null;
         $content = [];
         $common = self::contentLayouts(self::stored());
@@ -581,6 +587,7 @@ final class Design
         $layout['widgets'] = array_replace($defaults['widgets'], $saved['widgets'] ?? []);
         $layout['regions'] = array_replace_recursive($defaults['regions'], $saved['regions'] ?? []);
         $layout['spacing'] = DesignSpacing::validate($saved['spacing'] ?? []);
+        $layout['frames'] = DesignFrame::validate($saved['frames'] ?? []);
         return self::headerWidgetLayout($layout);
     }
 
@@ -637,6 +644,7 @@ final class Design
             'footerAbove' => ['enabled' => false, 'columns' => 1, 'align' => 'center'],
             'footerWidth' => 'theme',
             'spacing' => DesignSpacing::defaults(),
+            'frames' => DesignFrame::defaults(),
             'regions' => array_fill_keys(array_keys(self::REGIONS), self::REGION_DEFAULT),
             'widgets' => $widgets,
         ];
