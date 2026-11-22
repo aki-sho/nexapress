@@ -529,7 +529,7 @@ class HtmlSanitizer
         );
 
         if ($value === '') {
-            return null;
+            return $name === 'alt' ? '' : null;
         }
 
         return match ($name) {

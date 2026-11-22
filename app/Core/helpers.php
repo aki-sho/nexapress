@@ -418,6 +418,7 @@ function nx_head(?string $title = null): void
         <link rel="icon" href="<?= e($icon) ?>">
     <?php endif; ?>
 
+    <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/article-cover.css')) ?>">
     <?php if (\app\Core\EditorPreview::active()): ?>
         <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/editor-preview.css')) ?>">
     <?php endif; ?>
