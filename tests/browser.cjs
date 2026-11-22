@@ -809,6 +809,7 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
         if (process.env.NEXAPRESS_TEST_CLASSIC_EDITOR) await require('./editor-preview.cjs')(page, base, output);
         page.off('dialog', acceptDialogs);
         await require('./design-reset.cjs')(page, base, output);
+        if (process.env.NEXAPRESS_TEST_CLASSIC_EDITOR) await require('./article-layout.cjs')(page, base);
         assert.deepEqual(errors, []);
         console.log('PASS: browser warning, menu editing, profile, desktop/mobile layout, and no JavaScript exceptions');
     } finally {

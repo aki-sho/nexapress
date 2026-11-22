@@ -1,15 +1,15 @@
 <?php
 
 use app\Core\Design;
-use app\Core\PageLayout;
 use app\Models\Media;
 use app\Models\Navigation;
 
 $title = $layoutDocument['title'];
 $body = null;
 $images = [];
+$hasArticlePadding = !empty($pageDesign['articlePadding']);
 ?>
-<link rel="stylesheet" href="<?= e(PageLayout::stylesheetUrl($pageDesign, nx_design_settings()['width'])) ?>">
+<?php if ($hasArticlePadding): ?><article class="nx-page-article"><?php endif; ?>
 <?php if (!empty($isPreview)): ?><p class="preview-notice">未公開の内容を表示しています。</p><?php endif; ?>
 <?php foreach ($pageDesign['sections'] as $index => $section): ?>
     <?php
@@ -64,3 +64,4 @@ $images = [];
         </div>
     </section>
 <?php endforeach; ?>
+<?php if ($hasArticlePadding): ?></article><?php endif; ?>

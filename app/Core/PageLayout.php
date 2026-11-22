@@ -24,9 +24,15 @@ final class PageLayout
         'post' => '投稿のみの共通レイアウト',
     ];
     public const EMPTY_OVERRIDES = ['format' => 2];
+    public const ARTICLE_PADDING_SIDES = ['top' => '上', 'right' => '右', 'bottom' => '下', 'left' => '左'];
 
-    public static function stylesheetUrl(array $layout, string $themeWidth): string
+    public static function stylesheetUrl(array $layout, string $themeWidth): ?string
     {
+        $sections = $layout['enabled'] ? $layout['sections'] : [];
+        $padding = $layout['articlePadding'] ?? [];
+        if (!$sections && !$padding) {
+            return null;
+        }
         $width = $layout['width'] === 'inherit' ? $themeWidth : $layout['width'];
         // Include only appearance settings so the same stylesheet works in the draft preview.
         $sections = array_map(static fn(array $section): array => [
@@ -34,9 +40,9 @@ final class PageLayout
             'percent' => $section['widthMode'] === 'percent' ? $section['percent'] : null,
             'share' => $section['share'],
             'gap' => $section['gap'],
-        ], $layout['sections']);
+        ], $sections);
 
-        $query = ['width' => $width, 'sections' => $sections];
+        $query = ['width' => $width, 'sections' => $sections, 'articlePadding' => $padding];
         $background = Design::background();
         if ($background['mode'] === 'color') {
             $query['background'] = $background['color'];
@@ -47,9 +53,10 @@ final class PageLayout
     public static function stylesheet(array $query): string
     {
         $width = $query['width'] ?? null;
-        $sections = $query['sections'] ?? null;
+        $sections = $query['sections'] ?? [];
+        $padding = self::articlePadding($query['articlePadding'] ?? [], true);
         if (!is_string($width) || !isset(self::WIDTHS[$width]) ||
-            !is_array($sections) || !$sections || count($sections) > self::MAX_SECTIONS) {
+            !is_array($sections) || (!$sections && !$padding) || count($sections) > self::MAX_SECTIONS) {
             throw new InvalidArgumentException('ページのレイアウトを確認してください。');
         }
         $defaultWidth = match ($width) {
@@ -60,6 +67,15 @@ final class PageLayout
 
         $background = DesignColor::normalize($query['background'] ?? null) ?? '#F5F6F8';
         $rules = [];
+        if ($padding) {
+            $declarations = [];
+            foreach ($padding as $side => $pixels) {
+                $value = $side === 'left' || $side === 'right' ? "min({$pixels}px, 40%)" : "{$pixels}px";
+                $declarations[] = "padding-$side:$value;";
+            }
+            $rules[] = 'article.post-detail:not(.nx-editor-preview-extra), article.nx-page-article {' .
+                implode('', $declarations) . '}';
+        }
         foreach (array_values($sections) as $index => $section) {
             $color = DesignColor::normalize($section['color'] ?? null);
             if ($color === null) {
@@ -156,8 +172,9 @@ final class PageLayout
         $layout = self::validate($layout);
         // Before inheritance existed, an unused layout was saved with false and no sections.
         if (!$layout['enabled'] && $layout['sections'] === []) {
-            return $layout['width'] === 'inherit' ? self::EMPTY_OVERRIDES
+            $patch = $layout['width'] === 'inherit' ? self::EMPTY_OVERRIDES
                 : ['format' => 2, 'width' => $layout['width']];
+            return $patch + array_intersect_key($layout, ['articlePadding' => true]);
         }
         $layout['format'] = 2;
         $layout['sectionCount'] = count($layout['sections']);
@@ -170,7 +187,7 @@ final class PageLayout
     public static function validateOverrides(array $input): array
     {
         if (($input['format'] ?? null) !== 2 ||
-            array_diff(array_keys($input), ['format', 'enabled', 'width', 'sectionCount', 'sections'])) {
+            array_diff(array_keys($input), ['format', 'enabled', 'width', 'sectionCount', 'sections', 'articlePadding'])) {
             throw new InvalidArgumentException('ページのレイアウト設定を確認してください。');
         }
         $result = self::EMPTY_OVERRIDES;
@@ -185,6 +202,12 @@ final class PageLayout
                 throw new InvalidArgumentException('ページの本文幅を確認してください。');
             }
             $result['width'] = $input['width'];
+        }
+        if (array_key_exists('articlePadding', $input)) {
+            $padding = self::articlePadding($input['articlePadding']);
+            if ($padding) {
+                $result['articlePadding'] = $padding;
+            }
         }
         if (array_key_exists('sectionCount', $input)) {
             $result['sectionCount'] = self::range($input['sectionCount'], 0, self::MAX_SECTIONS);
@@ -220,6 +243,9 @@ final class PageLayout
                     $result[$field] = $patch[$field];
                 }
             }
+            if (isset($patch['articlePadding'])) {
+                $result['articlePadding'] = array_replace($result['articlePadding'] ?? [], $patch['articlePadding']);
+            }
             if (isset($patch['sectionCount'])) {
                 $result['sections'] = array_slice($result['sections'], 0, $patch['sectionCount']);
                 while (count($result['sections']) < $patch['sectionCount']) {
@@ -252,7 +278,30 @@ final class PageLayout
             }
             $result[] = self::section($section, $count);
         }
-        return ['enabled' => $enabled, 'width' => $width, 'sections' => $result];
+        $padding = self::articlePadding($layout['articlePadding'] ?? []);
+        $validated = ['enabled' => $enabled, 'width' => $width, 'sections' => $result];
+        if ($padding) {
+            $validated['articlePadding'] = $padding;
+        }
+        return $validated;
+    }
+
+    private static function articlePadding(mixed $input, bool $fromQuery = false): array
+    {
+        if (!is_array($input) || array_diff_key($input, self::ARTICLE_PADDING_SIDES)) {
+            throw new InvalidArgumentException('記事枠の余白を確認してください。');
+        }
+        $padding = [];
+        foreach ($input as $side => $value) {
+            if ($fromQuery && is_string($value) && ctype_digit($value)) {
+                $value = (int)$value;
+            }
+            if (!is_int($value) || $value < 0 || $value > DesignSpacing::MAX_PIXELS) {
+                throw new InvalidArgumentException('記事枠の余白は0〜' . DesignSpacing::MAX_PIXELS . 'の整数で入力してください。');
+            }
+            $padding[$side] = $value;
+        }
+        return $padding;
     }
 
     private static function section(array $input, int &$count): array

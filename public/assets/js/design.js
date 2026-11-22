@@ -828,7 +828,7 @@
 
     async function publish() {
         if (publishButton.disabled) return;
-        const invalid = panel.querySelector('[data-spacing-area]:invalid, [data-frame-settings] input[type="number"]:invalid');
+        const invalid = panel.querySelector('[data-spacing-area]:invalid, [data-frame-settings] input[type="number"]:invalid, [data-article-padding]:invalid');
         if (invalid) {
             invalid.closest('details').open = true;
             invalid.reportValidity();
@@ -1214,6 +1214,7 @@
         // Keep the site controls read-only while allowing the iframe's native scrolling.
         const body = frame.contentDocument?.body;
         if (body) body.inert = true;
+        window.nxRefreshArticleCovers?.(body);
         previewOverlayObserver?.disconnect();
         previewOverlayObserver = new ResizeObserver(schedulePreviewOverlays);
         if (body) previewOverlayObserver.observe(body);

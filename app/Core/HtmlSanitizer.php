@@ -76,6 +76,7 @@ class HtmlSanitizer
             'width',
             'height',
             'loading',
+            'data-nx-cover-pop',
         ],
 
         'figure' => [],
@@ -99,6 +100,7 @@ class HtmlSanitizer
 
         'div' => [
             'align',
+            'data-nx-cover-height',
         ],
         'span' => [],
 
@@ -546,6 +548,8 @@ class HtmlSanitizer
                     true
                 ),
 
+            'data-nx-cover-height' => $value === 'auto' ? $value : self::sanitizeInteger($value, 80, 3000),
+            'data-nx-cover-pop' => self::sanitizeInteger($value, -300, 300),
             'class' =>
                 self::sanitizeClass($value),
 

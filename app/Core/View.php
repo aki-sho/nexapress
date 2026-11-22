@@ -94,6 +94,12 @@ class View
                 return;
             }
             ob_start();
+            if ($pageDesign !== null) {
+                $stylesheet = PageLayout::stylesheetUrl($pageDesign, nx_design_settings()['width']);
+                if ($stylesheet !== null) {
+                    echo '<link rel="stylesheet" href="' . e($stylesheet) . '">' . "\n";
+                }
+            }
             if (file_exists($viewPath)) {
                 require $viewPath;
             }

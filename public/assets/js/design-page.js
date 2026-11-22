@@ -47,6 +47,7 @@
         let showColors = false;
         let showLayout = false;
         let showElements = false;
+        let showArticlePadding = false;
 
         const individual = () => scope === 'page_item' || scope === 'post_item';
         const kind = () => scope === 'post' || scope === 'post_item' ? 'post' : 'page';
@@ -66,6 +67,7 @@
             for (const name of ['enabled', 'width']) {
                 if (owns(patch, name)) result[name] = patch[name];
             }
+            result.articlePadding = {...base.articlePadding, ...patch.articlePadding};
             if (owns(patch, 'sectionCount')) {
                 result.sections = result.sections.slice(0, patch.sectionCount);
                 while (result.sections.length < patch.sectionCount) result.sections.push(clone(config.sectionDefaults));
@@ -76,7 +78,7 @@
             return result;
         }
 
-        const emptyLayout = () => ({enabled: false, width: 'inherit', sections: []});
+        const emptyLayout = () => ({enabled: false, width: 'inherit', sections: [], articlePadding: {}});
         function inherited() {
             let result = emptyLayout();
             if (scope !== 'all') result = merge(result, common.all.draft);
@@ -325,11 +327,12 @@
             const layout = effective();
             sectionIndex = Math.max(0, Math.min(sectionIndex, layout.sections.length - 1));
             const item = layout.sections[sectionIndex];
-            const baseWidth = inherited().width;
+            const base = inherited();
+            const baseWidth = base.width;
             const inheritedWidth = config.widths[baseWidth === 'inherit' ? themeWidth() : baseWidth];
             let html = picker + select(individual() ? 'このページの本文幅' : 'この設定の本文幅', 'width',
                 [['inherit', labelForInheritance() + 'を使用（' + inheritedWidth + '）'], ...widths],
-                record.draft.width ?? 'inherit') +
+                record.draft.width ?? 'inherit') + articlePaddingFields(record.draft.articlePadding ?? {}, base.articlePadding) +
                 `<label class="nx-design-check"><input type="checkbox" data-page-field="enabled" ${layout.enabled ? 'checked' : ''}>
                     セクションで構成する</label>` +
                 (owns(record.draft, 'enabled') || owns(record.draft, 'sectionCount')
@@ -352,10 +355,21 @@
                 (item.background === 'none' ? '' : colorFields(item)) + layoutFields(item) + elementControls(item);
         }
 
+        function articlePaddingFields(values, base) {
+            return `<details class="nx-page-details" data-page-details="article-padding" ${showArticlePadding ? 'open' : ''}>
+                <summary>記事枠の余白</summary><div class="nx-page-color-fields">
+                ${Object.entries(config.articlePaddingSides).map(([side, label]) =>
+                    `<label>${label}（px）<input type="number" data-article-padding="${side}" min="0"
+                        max="${data.spacingLimit}" step="1" value="${values[side] ?? ''}"
+                        placeholder="${base[side] === undefined ? 'テーマの既定値' : base[side] + '（共通）'}"></label>`).join('')}
+                </div></details>`;
+        }
+
         function render() {
             showColors = panel.querySelector('[data-page-details="colors"]')?.open ?? showColors;
             showLayout = panel.querySelector('[data-page-details="layout"]')?.open ?? showLayout;
             showElements = panel.querySelector('[data-page-details="elements"]')?.open ?? showElements;
+            showArticlePadding = panel.querySelector('[data-page-details="article-padding"]')?.open ?? showArticlePadding;
             return '<h2>ページ毎のレイアウト</h2><p class="nx-design-note">上の共通設定を引き継ぎ、変更した項目を優先します。</p>' +
                 Object.entries(scopeLabels).map(([id, label]) =>
                     `<details class="nx-page-scope" data-layout-scope="${id}" name="nx-page-layout-scope" ${scope === id ? 'open' : ''}>
@@ -561,6 +575,17 @@
 
         panel.addEventListener('input', event => {
             const input = event.target;
+            const side = input.dataset.articlePadding;
+            if (side && entry() && input.validity.valid) {
+                const patch = entry().draft;
+                const padding = patch.articlePadding ?? {};
+                if (input.value === '') delete padding[side];
+                else padding[side] = Number(input.value);
+                if (Object.keys(padding).length) patch.articlePadding = padding;
+                else delete patch.articlePadding;
+                changed(undefined, false);
+                return;
+            }
             if (input.dataset.colorField) return;
             const name = input.dataset.pageField;
             if (!name || !section()) return;
@@ -590,6 +615,7 @@
             if (details.dataset.pageDetails === 'colors') showColors = details.open;
             if (details.dataset.pageDetails === 'layout') showLayout = details.open;
             if (details.dataset.pageDetails === 'elements') showElements = details.open;
+            if (details.dataset.pageDetails === 'article-padding') showArticlePadding = details.open;
         }, true);
 
         return {

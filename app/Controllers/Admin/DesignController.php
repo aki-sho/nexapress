@@ -84,6 +84,7 @@ final class DesignController extends Controller
                 'home' => ($general['homepage_mode'] ?? '') === 'page' ? (int)($general['homepage_page_id'] ?? 0) : 0,
                 'widths' => PageLayout::WIDTHS, 'elements' => PageLayout::ELEMENTS,
                 'scopes' => PageLayout::SCOPES, 'sectionDefaults' => PageLayout::sectionDefaults(),
+                'articlePaddingSides' => PageLayout::ARTICLE_PADDING_SIDES,
                 'images' => array_map(static fn(array $image): array => [
                     'id' => (int)$image['id'], 'label' => $image['title'],
                 ], Media::images()),
