@@ -2,6 +2,13 @@
     --nx-cover-out-top: 0px;
     --nx-cover-out-bottom: 0px;
     --nx-cover-viewport-aligned: 0;
+    --nx-cover-auto-base: #1e293b;
+    --nx-cover-auto-ink: #fff;
+    --nx-cover-base: var(--nx-cover-auto-base);
+    --nx-cover-ink: var(--nx-cover-auto-ink);
+    --nx-cover-overlay: #000;
+    --nx-cover-overlay-ink: #fff;
+    --nx-cover-opacity: 0;
     position: relative;
     isolation: isolate;
     display: grid;
@@ -13,8 +20,13 @@
     margin-block: 1.5em;
     padding: var(--nx-cover-padding, 32px);
     overflow: hidden;
-    background: #1e293b;
-    color: var(--nx-cover-ink, #fff);
+    background: var(--nx-cover-base);
+    color: var(--nx-cover-ink);
+}
+
+.nx-article-cover:where(:has(> img.nx-article-cover-background)) {
+    --nx-cover-auto-base: #fff;
+    --nx-cover-auto-ink: #111827;
 }
 
 .nx-article-cover > .nx-article-cover-background,
@@ -38,8 +50,8 @@
 .nx-article-cover::before {
     content: "";
     z-index: -1;
-    background: var(--nx-cover-overlay, #000);
-    opacity: var(--nx-cover-opacity, .4);
+    background: var(--nx-cover-overlay);
+    opacity: var(--nx-cover-opacity);
 }
 
 .nx-article-cover > .nx-article-cover-content {
@@ -100,19 +112,32 @@
 .nx-cover-vertical-bottom { --nx-cover-vertical: end; }
 .nx-cover-horizontal-left { --nx-cover-horizontal: start; --nx-cover-align: left; }
 .nx-cover-horizontal-right { --nx-cover-horizontal: end; --nx-cover-align: right; }
-.nx-cover-overlay-white { --nx-cover-overlay: #fff; --nx-cover-ink: #111827; background: #f1f5f9; }
-.nx-cover-overlay-navy { --nx-cover-overlay: #172554; }
-.nx-cover-overlay-green { --nx-cover-overlay: #052e16; }
+.nx-cover-overlay-black { --nx-cover-opacity: .4; }
+.nx-cover-overlay-white { --nx-cover-overlay: #fff; --nx-cover-opacity: .4; --nx-cover-overlay-ink: #111827; }
+.nx-cover-overlay-navy { --nx-cover-overlay: #172554; --nx-cover-opacity: .4; }
+.nx-cover-overlay-green { --nx-cover-overlay: #052e16; --nx-cover-opacity: .4; }
+/* White overlays also set the base color in previously saved covers. */
+.nx-cover-overlay-white { --nx-cover-base: #f1f5f9; --nx-cover-ink: #111827; }
+.nx-cover-background-auto { --nx-cover-base: var(--nx-cover-auto-base); --nx-cover-ink: var(--nx-cover-auto-ink); }
+.nx-cover-background-white { --nx-cover-base: #fff; --nx-cover-ink: #111827; }
+.nx-cover-background-black { --nx-cover-base: #000; --nx-cover-ink: #fff; }
+.nx-cover-background-navy { --nx-cover-base: #1e293b; --nx-cover-ink: #fff; }
+.nx-cover-background-transparent { --nx-cover-base: transparent; color: inherit; }
 .nx-cover-opacity-0 { --nx-cover-opacity: 0; }
 .nx-cover-opacity-10 { --nx-cover-opacity: .1; }
 .nx-cover-opacity-20 { --nx-cover-opacity: .2; }
 .nx-cover-opacity-30 { --nx-cover-opacity: .3; }
+.nx-cover-opacity-40 { --nx-cover-opacity: .4; }
 .nx-cover-opacity-50 { --nx-cover-opacity: .5; }
 .nx-cover-opacity-60 { --nx-cover-opacity: .6; }
 .nx-cover-opacity-70 { --nx-cover-opacity: .7; }
 .nx-cover-opacity-80 { --nx-cover-opacity: .8; }
 .nx-cover-opacity-90 { --nx-cover-opacity: .9; }
 .nx-cover-opacity-100 { --nx-cover-opacity: 1; }
+
+.nx-article-cover:where(:is([class*="nx-cover-overlay-"], [class*="nx-cover-opacity-"]):not(.nx-cover-opacity-0)) {
+    color: var(--nx-cover-overlay-ink);
+}
 
 @supports (width: 1cqw) and selector(:has(*)) {
     html:has(.nx-cover-width-wide, .nx-cover-width-full) { container-type: inline-size; }
