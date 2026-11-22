@@ -31,6 +31,7 @@ module.exports = async (page, base) => {
         assert.match(await zipForm.textContent(), /ZipArchive、Fileinfo、GD/);
         return;
     }
+    assert.match(await zipForm.textContent(), /画像\s*200\s*枚まで/);
     const options = await page.evaluate(() => {
         const canvas = document.createElement('canvas');
         canvas.width = 4;
@@ -108,12 +109,26 @@ module.exports = async (page, base) => {
     assert.equal(await cards.count(), 3);
     assert.equal(await cards.filter({hasText: '追加'}).count(), 1);
 
+    const atLimit = archive([
+        ['上限確認/', Buffer.alloc(0), 0o040755],
+        ...Array.from({length: 200}, (_, index) => ['上限確認/' + index + '.png', png]),
+        ['上限確認/説明.txt', Buffer.from('example note')],
+    ]);
+    const accepted = await page.request.post(endpoint, form(atLimit));
+    assert(accepted.ok());
+    assert((await accepted.text()).includes('200件の画像をZIPから登録しました。1件の対応外ファイルを除外しました。'));
+    await page.goto(accepted.url());
+    const limitFolder = await folders.getByRole('link', {name: '上限確認', exact: true}).getAttribute('href');
+    assert(limitFolder);
+    await page.goto(new URL(limitFolder, base).href, {waitUntil: 'domcontentloaded'});
+    assert.equal(await cards.count(), 200);
+
     const cases = [
         [archive([['文章/説明書.txt', Buffer.from('example note')]]), '1件の対応外ファイルを除外しました。'],
         [archive([['作成失敗/valid.png', png], ['作成失敗/wrong.jpg', png]]), '画像形式が一致しない'],
         [archive([['valid.png', png], ['link.txt', Buffer.from('unresolved'), 0o120777]]), 'リンクや特殊ファイル'],
-        [archive(Array.from({length: 51}, (_, index) => [index + '.png', png])), '画像数または展開後の容量'],
-        [archive(Array.from({length: 101}, (_, index) => [index + '.png', png])), '項目数または目録の容量'],
+        [archive(Array.from({length: 201}, (_, index) => ['枚数超過/' + index + '.png', png])), '画像は200枚まで'],
+        [archive(Array.from({length: 401}, (_, index) => [index + '.txt', Buffer.from('note')])), '項目数または目録の容量'],
         [Buffer.from('This is a plain text file'), 'ZIPを読み込めません'],
     ];
     for (const [data, message] of cases) {
@@ -123,6 +138,7 @@ module.exports = async (page, base) => {
         assert(html.includes(message));
         assert.equal((html.match(/data-media-card data-media-title=/g) ?? []).length, 1);
         assert(!html.includes('作成失敗'));
+        assert(!html.includes('枚数超過'));
     }
     console.log('PASS: ZIP categories, existing folders, skipped files, static images, metadata, permissions, and atomic rejection');
 };

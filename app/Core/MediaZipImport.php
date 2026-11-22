@@ -13,10 +13,10 @@ final class MediaZipImport
     public const MAX_ARCHIVE_BYTES = 26214400;
     public const MAX_IMAGE_BYTES = 16777216;
     public const MAX_TOTAL_BYTES = 67108864;
-    public const MAX_IMAGES = 50;
+    public const MAX_IMAGES = 200;
     public const MAX_DIMENSION = 4096;
 
-    private const MAX_ENTRIES = 100;
+    private const MAX_ENTRIES = self::MAX_IMAGES * 2;
     private const MAX_DIRECTORY_BYTES = 262144;
     private const MAX_TOTAL_PIXELS = 67108864;
     private const INVALID_ZIP = 'ZIPを読み込めませんでした。ファイルを確認してください。';
@@ -140,9 +140,11 @@ final class MediaZipImport
                 $skipped++;
                 continue;
             }
-            if ($stat['size'] < 1 || $stat['size'] > self::MAX_IMAGE_BYTES ||
-                $stat['size'] > $remaining || count($entries) >= self::MAX_IMAGES) {
-                throw new InvalidArgumentException('ZIP内の画像数または展開後の容量が上限を超えています。');
+            if (count($entries) >= self::MAX_IMAGES) {
+                throw new InvalidArgumentException('ZIPから一度に登録できる画像は' . self::MAX_IMAGES . '枚までです。');
+            }
+            if ($stat['size'] < 1 || $stat['size'] > self::MAX_IMAGE_BYTES || $stat['size'] > $remaining) {
+                throw new InvalidArgumentException('ZIP内の画像の容量または展開後の合計容量が上限を超えています。');
             }
             $remaining -= $stat['size'];
             $slash = strrpos($name, '/');
