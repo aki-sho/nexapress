@@ -5,7 +5,9 @@ namespace app\Controllers\Admin;
 use app\Core\Auth;
 use app\Core\Controller;
 use app\Core\Csrf;
+use app\Core\MediaZipImport;
 use app\Models\Media;
+use InvalidArgumentException;
 use PDOException;
 
 class MediaController extends Controller
@@ -62,6 +64,7 @@ class MediaController extends Controller
             'viewFolder' => $viewFolder,
             'notice' => $notice,
             'maxUploadSize' => $this->maxUploadSize,
+            'zipImportAvailable' => MediaZipImport::available(),
             'maxEditDimension' => self::MAX_EDIT_DIMENSION,
         ]);
     }
@@ -150,6 +153,32 @@ class MediaController extends Controller
             $this->returnToLibrary($viewFolder, 'ファイルを保存できませんでした。', true);
         }
         $this->returnToLibrary($viewFolder, 'メディアをアップロードしました。');
+    }
+
+    public function importZip(): void
+    {
+        Auth::requireLogin();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
+
+        $folder = $this->folderId($_POST['view_folder'] ?? null);
+        $file = $_FILES['media_zip'] ?? null;
+        $path = $file['tmp_name'] ?? null;
+        if (($file['error'] ?? null) !== UPLOAD_ERR_OK || !is_string($path) || !is_uploaded_file($path)) {
+            $this->returnToLibrary($folder, 'ZIPをアップロードできませんでした。', true);
+            return;
+        }
+
+        $error = null;
+        try {
+            $count = MediaZipImport::import($path, (int)Auth::user()['id'], $folder ?: null);
+        } catch (InvalidArgumentException $exception) {
+            $error = $exception->getMessage();
+        } catch (\Throwable) {
+            $error = 'ZIPの取り込みを完了できませんでした。サーバーの一時領域とメディアの保存権限を確認してください。';
+        } finally {
+            @unlink($path);
+        }
+        $this->returnToLibrary($folder, $error ?? $count . '件の画像をZIPから登録しました。', $error !== null);
     }
 
     public function saveEdit(int $id): void

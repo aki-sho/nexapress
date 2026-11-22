@@ -44,13 +44,18 @@
 .media-folder-dialog h2 { margin: 0 0 16px; font-size: 1.25rem; }
 .media-folder-dialog-actions { justify-content: flex-end; }
 
-.media-upload-form {
+.media-upload-form,
+.media-zip-import {
     background: #fff;
     border: 1px solid #ddd;
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 24px;
 }
+
+.media-zip-import { padding: 12px 16px; }
+.media-zip-import summary { cursor: pointer; font-weight: 600; }
+.media-zip-import form { margin-top: 12px; }
 
 .media-library {
     display: grid;

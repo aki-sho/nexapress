@@ -1,5 +1,6 @@
 <?php
 use app\Core\Csrf;
+use app\Core\MediaZipImport;
 use app\Models\Media;
 
 $title = 'メディア';
@@ -64,6 +65,29 @@ function media_size_label(int $bytes): string
 
     <button type="submit">アップロード</button>
 </form>
+
+<details class="media-zip-import">
+    <summary>ZIPから一括登録</summary>
+    <?php if ($zipImportAvailable): ?>
+        <form action="<?= e(url('admin/media/import-zip')) ?>" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf_token" value="<?= e($csrf) ?>">
+            <input type="hidden" name="view_folder" value="<?= e((string)$viewFolder) ?>">
+            <div class="form-group">
+                <label for="media_zip">画像をまとめたZIP</label>
+                <input type="file" id="media_zip" name="media_zip" accept=".zip,application/zip" aria-describedby="media-zip-limits" required>
+                <small id="media-zip-limits">
+                    保存先 <?= e($viewFolder > 0 ? $currentFolderName : '未分類') ?> ・ JPEG、PNG、GIF、WebP<br>
+                    ZIP <?= e(media_size_label(MediaZipImport::MAX_ARCHIVE_BYTES)) ?>、画像 <?= MediaZipImport::MAX_IMAGES ?> 枚まで。
+                    展開後は1枚 <?= e(media_size_label(MediaZipImport::MAX_IMAGE_BYTES)) ?>、合計 <?= e(media_size_label(MediaZipImport::MAX_TOTAL_BYTES)) ?>まで。<br>
+                    各辺 <?= MediaZipImport::MAX_DIMENSION ?> px以下。GIFは先頭のコマ、WebPは静止画を登録します。
+                </small>
+            </div>
+            <button type="submit">ZIPを取り込む</button>
+        </form>
+    <?php else: ?>
+        <p>ZIPからの登録にはサーバーのZipArchive、Fileinfo、GDが必要です。</p>
+    <?php endif; ?>
+</details>
 
 <div class="media-library">
     <aside class="media-folders">

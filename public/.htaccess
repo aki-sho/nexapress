@@ -8,6 +8,14 @@ RewriteRule \.(?:bak|old|orig|save|swp|sql|log)(?:\.[^/]*)?$ - [F,L,NC]
 # index.php is the only PHP entry point in the public document root.
 RewriteRule ^(?!index\.php$).*\.(?:php[0-9]*|phtml|phar|cgi|pl)(?:/|$|\.) - [F,L,NC]
 
+# Re-encoded ZIP imports are served as static images.
+<FilesMatch "^zip_[a-f0-9]{32}\.(?:jpg|png|gif|webp)$">
+    SetHandler default-handler
+    <IfModule mod_headers.c>
+        Header always set X-Content-Type-Options "nosniff"
+    </IfModule>
+</FilesMatch>
+
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
