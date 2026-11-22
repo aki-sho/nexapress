@@ -15,6 +15,57 @@ sys.stdout.buffer.write(data.getvalue())
 `], {input: JSON.stringify(entries.map(([name, content, mode = 0o100644]) => [name, content.toString('base64'), mode]))});
 }
 
+function uncompressedPng(png) {
+    return execFileSync('python', ['-X', 'utf8', '-c', `
+import struct, sys, zlib
+data = sys.stdin.buffer.read()
+length, kind = struct.unpack_from(">I4s", data, 8)
+assert kind == b"IHDR"
+header = data[:20 + length]
+offset = len(header)
+pixels = bytearray()
+while offset < len(data):
+    length, kind = struct.unpack_from(">I4s", data, offset)
+    if kind == b"IDAT":
+        pixels.extend(data[offset + 8:offset + 8 + length])
+    offset += length + 12
+pixels = zlib.compress(zlib.decompress(pixels), 0)
+chunk = b"IDAT" + pixels
+sys.stdout.buffer.write(header + struct.pack(">I", len(pixels)) + chunk + struct.pack(">I", zlib.crc32(chunk)) + data[-12:])
+`], {input: png});
+}
+
+function orientedJpeg(jpg, comment) {
+    const tiff = Buffer.alloc(26);
+    tiff.write('II');
+    tiff.writeUInt16LE(42, 2);
+    tiff.writeUInt32LE(8, 4);
+    tiff.writeUInt16LE(1, 8);
+    tiff.writeUInt16LE(0x0112, 10);
+    tiff.writeUInt16LE(3, 12);
+    tiff.writeUInt32LE(1, 14);
+    tiff.writeUInt16LE(6, 18);
+    const exif = Buffer.concat([Buffer.from('Exif\0\0'), tiff]);
+    const segment = (marker, bytes) => {
+        const size = Buffer.alloc(2);
+        size.writeUInt16BE(bytes.length + 2);
+        return Buffer.concat([Buffer.from([0xff, marker]), size, bytes]);
+    };
+    return Buffer.concat([jpg.subarray(0, 2), segment(0xfe, comment), segment(0xe1, exif), jpg.subarray(2)]);
+}
+
+function webpWithMetadata(webp, metadata) {
+    const header = Buffer.from(webp);
+    assert.equal(header.toString('ascii', 12, 16), 'VP8X');
+    header[20] |= 4;
+    const chunk = Buffer.alloc(8 + metadata.length + (metadata.length % 2));
+    chunk.write('XMP ');
+    chunk.writeUInt32LE(metadata.length, 4);
+    metadata.copy(chunk, 8);
+    header.writeUInt32LE(header.length + chunk.length - 8, 4);
+    return Buffer.concat([header, chunk]);
+}
+
 module.exports = async (page, base) => {
     await page.goto(base + '/admin/media');
     const token = await page.locator('.media-upload-form input[name="_csrf_token"]').first().inputValue();
@@ -39,44 +90,71 @@ module.exports = async (page, base) => {
         const context = canvas.getContext('2d');
         context.fillStyle = '#b65b27';
         context.fillRect(1, 0, 3, 3);
+        context.fillStyle = 'rgba(55,123,236,0.64)';
+        context.fillRect(0, 1, 2, 1);
         return ['image/png', 'image/jpeg', 'image/webp'].map(type => canvas.toDataURL(type).split(',')[1]);
     });
     const [png, jpg, webp] = options.map(data => Buffer.from(data, 'base64'));
     const metadata = Buffer.from('nexapress test metadata');
-    const jpeg = Buffer.concat([jpg.subarray(0, 2), Buffer.from([0xff, 0xfe, 0, metadata.length + 2]),
-        metadata, jpg.subarray(2)]);
+    const jpeg = orientedJpeg(jpg, metadata);
+    const annotatedWebp = webpWithMetadata(webp, metadata);
     const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+    const expandedPng = uncompressedPng(png);
     const valid = archive([
         ['写真/', Buffer.alloc(0), 0o040755],
-        ['写真/透過.png', png],
+        ['写真/透過.png', expandedPng],
         ['写真/メタデータ.jpeg', jpeg],
         ['見本.gif', gif],
         ['素材/背景/背景.webp', webp],
+        ['素材/背景/メタデータ付き.webp', annotatedWebp],
         ['説明/説明書.txt', Buffer.from('example note')],
         ['説明/見本.svg', Buffer.from('example unsupported file')],
     ]);
 
     await zipForm.locator('input[type="file"]').setInputFiles({name: 'images.zip', mimeType: 'application/zip', buffer: valid});
     await zipForm.getByRole('button', {name: 'ZIPを取り込む'}).click();
-    await page.getByRole('status').filter({hasText: '4件の画像をZIPから登録しました。2件の対応外ファイルを除外しました。'}).waitFor();
+    await page.getByRole('status').filter({hasText: '5件の画像をZIPから登録しました。2件の対応外ファイルを除外しました。'}).waitFor();
+    await page.getByRole('status').filter({hasText: '3件の画像を画質を保ったまま軽量化しました。'}).waitFor();
     assert.equal(new URL(page.url()).searchParams.get('folder'), null);
     const folders = page.getByRole('navigation', {name: 'メディアのフォルダ'});
     assert.equal(await folders.getByRole('link', {name: '説明', exact: true}).count(), 0);
     const photoUrl = new URL(await folders.getByRole('link', {name: '写真', exact: true}).getAttribute('href'), base).href;
     const backgroundUrl = new URL(await folders.getByRole('link', {name: '素材/背景', exact: true}).getAttribute('href'), base).href;
     const cards = page.locator('[data-media-card]');
-    const uploads = [];
-    for (const [url, names] of [[board.url(), ['見本']], [backgroundUrl, ['背景']], [photoUrl, ['透過', 'メタデータ']]]) {
+    const uploads = new Map();
+    for (const [url, names] of [[board.url(), ['見本']], [backgroundUrl, ['背景', 'メタデータ付き']], [photoUrl, ['透過', 'メタデータ']]]) {
         await page.goto(url);
         const labels = await cards.evaluateAll(items => items.map(item => item.dataset.mediaTitle));
         assert.deepEqual(labels.sort(), names.sort());
-        uploads.push(...await cards.locator('img').evaluateAll(images => images.map(image => image.src)));
+        for (const name of names) {
+            uploads.set(name, await page.locator('[data-media-card][data-media-title="' + name + '"] img').getAttribute('src'));
+        }
     }
-    for (const image of uploads) {
+    const examples = [
+        ['見本', gif], ['背景', webp], ['メタデータ付き', annotatedWebp], ['透過', expandedPng], ['メタデータ', jpeg],
+    ];
+    for (const [name, original] of examples) {
+        const image = new URL(uploads.get(name), base).href;
         assert.match(new URL(image).pathname, /\/uploads\/media\/zip_[0-9a-f]{32}\.(?:jpg|png|gif|webp)$/);
         const result = await page.request.get(image);
         assert(result.ok());
-        assert(!(await result.body()).includes(metadata));
+        const registered = await result.body();
+        assert(!registered.includes(metadata));
+        assert(registered.length <= original.length);
+        if (['透過', 'メタデータ', 'メタデータ付き'].includes(name)) assert(registered.length < original.length);
+        if (name === '背景') assert.deepEqual(registered, original);
+        const decoded = await page.evaluate(async files => {
+            return Promise.all(files.map(async file => {
+                const bytes = Uint8Array.from(atob(file), char => char.charCodeAt(0));
+                const image = await createImageBitmap(new Blob([bytes]));
+                const canvas = new OffscreenCanvas(image.width, image.height);
+                const context = canvas.getContext('2d');
+                context.drawImage(image, 0, 0);
+                return [image.width, image.height, ...context.getImageData(0, 0, image.width, image.height).data];
+            }));
+        }, [original.toString('base64'), registered.toString('base64')]);
+        assert.deepEqual(decoded[0], decoded[1], name);
+        if (name === 'メタデータ') assert.deepEqual(decoded[1].slice(0, 2), [3, 4]);
     }
     const transparent = cards.filter({hasText: '透過'}).locator('img');
     assert(await transparent.evaluate(async image => {
@@ -140,5 +218,5 @@ module.exports = async (page, base) => {
         assert(!html.includes('作成失敗'));
         assert(!html.includes('枚数超過'));
     }
-    console.log('PASS: ZIP categories, existing folders, skipped files, static images, metadata, permissions, and atomic rejection');
+    console.log('PASS: ZIP lossless PNG, JPEG and WebP, image orientation, transparency, exact-size fallback, GIF, folders and atomic rejection');
 };

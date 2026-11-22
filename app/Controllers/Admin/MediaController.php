@@ -175,6 +175,9 @@ class MediaController extends Controller
             if ($result['skipped'] > 0) {
                 $message .= $result['skipped'] . '件の対応外ファイルを除外しました。';
             }
+            if ($result['optimized'] > 0) {
+                $message .= $result['optimized'] . '件の画像を画質を保ったまま軽量化しました。';
+            }
             if ($result['folders'] > 0) {
                 $folder = null;
             }

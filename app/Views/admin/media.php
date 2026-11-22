@@ -77,6 +77,7 @@ function media_size_label(int $bytes): string
                 <input type="file" id="media_zip" name="media_zip" accept=".zip,application/zip" aria-describedby="media-zip-limits" required>
                 <small id="media-zip-limits">
                     ZIP内のフォルダ名で分類し、JPEG、PNG、GIF、WebPを登録します。対応外のファイルは除外します。<br>
+                    表示される画質を保ち、容量が小さくなる画像を軽量化します。<br>
                     ZIP直下の画像の保存先 <?= e($viewFolder > 0 ? $currentFolderName : '未分類') ?><br>
                     ZIP <?= e(media_size_label(MediaZipImport::MAX_ARCHIVE_BYTES)) ?>、画像 <?= MediaZipImport::MAX_IMAGES ?> 枚まで。
                     展開後は1枚 <?= e(media_size_label(MediaZipImport::MAX_IMAGE_BYTES)) ?>、合計 <?= e(media_size_label(MediaZipImport::MAX_TOTAL_BYTES)) ?>まで。<br>
@@ -86,7 +87,7 @@ function media_size_label(int $bytes): string
             <button type="submit">ZIPを取り込む</button>
         </form>
     <?php else: ?>
-        <p>ZIPからの登録にはサーバーのZipArchive、Fileinfo、GDが必要です。</p>
+        <p>ZIPからの登録にはサーバーのZipArchive、Fileinfo、GD、zlibが必要です。</p>
     <?php endif; ?>
 </details>
 

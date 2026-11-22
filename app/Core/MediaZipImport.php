@@ -30,14 +30,14 @@ final class MediaZipImport
     public static function available(): bool
     {
         return class_exists(ZipArchive::class) && defined('ZipArchive::RDONLY') &&
-            class_exists(\finfo::class) && extension_loaded('gd');
+            class_exists(\finfo::class) && extension_loaded('gd') && extension_loaded('zlib');
     }
 
-    /** @return array{imported: int, skipped: int, folders: int} */
+    /** @return array{imported: int, skipped: int, optimized: int, folders: int} */
     public static function import(string $path, int $userId, ?int $folderId): array
     {
         if (!self::available()) {
-            throw new InvalidArgumentException('ZIPの取り込みにはZipArchive、Fileinfo、GDが必要です。');
+            throw new InvalidArgumentException('ZIPの取り込みにはZipArchive、Fileinfo、GD、zlibが必要です。');
         }
         $size = @filesize($path);
         if ($size === false || $size < 1 || $size > self::MAX_ARCHIVE_BYTES) {
@@ -59,13 +59,19 @@ final class MediaZipImport
             $archive = self::inspect($zip);
             $fileInfo = new \finfo(FILEINFO_MIME_TYPE);
             $pixelsRemaining = self::MAX_TOTAL_PIXELS;
-            $outputRemaining = self::MAX_TOTAL_BYTES;
+            $optimized = 0;
             foreach ($archive['entries'] as $entry) {
-                $image = self::reencode($zip, $entry, $fileInfo, $pixelsRemaining, $outputRemaining);
+                $image = self::prepareImage($zip, $entry, $fileInfo, $pixelsRemaining);
                 $images[] = $image;
+                if ($image['bytes'] < $entry['size']) {
+                    $optimized++;
+                }
             }
             $folders = self::register($images, $userId, $folderId);
-            return ['imported' => count($images), 'skipped' => $archive['skipped'], 'folders' => $folders];
+            return [
+                'imported' => count($images), 'skipped' => $archive['skipped'],
+                'optimized' => $optimized, 'folders' => $folders,
+            ];
         } finally {
             $zip->close();
             foreach ($images as $image) {
@@ -186,8 +192,8 @@ final class MediaZipImport
         return $parts[array_key_last($parts)];
     }
 
-    private static function reencode(
-        ZipArchive $zip, array $entry, \finfo $fileInfo, int &$pixelsRemaining, int &$outputRemaining
+    private static function prepareImage(
+        ZipArchive $zip, array $entry, \finfo $fileInfo, int &$pixelsRemaining
     ): array {
         $source = self::temporaryFile();
         $output = null;
@@ -204,39 +210,34 @@ final class MediaZipImport
                 $width * $height > $pixelsRemaining) {
                 throw new InvalidArgumentException('ZIP内の画像の寸法または合計画素数が上限を超えています。');
             }
-            if ($mime === 'image/gif') {
-                self::checkGifFrame($source, $width, $height);
-            }
             $pixelsRemaining -= $width * $height;
 
-            $format = $entry['extension'] === 'jpg' ? 'jpeg' : $entry['extension'];
-            $decode = 'imagecreatefrom' . $format;
-            if (!function_exists($decode) || !function_exists('image' . $format)) {
-                throw new InvalidArgumentException('サーバーのGDがZIP内の画像形式に対応していません。');
+            $data = stream_get_contents($source, $entry['size'], 0);
+            if ($data === false || strlen($data) !== $entry['size']) {
+                throw new RuntimeException('Could not read the temporary ZIP image.');
             }
-            $image = @$decode($sourcePath);
-            if ($image === false) {
-                throw new InvalidArgumentException('ZIP内の画像を読み込めません。WebPは静止画を使用してください。');
+            $prepared = MediaZipImage::rebuild($data, $entry['extension'], $width, $height);
+            unset($data);
+            $outputSize = strlen($prepared);
+            if ($outputSize < 1 || $outputSize > $entry['size']) {
+                throw new InvalidArgumentException('ZIP内に画質を保ったまま保存できない画像があります。');
             }
             $output = self::temporaryFile();
+            if (fwrite($output, $prepared) !== $outputSize || !fflush($output)) {
+                throw new RuntimeException('Could not write the validated ZIP image.');
+            }
+            unset($prepared);
             $outputPath = stream_get_meta_data($output)['uri'];
-            if ($mime === 'image/png' || $mime === 'image/webp') {
-                imagesavealpha($image, true);
+            $format = $entry['extension'] === 'jpg' ? 'jpeg' : $entry['extension'];
+            $decode = 'imagecreatefrom' . $format;
+            if (!function_exists($decode)) {
+                throw new InvalidArgumentException('サーバーのGDがZIP内の画像形式に対応していません。');
             }
-            $saved = match ($format) {
-                'jpeg' => @imagejpeg($image, $outputPath, 90),
-                'png' => @imagepng($image, $outputPath),
-                'gif' => @imagegif($image, $outputPath),
-                'webp' => @imagewebp($image, $outputPath, 90),
-            };
-            $outputSize = fstat($output)['size'] ?? 0;
-            if (!$saved || $outputSize < 1 || @$fileInfo->file($outputPath) !== $mime) {
-                throw new RuntimeException('Could not encode an imported media image.');
+            $image = @$decode($outputPath);
+            if ($image === false || @$fileInfo->file($outputPath) !== $mime ||
+                ($format !== 'gif' && (imagesx($image) !== $width || imagesy($image) !== $height))) {
+                throw new InvalidArgumentException('ZIP内の画像を読み込めません。WebPは静止画を使用してください。');
             }
-            if ($outputSize > self::MAX_IMAGE_BYTES || $outputSize > $outputRemaining) {
-                throw new InvalidArgumentException('再生成後の画像容量が上限を超えています。');
-            }
-            $outputRemaining -= $outputSize;
             $result = $entry + ['stream' => $output, 'bytes' => $outputSize, 'mime' => $mime];
             $output = null;
             return $result;
@@ -267,40 +268,6 @@ final class MediaZipImport
         if (hash_final($crc) !== substr(sprintf('%08x', $entry['crc']), -8)) {
             throw new InvalidArgumentException('ZIP内の画像のデータが壊れています。');
         }
-    }
-
-    private static function checkGifFrame($source, int $width, int $height): void
-    {
-        // GD decodes the first frame, whose dimensions come from a different header.
-        rewind($source);
-        $header = fread($source, 13);
-        if ($header !== false && strlen($header) === 13) {
-            $flags = ord($header[10]);
-            if ($flags & 0x80) {
-                fseek($source, 3 * (2 << ($flags & 7)), SEEK_CUR);
-            }
-            $marker = fread($source, 1);
-            while ($marker === "\x21" && ftell($source) < 65536) {
-                fread($source, 1); // Extension label.
-                while (($block = fread($source, 1)) !== false && $block !== '' && $block !== "\0" &&
-                    ftell($source) < 65536) {
-                    fseek($source, ord($block), SEEK_CUR);
-                }
-                $marker = fread($source, 1);
-            }
-            if ($marker === ',') {
-                $frame = fread($source, 8);
-                if ($frame !== false && strlen($frame) === 8) {
-                    $bounds = unpack('vleft/vtop/vwidth/vheight', $frame);
-                    if (min($bounds['width'], $bounds['height']) > 0 &&
-                        $bounds['left'] + $bounds['width'] <= $width &&
-                        $bounds['top'] + $bounds['height'] <= $height) {
-                        return;
-                    }
-                }
-            }
-        }
-        throw new InvalidArgumentException('ZIP内のGIFの先頭フレームを確認できませんでした。');
     }
 
     private static function temporaryFile()
