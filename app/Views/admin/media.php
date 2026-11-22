@@ -45,7 +45,7 @@ function media_size_label(int $bytes): string
         <h2 id="media-create-folder-title">新規フォルダ</h2>
         <div class="form-group">
             <label for="media-folder-name">フォルダ名</label>
-            <input type="text" id="media-folder-name" name="name" maxlength="100" required autofocus>
+            <input type="text" id="media-folder-name" name="name" maxlength="<?= Media::MAX_FOLDER_NAME_LENGTH ?>" required autofocus>
         </div>
         <div class="media-folder-dialog-actions">
             <button type="button" class="button secondary" data-close-media-dialog>キャンセル</button>
@@ -76,7 +76,8 @@ function media_size_label(int $bytes): string
                 <label for="media_zip">画像をまとめたZIP</label>
                 <input type="file" id="media_zip" name="media_zip" accept=".zip,application/zip" aria-describedby="media-zip-limits" required>
                 <small id="media-zip-limits">
-                    保存先 <?= e($viewFolder > 0 ? $currentFolderName : '未分類') ?> ・ JPEG、PNG、GIF、WebP<br>
+                    ZIP内のフォルダ名で分類し、JPEG、PNG、GIF、WebPを登録します。対応外のファイルは除外します。<br>
+                    ZIP直下の画像の保存先 <?= e($viewFolder > 0 ? $currentFolderName : '未分類') ?><br>
                     ZIP <?= e(media_size_label(MediaZipImport::MAX_ARCHIVE_BYTES)) ?>、画像 <?= MediaZipImport::MAX_IMAGES ?> 枚まで。
                     展開後は1枚 <?= e(media_size_label(MediaZipImport::MAX_IMAGE_BYTES)) ?>、合計 <?= e(media_size_label(MediaZipImport::MAX_TOTAL_BYTES)) ?>まで。<br>
                     各辺 <?= MediaZipImport::MAX_DIMENSION ?> px以下。GIFは先頭のコマ、WebPは静止画を登録します。

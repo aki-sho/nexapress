@@ -76,10 +76,10 @@ class MediaController extends Controller
 
         $name = is_string($_POST['name'] ?? null) ? trim($_POST['name']) : '';
         $viewFolder = $this->folderId($_POST['view_folder'] ?? null);
-        if ($name === '' || nx_text_length($name) > 100 || preg_match('/[\p{Cc}]/u', $name) !== 0) {
+        if ($name === '' || nx_text_length($name) > Media::MAX_FOLDER_NAME_LENGTH || preg_match('/[\p{Cc}]/u', $name) !== 0) {
             $this->returnToLibrary($viewFolder, 'フォルダ名を1～100文字で入力してください。', true);
         }
-        if (in_array($name, ['すべて', '未分類'], true)) {
+        if (in_array($name, Media::RESERVED_FOLDER_NAMES, true)) {
             $this->returnToLibrary($viewFolder, '別のフォルダ名を入力してください。', true);
         }
         try {
@@ -168,17 +168,26 @@ class MediaController extends Controller
             return;
         }
 
-        $error = null;
+        $error = false;
         try {
-            $count = MediaZipImport::import($path, (int)Auth::user()['id'], $folder ?: null);
+            $result = MediaZipImport::import($path, (int)Auth::user()['id'], $folder ?: null);
+            $message = $result['imported'] . '件の画像をZIPから登録しました。';
+            if ($result['skipped'] > 0) {
+                $message .= $result['skipped'] . '件の対応外ファイルを除外しました。';
+            }
+            if ($result['folders'] > 0) {
+                $folder = null;
+            }
         } catch (InvalidArgumentException $exception) {
-            $error = $exception->getMessage();
+            $error = true;
+            $message = $exception->getMessage();
         } catch (\Throwable) {
-            $error = 'ZIPの取り込みを完了できませんでした。サーバーの一時領域とメディアの保存権限を確認してください。';
+            $error = true;
+            $message = 'ZIPの取り込みを完了できませんでした。サーバーの一時領域とメディアの保存権限を確認してください。';
         } finally {
             @unlink($path);
         }
-        $this->returnToLibrary($folder, $error ?? $count . '件の画像をZIPから登録しました。', $error !== null);
+        $this->returnToLibrary($folder, $message, $error);
     }
 
     public function saveEdit(int $id): void

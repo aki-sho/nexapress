@@ -50,16 +50,27 @@ module.exports = async (page, base) => {
         ['写真/透過.png', png],
         ['写真/メタデータ.jpeg', jpeg],
         ['見本.gif', gif],
-        ['背景.webp', webp],
+        ['素材/背景/背景.webp', webp],
+        ['説明/説明書.txt', Buffer.from('example note')],
+        ['説明/見本.svg', Buffer.from('example unsupported file')],
     ]);
 
     await zipForm.locator('input[type="file"]').setInputFiles({name: 'images.zip', mimeType: 'application/zip', buffer: valid});
     await zipForm.getByRole('button', {name: 'ZIPを取り込む'}).click();
-    await page.getByRole('status').filter({hasText: '4件の画像をZIPから登録しました。'}).waitFor();
-    assert.equal(new URL(page.url()).searchParams.get('folder'), folder);
+    await page.getByRole('status').filter({hasText: '4件の画像をZIPから登録しました。2件の対応外ファイルを除外しました。'}).waitFor();
+    assert.equal(new URL(page.url()).searchParams.get('folder'), null);
+    const folders = page.getByRole('navigation', {name: 'メディアのフォルダ'});
+    assert.equal(await folders.getByRole('link', {name: '説明', exact: true}).count(), 0);
+    const photoUrl = new URL(await folders.getByRole('link', {name: '写真', exact: true}).getAttribute('href'), base).href;
+    const backgroundUrl = new URL(await folders.getByRole('link', {name: '素材/背景', exact: true}).getAttribute('href'), base).href;
     const cards = page.locator('[data-media-card]');
-    assert.equal(await cards.count(), 4);
-    const uploads = await cards.locator('img').evaluateAll(images => images.map(image => image.src));
+    const uploads = [];
+    for (const [url, names] of [[board.url(), ['見本']], [backgroundUrl, ['背景']], [photoUrl, ['透過', 'メタデータ']]]) {
+        await page.goto(url);
+        const labels = await cards.evaluateAll(items => items.map(item => item.dataset.mediaTitle));
+        assert.deepEqual(labels.sort(), names.sort());
+        uploads.push(...await cards.locator('img').evaluateAll(images => images.map(image => image.src)));
+    }
     for (const image of uploads) {
         assert.match(new URL(image).pathname, /\/uploads\/media\/zip_[0-9a-f]{32}\.(?:jpg|png|gif|webp)$/);
         const result = await page.request.get(image);
@@ -90,10 +101,17 @@ module.exports = async (page, base) => {
     } finally {
         await guest.close();
     }
+    const repeated = await page.request.post(endpoint, form(archive([['写真/追加.png', png]])));
+    assert(repeated.ok());
+    await page.goto(photoUrl);
+    assert.equal(await folders.getByRole('link', {name: '写真', exact: true}).count(), 1);
+    assert.equal(await cards.count(), 3);
+    assert.equal(await cards.filter({hasText: '追加'}).count(), 1);
+
     const cases = [
-        [archive([['valid.png', png], ['readme.txt', Buffer.from('example note')]]), 'JPEG、PNG、GIF、WebP'],
-        [archive([['valid.png', png], ['wrong.jpg', png]]), '画像形式が一致しない'],
-        [archive([['valid.png', png], ['link.png', Buffer.from('not-an-image'), 0o120777]]), 'リンクや特殊ファイル'],
+        [archive([['文章/説明書.txt', Buffer.from('example note')]]), '1件の対応外ファイルを除外しました。'],
+        [archive([['作成失敗/valid.png', png], ['作成失敗/wrong.jpg', png]]), '画像形式が一致しない'],
+        [archive([['valid.png', png], ['link.txt', Buffer.from('unresolved'), 0o120777]]), 'リンクや特殊ファイル'],
         [archive(Array.from({length: 51}, (_, index) => [index + '.png', png])), '画像数または展開後の容量'],
         [archive(Array.from({length: 101}, (_, index) => [index + '.png', png])), '項目数または目録の容量'],
         [Buffer.from('This is a plain text file'), 'ZIPを読み込めません'],
@@ -103,7 +121,8 @@ module.exports = async (page, base) => {
         assert(result.ok());
         const html = await result.text();
         assert(html.includes(message));
-        assert.equal((html.match(/data-media-card data-media-title=/g) ?? []).length, 4);
+        assert.equal((html.match(/data-media-card data-media-title=/g) ?? []).length, 1);
+        assert(!html.includes('作成失敗'));
     }
-    console.log('PASS: ZIP image import, source metadata removal, transparency, static media URLs, permissions, and atomic rejection');
+    console.log('PASS: ZIP categories, existing folders, skipped files, static images, metadata, permissions, and atomic rejection');
 };

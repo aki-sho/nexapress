@@ -33,7 +33,8 @@ final class MediaZipImport
             class_exists(\finfo::class) && extension_loaded('gd');
     }
 
-    public static function import(string $path, int $userId, ?int $folderId): int
+    /** @return array{imported: int, skipped: int, folders: int} */
+    public static function import(string $path, int $userId, ?int $folderId): array
     {
         if (!self::available()) {
             throw new InvalidArgumentException('ZIPの取り込みにはZipArchive、Fileinfo、GDが必要です。');
@@ -55,16 +56,16 @@ final class MediaZipImport
             if ($zip->numFiles !== $expectedEntries) {
                 throw new InvalidArgumentException(self::INVALID_ZIP);
             }
-            $entries = self::inspect($zip);
+            $archive = self::inspect($zip);
             $fileInfo = new \finfo(FILEINFO_MIME_TYPE);
             $pixelsRemaining = self::MAX_TOTAL_PIXELS;
             $outputRemaining = self::MAX_TOTAL_BYTES;
-            foreach ($entries as $entry) {
+            foreach ($archive['entries'] as $entry) {
                 $image = self::reencode($zip, $entry, $fileInfo, $pixelsRemaining, $outputRemaining);
                 $images[] = $image;
             }
-            self::register($images, $userId, $folderId);
-            return count($images);
+            $folders = self::register($images, $userId, $folderId);
+            return ['imported' => count($images), 'skipped' => $archive['skipped'], 'folders' => $folders];
         } finally {
             $zip->close();
             foreach ($images as $image) {
@@ -100,6 +101,7 @@ final class MediaZipImport
     {
         $entries = [];
         $seen = [];
+        $skipped = 0;
         $remaining = self::MAX_TOTAL_BYTES;
         for ($index = 0; $index < $zip->numFiles; $index++) {
             $stat = $zip->statIndex($index);
@@ -135,23 +137,35 @@ final class MediaZipImport
             $extension = $dot === false ? '' : strtolower(substr($basename, $dot + 1));
             $extension = $extension === 'jpeg' ? 'jpg' : $extension;
             if (!isset(self::MIME_TYPES[$extension])) {
-                throw new InvalidArgumentException('ZIPにはJPEG、PNG、GIF、WebPの画像を入れてください。');
+                $skipped++;
+                continue;
             }
             if ($stat['size'] < 1 || $stat['size'] > self::MAX_IMAGE_BYTES ||
                 $stat['size'] > $remaining || count($entries) >= self::MAX_IMAGES) {
                 throw new InvalidArgumentException('ZIP内の画像数または展開後の容量が上限を超えています。');
             }
             $remaining -= $stat['size'];
+            $slash = strrpos($name, '/');
+            $folder = $slash === false ? null : substr($name, 0, $slash);
+            if ($folder !== null && (nx_text_length($folder) > Media::MAX_FOLDER_NAME_LENGTH ||
+                in_array($folder, Media::RESERVED_FOLDER_NAMES, true))) {
+                throw new InvalidArgumentException('ZIP内のフォルダ名には、100文字以内で「すべて」「未分類」以外の名前を使ってください。');
+            }
             $entries[] = $stat + [
                 'originalName' => $basename,
                 'title' => substr($basename, 0, $dot),
                 'extension' => $extension,
+                'folder' => $folder,
             ];
         }
         if (!$entries) {
-            throw new InvalidArgumentException('ZIPの中に取り込める画像がありません。');
+            $message = 'ZIPの中に取り込める画像がありません。';
+            if ($skipped > 0) {
+                $message .= $skipped . '件の対応外ファイルを除外しました。';
+            }
+            throw new InvalidArgumentException($message);
         }
-        return $entries;
+        return ['entries' => $entries, 'skipped' => $skipped];
     }
 
     private static function entryBasename(string $name, bool $directory): string
@@ -318,7 +332,7 @@ final class MediaZipImport
         }
     }
 
-    private static function register(array $images, int $userId, ?int $folderId): void
+    private static function register(array $images, int $userId, ?int $folderId): int
     {
         $directory = BASE_PATH . '/public/uploads/media';
         if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
@@ -326,9 +340,17 @@ final class MediaZipImport
         }
         $pdo = Database::connect();
         $files = [];
+        $folderNames = array_unique(array_column($images, 'folder'));
+        sort($folderNames, SORT_STRING);
+        $folders = [];
         $pdo->beginTransaction();
         try {
-            if ($folderId !== null) {
+            foreach ($folderNames as $name) {
+                if ($name !== null) {
+                    $folders[$name] = Media::createFolder($name, reuseExisting: true);
+                }
+            }
+            if ($folderId !== null && in_array(null, $folderNames, true)) {
                 $table = Database::table('media_folders');
                 $folder = $pdo->prepare("SELECT id FROM {$table} WHERE id = ? FOR UPDATE");
                 $folder->execute([$folderId]);
@@ -362,7 +384,7 @@ final class MediaZipImport
                     'file_size' => $image['bytes'],
                     'file_type' => 'image',
                     'user_id' => $userId,
-                    'folder_id' => $folderId,
+                    'folder_id' => $image['folder'] === null ? $folderId : $folders[$image['folder']],
                 ]);
             }
             $pdo->commit();
@@ -378,5 +400,6 @@ final class MediaZipImport
             }
             throw $exception;
         }
+        return count(array_unique($folders));
     }
 }

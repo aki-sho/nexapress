@@ -7,6 +7,8 @@ use app\Core\Database;
 class Media
 {
     public const EDITABLE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+    public const MAX_FOLDER_NAME_LENGTH = 100;
+    public const RESERVED_FOLDER_NAMES = ['すべて', '未分類'];
 
     public static function all(?int $folderId = null): array
     {
@@ -42,11 +44,15 @@ class Media
         return Database::connect()->query("SELECT id, name FROM {$folders} ORDER BY name, id")->fetchAll();
     }
 
-    public static function createFolder(string $name): int
+    public static function createFolder(string $name, bool $reuseExisting = false): int
     {
         $pdo = Database::connect();
         $folders = Database::table('media_folders');
-        $stmt = $pdo->prepare("INSERT INTO {$folders} (name) VALUES (?)");
+        $sql = "INSERT INTO {$folders} (name) VALUES (?)";
+        if ($reuseExisting) {
+            $sql .= ' ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)';
+        }
+        $stmt = $pdo->prepare($sql);
         $stmt->execute([$name]);
         return (int)$pdo->lastInsertId();
     }
