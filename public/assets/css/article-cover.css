@@ -1,4 +1,6 @@
 .nx-article-cover {
+    --nx-cover-margin-top: 1.5em;
+    --nx-cover-margin-bottom: 1.5em;
     --nx-cover-out-top: 0px;
     --nx-cover-out-bottom: 0px;
     --nx-cover-viewport-aligned: 0;
@@ -17,7 +19,7 @@
     box-sizing: border-box;
     min-inline-size: 0;
     min-block-size: calc(var(--nx-cover-height, 400px) + var(--nx-cover-out-top) + var(--nx-cover-out-bottom));
-    margin-block: 1.5em;
+    margin-block: var(--nx-cover-margin-top) var(--nx-cover-margin-bottom);
     padding: var(--nx-cover-padding, 32px);
     overflow: hidden;
     background: var(--nx-cover-base);
@@ -89,6 +91,13 @@
 @supports (height: attr(data-nx-cover-height px)) {
     .nx-article-cover[data-nx-cover-height]:not([data-nx-cover-height="auto"]) {
         --nx-cover-fixed-size: attr(data-nx-cover-height px, 400px);
+    }
+
+    .nx-article-cover[data-nx-cover-margin-top] {
+        --nx-cover-margin-top: attr(data-nx-cover-margin-top px, 1.5em);
+    }
+    .nx-article-cover[data-nx-cover-margin-bottom] {
+        --nx-cover-margin-bottom: attr(data-nx-cover-margin-bottom px, 1.5em);
     }
 }
 

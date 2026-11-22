@@ -2,7 +2,8 @@
     'use strict';
 
     const watched = new WeakMap();
-    const canReadHeight = CSS.supports('height: attr(data-nx-cover-height px)');
+    const supportsTypedAttributes = CSS.supports('height: attr(data-nx-cover-height px)');
+    const marginLength = value => /^\d+$/.test(value) && Number(value) <= 9999 ? value + 'px' : '';
 
     function layoutCover(cover) {
         const body = cover.querySelector(':scope > .nx-article-cover-content');
@@ -10,8 +11,10 @@
 
         const height = Number(cover.dataset.nxCoverHeight);
         const fixed = Number.isInteger(height) && height >= 80 && height <= 3000;
-        if (!canReadHeight) {
+        if (!supportsTypedAttributes) {
             cover.style.setProperty('--nx-cover-fixed-size', fixed ? height + 'px' : '');
+            cover.style.setProperty('--nx-cover-margin-top', marginLength(cover.dataset.nxCoverMarginTop));
+            cover.style.setProperty('--nx-cover-margin-bottom', marginLength(cover.dataset.nxCoverMarginBottom));
         }
         if (cover.matches('.nx-cover-width-wide, .nx-cover-width-full')) {
             const view = cover.ownerDocument.defaultView;

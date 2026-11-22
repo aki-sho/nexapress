@@ -7,6 +7,8 @@ namespace app\Core;
  */
 class HtmlSanitizer
 {
+    public const COVER_MARGIN_MAX_PIXELS = DesignSpacing::MAX_PIXELS;
+
     /*
      * 使用を許可するHTMLタグと属性
      */
@@ -101,6 +103,8 @@ class HtmlSanitizer
         'div' => [
             'align',
             'data-nx-cover-height',
+            'data-nx-cover-margin-top',
+            'data-nx-cover-margin-bottom',
         ],
         'span' => [],
 
@@ -549,6 +553,8 @@ class HtmlSanitizer
                 ),
 
             'data-nx-cover-height' => $value === 'auto' ? $value : self::sanitizeInteger($value, 80, 3000),
+            'data-nx-cover-margin-top', 'data-nx-cover-margin-bottom' =>
+                self::sanitizeInteger($value, 0, self::COVER_MARGIN_MAX_PIXELS),
             'data-nx-cover-pop' => self::sanitizeInteger($value, -300, 300),
             'class' =>
                 self::sanitizeClass($value),
