@@ -15,10 +15,10 @@ final class MediaZipImport
     public const MAX_TOTAL_BYTES = 67108864;
     public const MAX_IMAGES = 200;
     public const MAX_DIMENSION = 4096;
+    public const MAX_TOTAL_PIXELS = 100_000_000;
 
     private const MAX_ENTRIES = self::MAX_IMAGES * 2;
     private const MAX_DIRECTORY_BYTES = 262144;
-    private const MAX_TOTAL_PIXELS = 67108864;
     private const INVALID_ZIP = 'ZIPを読み込めませんでした。ファイルを確認してください。';
     private const MIME_TYPES = [
         'jpg' => 'image/jpeg',
@@ -206,11 +206,23 @@ final class MediaZipImport
                 throw new InvalidArgumentException('ZIP内にファイル名と画像形式が一致しない項目があります。');
             }
             [$width, $height] = $dimensions;
-            if (min($width, $height) < 1 || max($width, $height) > self::MAX_DIMENSION ||
-                $width * $height > $pixelsRemaining) {
-                throw new InvalidArgumentException('ZIP内の画像の寸法または合計画素数が上限を超えています。');
+            if (min($width, $height) < 1) {
+                throw new InvalidArgumentException('ZIP内に寸法を確認できない画像があります。');
             }
-            $pixelsRemaining -= $width * $height;
+            if (max($width, $height) > self::MAX_DIMENSION) {
+                throw new InvalidArgumentException(sprintf(
+                    'ZIP内の画像「%s」（%d × %d px）の寸法が上限を超えています。各辺%s pxまでです。',
+                    $entry['originalName'], $width, $height, number_format(self::MAX_DIMENSION)
+                ));
+            }
+            $pixels = $width * $height;
+            if ($pixels > $pixelsRemaining) {
+                throw new InvalidArgumentException(
+                    'ZIP内の画像の合計画素数が上限の' . number_format(self::MAX_TOTAL_PIXELS) .
+                    '画素を超えています。ZIPを分けて取り込んでください。'
+                );
+            }
+            $pixelsRemaining -= $pixels;
 
             $data = stream_get_contents($source, $entry['size'], 0);
             if ($data === false || strlen($data) !== $entry['size']) {

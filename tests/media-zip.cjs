@@ -83,6 +83,7 @@ module.exports = async (page, base) => {
         return;
     }
     assert.match(await zipForm.textContent(), /画像\s*200\s*枚まで/);
+    assert.match(await zipForm.textContent(), /画像の合計\s*100,000,000\s*画素まで/);
     const options = await page.evaluate(() => {
         const canvas = document.createElement('canvas');
         canvas.width = 4;
@@ -201,11 +202,26 @@ module.exports = async (page, base) => {
     await page.goto(new URL(limitFolder, base).href, {waitUntil: 'domcontentloaded'});
     assert.equal(await cards.count(), 200);
 
+    const largeImages = await page.evaluate(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 4097;
+        canvas.height = 1;
+        const wide = canvas.toDataURL('image/png').split(',')[1];
+        canvas.width = 4000;
+        canvas.height = 4000;
+        const square = canvas.toDataURL('image/jpeg').split(',')[1];
+        return {wide, square};
+    });
+    const tooWide = Buffer.from(largeImages.wide, 'base64');
+    const largeJpeg = Buffer.from(largeImages.square, 'base64');
     const cases = [
         [archive([['文章/説明書.txt', Buffer.from('example note')]]), '1件の対応外ファイルを除外しました。'],
         [archive([['作成失敗/valid.png', png], ['作成失敗/wrong.jpg', png]]), '画像形式が一致しない'],
         [archive([['valid.png', png], ['link.txt', Buffer.from('unresolved'), 0o120777]]), 'リンクや特殊ファイル'],
         [archive(Array.from({length: 201}, (_, index) => ['枚数超過/' + index + '.png', png])), '画像は200枚まで'],
+        [archive([['幅超過.png', tooWide]]), '「幅超過.png」（4097 × 1 px）の寸法が上限を超えています。各辺4,096 pxまで'],
+        [archive(Array.from({length: 7}, (_, index) => ['画素数超過/' + index + '.jpg', largeJpeg])),
+            '合計画素数が上限の100,000,000画素'],
         [archive(Array.from({length: 401}, (_, index) => [index + '.txt', Buffer.from('note')])), '項目数または目録の容量'],
         [Buffer.from('This is a plain text file'), 'ZIPを読み込めません'],
     ];
@@ -217,6 +233,7 @@ module.exports = async (page, base) => {
         assert.equal((html.match(/data-media-card data-media-title=/g) ?? []).length, 1);
         assert(!html.includes('作成失敗'));
         assert(!html.includes('枚数超過'));
+        assert(!html.includes('画素数超過'));
     }
-    console.log('PASS: ZIP lossless PNG, JPEG and WebP, image orientation, transparency, exact-size fallback, GIF, folders and atomic rejection');
+    console.log('PASS: ZIP lossless PNG, JPEG and WebP, folders, image dimension and pixel limits, and atomic rejection');
 };

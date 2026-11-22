@@ -81,7 +81,8 @@ function media_size_label(int $bytes): string
                     ZIP直下の画像の保存先 <?= e($viewFolder > 0 ? $currentFolderName : '未分類') ?><br>
                     ZIP <?= e(media_size_label(MediaZipImport::MAX_ARCHIVE_BYTES)) ?>、画像 <?= MediaZipImport::MAX_IMAGES ?> 枚まで。
                     展開後は1枚 <?= e(media_size_label(MediaZipImport::MAX_IMAGE_BYTES)) ?>、合計 <?= e(media_size_label(MediaZipImport::MAX_TOTAL_BYTES)) ?>まで。<br>
-                    各辺 <?= MediaZipImport::MAX_DIMENSION ?> px以下。GIFは先頭のコマ、WebPは静止画を登録します。
+                    各辺 <?= number_format(MediaZipImport::MAX_DIMENSION) ?> px以下。画像の合計 <?= number_format(MediaZipImport::MAX_TOTAL_PIXELS) ?> 画素まで。<br>
+                    GIFは先頭のコマ、WebPは静止画を登録します。
                 </small>
             </div>
             <button type="submit">ZIPを取り込む</button>
