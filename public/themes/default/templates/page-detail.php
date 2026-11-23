@@ -21,7 +21,7 @@
             <?= nx_post_content($page) ?>
         </div>
 
-        <p>
+        <p data-nx-page-home-link>
             <a href="<?= url('') ?>">トップへ戻る</a>
         </p>
     </article>

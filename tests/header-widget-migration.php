@@ -75,11 +75,11 @@ foreach (['default', 'monoedge'] as $theme) {
     checkHeader(count($read->invoke(null, $theme, ['themes' => [$theme => $legacy]])['widgets']['header1']) === 12,
         $theme . ': hidden native parts remain hidden');
 }
-foreach (\app\Core\Design::headerWidgetAreas() as $area) {
+foreach ([...\app\Core\Design::headerWidgetAreas(), 'footer1', 'footer_above5', 'footer_bottom5'] as $area) {
     checkHeader(count($validate->invoke(null, [['type' => 'site_icon'], ['type' => 'site_name']], $area)) === 2,
-        $area . ': accepts header types');
+        $area . ': accepts site identity widgets');
 }
-foreach (['sidebar', 'header_after', 'footer_before', 'footer1', 'footer_above5', 'footer_bottom5'] as $area) {
+foreach (['sidebar', 'header_after', 'footer_before'] as $area) {
     foreach (['site_icon', 'site_name'] as $type) {
         rejectsHeader(static fn() => $validate->invoke(null, [['type' => $type]], $area), $area . ': rejects ' . $type);
     }

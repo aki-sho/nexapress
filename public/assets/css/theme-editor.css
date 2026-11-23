@@ -5,7 +5,7 @@
 }
 .nx-theme-editor-layout {
     display: grid;
-    grid-template-columns: minmax(156px, 216px) minmax(0, 1fr);
+    grid-template-columns: minmax(242px, 300px) minmax(0, 1fr);
     align-items: start;
     gap: 16px;
 }
@@ -27,6 +27,33 @@
     list-style: none;
 }
 .nx-theme-editor-files ul + h2 { margin-top: 14px; }
+.nx-theme-file-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px 5px;
+}
+.nx-theme-file-row a { flex: 1 1 auto; }
+.nx-theme-child-row {
+    margin-inline-start: 13px;
+    padding-inline-start: 4px;
+    border-inline-start: 1px solid #d5dfed;
+}
+.nx-theme-file-status {
+    padding-inline: 4px;
+    color: #475569;
+    font-size: 12px;
+    white-space: nowrap;
+}
+.main .nx-theme-child-create button[type="submit"] {
+    min-height: 28px;
+    padding: 3px 5px;
+    border: 1px solid #d5dfed;
+    background: #f5f8fe;
+    color: #1747a6;
+    font-size: 12px;
+}
+.main .nx-theme-child-create button[type="submit"]:hover { background: #eaf1ff; }
 .nx-theme-editor-files a {
     display: block;
     padding: 6px;
@@ -57,5 +84,5 @@
 }
 @media (max-width: 1000px) {
     .nx-theme-editor-layout { grid-template-columns: minmax(0, 1fr); }
-    .nx-theme-editor-files ul { display: flex; flex-wrap: wrap; gap: 4px; }
+    .nx-theme-editor-files ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(215px, 100%), 1fr)); gap: 4px; }
 }

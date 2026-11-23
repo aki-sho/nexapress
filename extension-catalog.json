@@ -2,7 +2,7 @@
   "extensions": [
     {
       "manifest_url": "https://raw.githubusercontent.com/aki-sho/nexapress-classic-editor/main/manifest.json",
-      "download_url": "https://github.com/aki-sho/nexapress-classic-editor/releases/download/v1.6.0/classic-editor-v1.6.0.zip"
+      "download_url": "https://github.com/aki-sho/nexapress-classic-editor/releases/download/v1.12.3/classic-editor-v1.12.3.zip"
     },
     {
       "manifest_url": "https://raw.githubusercontent.com/aki-sho/nexapress-access-guard/main/manifest.json",
@@ -30,7 +30,7 @@
     },
     {
       "manifest_url": "https://raw.githubusercontent.com/aki-sho/nx_Multi_tool/main/manifest.json",
-      "download_url": "https://github.com/aki-sho/nx_Multi_tool/releases/download/v1.0.1/nx_Multi_tool-1.0.1.zip"
+      "download_url": "https://github.com/aki-sho/nx_Multi_tool/releases/download/v1.1.4/nx_Multi_tool-1.1.4.zip"
     },
     {
       "manifest_url": "https://raw.githubusercontent.com/aki-sho/nexa-form/main/manifest.json",

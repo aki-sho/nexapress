@@ -25,7 +25,8 @@ final class PageLayout
     ];
     public const EMPTY_OVERRIDES = ['format' => 2];
     public const ARTICLE_PADDING_SIDES = ['top' => '上', 'right' => '右', 'bottom' => '下', 'left' => '左'];
-    private const DISPLAY_FLAGS = ['showTitle' => 'タイトル', 'showCreatedAt' => '作成日時'];
+    private const DISPLAY_FLAGS = ['showTitle' => 'タイトル', 'showCreatedAt' => '作成日時',
+        'showHomeLink' => 'トップへ戻る'];
 
     public static function stylesheetUrl(array $layout, string $themeWidth): ?string
     {
@@ -160,6 +161,7 @@ final class PageLayout
         ];
         if ($kind === 'page') {
             $choices['created_at'] = ['field' => 'showCreatedAt', 'values' => ['show' => true, 'hide' => false]];
+            $choices['home_link'] = ['field' => 'showHomeLink', 'values' => ['show' => true, 'hide' => false]];
         }
         if (!is_array($input) || array_diff_key($input, $choices)) {
             throw new InvalidArgumentException('ページの表示設定を確認してください。');

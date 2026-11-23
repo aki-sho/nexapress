@@ -168,6 +168,16 @@
 .nx-design-widget-text { white-space: pre-wrap; }
 .nx-design-widget-menu { display: flex; flex-wrap: wrap; gap: 6px 14px; }
 .nx-design-empty { padding: 12px; border: 1px dashed currentColor; border-radius: 6px; }
+.site-footer .site-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    max-width: 100%;
+}
+.site-footer .site-icon-link { flex-shrink: 0; }
+.site-footer .site-icon { display: block; width: 32px; height: 32px; object-fit: contain; }
+.site-footer .site-title { color: inherit; font-size: 24px; font-weight: 700; overflow-wrap: anywhere; }
 .site-footer-inner.nx-design-footer { display: grid; gap: 18px; }
 .nx-design-footer--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .nx-design-footer--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }

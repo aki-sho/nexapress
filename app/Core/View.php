@@ -104,6 +104,9 @@ class View
                 require $viewPath;
             }
             $content = ob_get_clean();
+            if ($layoutKind === 'page' && $viewPath === $themeViewPath && ($pageDesign['showHomeLink'] ?? true) === false) {
+                $content = self::withoutPageHomeLink($content);
+            }
             if (EditorPreview::active()) {
                 $content = EditorPreview::addMissingFields(
                     $content, $layoutDocument, ($editorDisplay ?? null) === null
@@ -114,5 +117,13 @@ class View
         } finally {
             ContentExtension::end();
         }
+    }
+
+    private static function withoutPageHomeLink(string $content): string
+    {
+        // Match the theme's navigation paragraph outside the editable body, including saved older theme files.
+        $link = preg_quote('<a href="' . url('') . '">トップへ戻る</a>', '~');
+        return preg_replace('~(?<=</div>)\s*<p(?: data-nx-page-home-link)?>\s*' . $link .
+            '\s*</p>(?=\s*</article>\s*\z)~u', '', $content) ?? $content;
     }
 }

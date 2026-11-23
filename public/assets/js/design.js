@@ -40,7 +40,8 @@
     const clone = value => JSON.parse(JSON.stringify(value));
     const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
     const isHeaderWidgetArea = area => data.headerWidgetAreas.includes(area);
-    const isHeaderWidgetType = type => data.headerWidgetTypes.includes(type);
+    const isBrandWidgetType = type => data.brandWidgetTypes.includes(type);
+    const isBrandWidgetArea = area => data.brandWidgetAreas.includes(area);
     const widgetLimit = area => isHeaderWidgetArea(area) ? data.headerWidgetLimit : data.widgetLimit;
     const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
         ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
@@ -129,7 +130,7 @@
         (area === 'sidebar' ? 'columns' : area.startsWith('header') ? 'header' : 'footer');
     const scopePane = scope => regionParents[scope] ?? scope;
     const widgetDestinations = (scope, type) => activeAreas().filter(area =>
-        (scope === 'columns' || widgetScope(area) === scope) && (!isHeaderWidgetType(type) || isHeaderWidgetArea(area)));
+        (scope === 'columns' || widgetScope(area) === scope) && (!isBrandWidgetType(type) || isBrandWidgetArea(area)));
     const currentList = scope => layouts[theme].widgets[selectedWidgetAreas[scope]];
     const widgetGroupSelector = scope => '[data-chrome-details="' + scope + ':widgets"]';
     const itemControl = (scope, selector) => widgetGroupSelector(scope) + ' ' + selector;
@@ -237,11 +238,11 @@
         const {item, scope} = editor;
         const destinations = widgetDestinations(scope, item.type);
         const destination = destinations.includes(item.area) ? item.area : selectedWidgetAreas[scope];
-        const types = Object.entries(data.widgets).filter(([type]) => !isHeaderWidgetType(type) || isHeaderWidgetArea(destination));
+        const types = Object.entries(data.widgets).filter(([type]) => !isBrandWidgetType(type) || isBrandWidgetArea(destination));
         let fields = field('種類', 'type', types, item.type, 'data-form-setting="type"') +
             (scope === 'columns' ? field('表示場所', 'area', destinations.map(id => [id, widgetAreaLabel(id)]), destination, 'required')
                 : widgetLocationFields(scope, destinations, destination, 'form'));
-        const sizeOptions = data.headerWidgetSizes[item.type];
+        const sizeOptions = data.brandWidgetSizes[item.type];
         if (sizeOptions) {
             fields += `<label>${escape(sizeOptions.label)}（px）
                 <input type="number" name="size" min="${sizeOptions.min}" max="${sizeOptions.max}" step="1"
@@ -1252,7 +1253,7 @@
             return;
         }
         const item = {type: values.type, title: name, text: values.text?.trim() || '', menu: values.menu || 'footer', ...link};
-        const sizeOptions = data.headerWidgetSizes[values.type];
+        const sizeOptions = data.brandWidgetSizes[values.type];
         if (sizeOptions && values.size !== '') {
             const size = Number(values.size);
             if (!Number.isInteger(size) || size < sizeOptions.min || size > sizeOptions.max) {

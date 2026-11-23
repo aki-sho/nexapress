@@ -33,7 +33,19 @@ final class ThemeEditor
         return ['CSS' => array_values(array_unique($styles)), 'テンプレート' => $templates];
     }
 
-    public static function read(string $theme, string $file): array
+    public static function childFiles(string $theme, array $groups): array
+    {
+        $children = [];
+        foreach (array_merge(...array_values($groups)) as $file) {
+            $path = self::sourcePath($theme, $file);
+            if ($path !== null && self::localFile(self::editedPath($path, 'child'))) {
+                $children[$file] = self::usesChild($path) ? 'child' : 'parent';
+            }
+        }
+        return $children;
+    }
+
+    public static function read(string $theme, string $file, string $layer = 'parent'): array
     {
         $path = self::sourcePath($theme, $file);
         $original = $path === null ? null : self::text($path);
@@ -41,7 +53,10 @@ final class ThemeEditor
             throw new RuntimeException('ファイルを読み込めませんでした。');
         }
 
-        $edited = self::text(self::editedPath($path));
+        $edited = self::text(self::editedPath($path, $layer));
+        if ($layer === 'child' && $edited === null) {
+            throw new InvalidArgumentException('子ファイルが見つかりませんでした。', 404);
+        }
         $content = $edited ?? $original;
 
         return [
@@ -49,12 +64,13 @@ final class ThemeEditor
             'original' => $original,
             'edited' => $edited !== null,
             'compatible' => !self::isTemplate($file) || self::samePhp($original, $content),
-            'revision' => hash('sha256', $theme . "\0" . $file . "\0" . $original . "\0" . $content),
+            'revision' => hash('sha256', $theme . "\0" . $file . "\0" . $layer . "\0" . $original . "\0" . $content),
         ];
     }
 
-    public static function save(string $theme, string $file, string $revision, ?string $content): bool
-    {
+    public static function change(
+        string $theme, string $file, string $layer, string $action, ?string $revision, ?string $content
+    ): bool {
         $lock = @fopen(BASE_PATH . '/storage/theme-editor.lock', 'c');
         if ($lock === false) {
             throw new RuntimeException('保存用のファイルを開けませんでした。');
@@ -64,17 +80,34 @@ final class ThemeEditor
             if (!flock($lock, LOCK_EX)) {
                 throw new RuntimeException('保存を開始できませんでした。');
             }
-            $current = self::read($theme, $file);
-            if ($theme !== Theme::active() || !hash_equals($current['revision'], $revision)) {
-                throw new InvalidArgumentException('テーマまたはファイルが更新されました。編集画面を開き直してください。', 409);
+            if ($theme !== Theme::active()) {
+                throw new InvalidArgumentException('テーマが切り替わりました。編集画面を開き直してください。', 409);
             }
             $path = self::sourcePath($theme, $file);
             if ($path === null) {
-                throw new RuntimeException('ファイルが見つかりませんでした。');
+                throw new InvalidArgumentException('テーマファイルが見つかりませんでした。', 404);
             }
-            $editedPath = self::editedPath($path);
-            if ($content !== null) {
-                if (!self::validText($content)) {
+            if ($action === 'create_child') {
+                $child = self::editedPath($path, 'child');
+                if (self::localFile($child)) {
+                    return false;
+                }
+                $parent = self::read($theme, $file);
+                self::write($child, $parent['compatible'] ? $parent['content'] : $parent['original']);
+                return true;
+            }
+
+            $current = self::read($theme, $file, $layer);
+            if ($revision === null || !hash_equals($current['revision'], $revision)) {
+                throw new InvalidArgumentException('ファイルが更新されました。編集画面を開き直してください。', 409);
+            }
+            if ($action === 'use') {
+                return self::selectLayer($path, $layer, $current['compatible']);
+            }
+
+            $editedPath = self::editedPath($path, $layer);
+            if ($action === 'save') {
+                if ($content === null || !self::validText($content)) {
                     throw new InvalidArgumentException('UTF-8のテキストを256 KB以内で入力してください。', 422);
                 }
                 $content = self::newlines($content);
@@ -83,17 +116,17 @@ final class ThemeEditor
                 }
             }
 
-            if ($content === null || $content === $current['original']) {
+            if ($layer === 'parent' && ($action === 'restore' || $content === $current['original'])) {
                 if (!$current['edited']) {
                     return false;
                 }
                 if (!@unlink($editedPath)) {
                     throw new RuntimeException('編集したファイルを元に戻せませんでした。');
                 }
-            } elseif ($content === $current['content']) {
-                return false;
-            } else {
+            } elseif ($content !== null && $content !== $current['content']) {
                 self::write($editedPath, $content);
+            } else {
+                return false;
             }
 
             if (self::isTemplate($file) && function_exists('opcache_invalidate')) {
@@ -105,27 +138,69 @@ final class ThemeEditor
         }
     }
 
+    private static function selectLayer(string $path, string $layer, bool $compatible): bool
+    {
+        $selection = self::selectionPath($path);
+        if ($layer === 'child') {
+            if (!$compatible) {
+                throw new InvalidArgumentException('子ファイルに現在のテーマのPHP部分を反映してから切り替えてください。', 422);
+            }
+            if (self::usesChild($path)) {
+                return false;
+            }
+            self::write($selection, 'child');
+        } elseif (self::usesChild($path)) {
+            if (!@unlink($selection)) {
+                throw new RuntimeException('親ファイルに切り替えられませんでした。');
+            }
+        } else {
+            return false;
+        }
+        return true;
+    }
+
     public static function template(string $theme, string $file, string $originalPath): string
     {
-        $editedPath = self::editedPath($originalPath);
-        if (!is_file($editedPath) || self::sourcePath($theme, $file) === null) {
+        $parent = self::editedPath($originalPath);
+        $candidate = self::usesChild($originalPath) ? self::editedPath($originalPath, 'child') : $parent;
+        if ((!is_file($candidate) && !is_file($parent)) || self::sourcePath($theme, $file) === null) {
             return $originalPath;
         }
-        $edited = self::text($editedPath);
         $original = self::text($originalPath);
-
-        return $edited !== null && $original !== null && self::samePhp($original, $edited)
-            ? $editedPath : $originalPath;
+        if ($original !== null) {
+            foreach (array_unique([$candidate, $parent]) as $path) {
+                $edited = self::text($path);
+                if ($edited !== null && self::samePhp($original, $edited)) {
+                    return $path;
+                }
+            }
+        }
+        return $originalPath;
     }
 
     public static function stylesheet(string $path): string
     {
-        $edited = self::editedPath($path);
-        if (self::localFile(BASE_PATH . '/public/' . $edited)) {
-            return $edited;
+        $base = BASE_PATH . '/public/';
+        if (self::usesChild($base . $path)) {
+            $child = self::editedPath($path, 'child');
+            if (self::localFile($base . $child)) {
+                return $child;
+            }
         }
-        return $path;
+        $edited = self::editedPath($path);
+        return self::localFile($base . $edited) ? $edited : $path;
     }
+
+    private static function selectionPath(string $path): string
+    {
+        return dirname($path) . '/.nexapress-use-child-' . basename($path);
+    }
+
+    private static function usesChild(string $path): bool
+    {
+        return self::localFile(self::selectionPath($path));
+    }
+
 
     private static function sourcePath(string $theme, string $file): ?string
     {
@@ -160,10 +235,10 @@ final class ThemeEditor
         return preg_match('#\Atemplates/(?:parts/)?[a-zA-Z0-9_-]+\.php\z#', $file) === 1;
     }
 
-    private static function editedPath(string $path): string
+    private static function editedPath(string $path, string $layer = 'parent'): string
     {
-        $prefix = str_ends_with($path, '.php') ? '.nexapress-edit-' : 'nexapress-edit-';
-        return dirname($path) . '/' . $prefix . basename($path);
+        $prefix = $layer === 'child' ? 'nexapress-child-' : 'nexapress-edit-';
+        return dirname($path) . '/' . (str_ends_with($path, '.php') ? '.' : '') . $prefix . basename($path);
     }
 
     private static function text(string $path): ?string

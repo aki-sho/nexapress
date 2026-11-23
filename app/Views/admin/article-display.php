@@ -22,6 +22,8 @@ $settings = [
 if ($displayKind === 'page') {
     $dateSetting = ($displayLayout['showCreatedAt'] ?? true) ? 'show' : 'hide';
     $settings['created_at'] = ['作成日時', $dateSetting, ['show' => '表示', 'hide' => '非表示']];
+    $homeLink = ($displayLayout['showHomeLink'] ?? true) ? 'show' : 'hide';
+    $settings['home_link'] = ['トップへ戻る', $homeLink, ['show' => '表示', 'hide' => '非表示']];
 }
 $settings['width'] = ['本文幅', $displayFields['width'] ?? 'inherit', ['inherit' => '引き継ぐ'] + PageLayout::WIDTHS];
 if ($legacySections) {

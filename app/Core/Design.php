@@ -72,6 +72,11 @@ final class Design
         return array_values(array_filter(array_keys(self::widgetAreas()), static fn(string $area): bool => self::isHeaderWidgetArea($area)));
     }
 
+    public static function isBrandWidgetArea(string $area): bool
+    {
+        return self::isHeaderWidgetArea($area) || preg_match('/^footer(?:_above|_bottom)?[1-5]$/D', $area) === 1;
+    }
+
     public static function footerRowDefaults(): array
     {
         return ['split' => false, 'top' => null,
@@ -96,8 +101,8 @@ final class Design
         'above' => self::REGION_EXTRA_ROW_DEFAULT,
         'bottom' => self::REGION_EXTRA_ROW_DEFAULT,
     ];
-    public const HEADER_WIDGETS = ['site_icon' => 'サイトアイコン', 'site_name' => 'サイト名'];
-    public const WIDGETS = self::HEADER_WIDGETS + [
+    public const BRAND_WIDGETS = ['site_icon' => 'サイトアイコン', 'site_name' => 'サイト名'];
+    public const WIDGETS = self::BRAND_WIDGETS + [
         'recent' => '新着記事',
         'categories' => 'カテゴリ一覧',
         'menu' => 'メニュー',
@@ -794,8 +799,8 @@ final class Design
             if (!is_string($type) || !isset(self::WIDGETS[$type]) || !in_array($menu, ['header', 'footer'], true)) {
                 throw new InvalidArgumentException('ウィジェットの種類を確認してください。');
             }
-            if (isset(self::HEADER_WIDGETS[$type]) && !$isHeader) {
-                throw new InvalidArgumentException('サイトアイコン・サイト名はヘッダー内に配置してください。');
+            if (isset(self::BRAND_WIDGETS[$type]) && !self::isBrandWidgetArea($area)) {
+                throw new InvalidArgumentException('サイトアイコン・サイト名はヘッダーまたはフッター内に配置してください。');
             }
             $settings = [
                 'type' => $type,

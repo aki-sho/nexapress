@@ -3,16 +3,18 @@
 <?php endif; ?>
 <?php $brandOpen = false; $headerArea = \app\Core\Design::isHeaderWidgetArea($area); ?>
 <?php foreach ($widgets as $widget): ?>
-    <?php if (isset(\app\Core\Design::HEADER_WIDGETS[$widget['type']])): ?>
-        <?php if (!$headerArea) { continue; } ?>
+    <?php if (isset(\app\Core\Design::BRAND_WIDGETS[$widget['type']])): ?>
+        <?php if (!\app\Core\Design::isBrandWidgetArea($area)) { continue; } ?>
         <?php $logo = $widget['type'] === 'site_icon' ? site_icon() : ''; ?>
         <?php if ($widget['type'] === 'site_icon' && $logo === '') { continue; } ?>
         <?php $size = isset($widget['size']) ? ' data-nx-brand-size="' . e((string)$widget['size']) . '"' : ''; ?>
         <?php if (!$brandOpen): ?><div class="site-brand"><?php $brandOpen = true; endif; ?>
         <?php if ($widget['type'] === 'site_icon'): ?>
             <a href="<?= e(url('')) ?>" class="site-icon-link"><img src="<?= e($logo) ?>" alt="<?= e(site_title()) ?>" class="site-icon"<?= $size ?>></a>
-        <?php else: ?>
+        <?php elseif ($headerArea): ?>
             <h1 class="site-title"<?= $size ?>><a href="<?= e(url('')) ?>"><?= e(site_title()) ?></a></h1>
+        <?php else: ?>
+            <a href="<?= e(url('')) ?>" class="site-title"<?= $size ?>><?= e(site_title()) ?></a>
         <?php endif; ?>
         <?php continue; ?>
     <?php endif; ?>

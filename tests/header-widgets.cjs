@@ -100,7 +100,7 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             await form.locator('[data-action="cancel"]').click();
             await widgets('footer1');
             const footerTypes = await form.locator('[name="type"] option').evaluateAll(nodes => nodes.map(node => node.value));
-            assert(footerTypes.includes('search') && !footerTypes.includes('site_icon') && !footerTypes.includes('site_name'));
+            assert(footerTypes.includes('search') && footerTypes.includes('site_icon') && footerTypes.includes('site_name'));
             const footerLocations = form.locator('[data-widget-row="form"] option');
             assert((await footerLocations.allTextContents()).includes('フッター本体'));
             assert(!(await footerLocations.allTextContents()).includes('フッター直前'));
@@ -110,6 +110,14 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             const heading = '検索 <img data-widget-attack src=x> & "確認"';
             await form.locator('[name="title"]').fill(heading);
             await apply();
+            for (const [type, size] of [['site_icon', 44], ['site_name', 22]]) {
+                await widgets('footer1');
+                await form.locator('[name="type"]').selectOption(type);
+                await form.locator('[name="size"]').fill(String(size));
+                await apply();
+            }
+            assert.equal(await preview.locator('.site-footer .site-icon').evaluate(node => getComputedStyle(node).width), '44px');
+            assert.equal(await preview.locator('.site-footer .site-title').evaluate(node => getComputedStyle(node).fontSize), '22px');
             await publish();
             await page.reload();
             await settled();
@@ -122,11 +130,15 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             assert.equal(await visitor.locator('[data-widget-area="header1"] .site-icon').getAttribute('src'), icon);
             assert.equal(await visitor.locator('[data-widget-area="header2"] .site-title').textContent(), siteName);
             assert.equal(await visitor.locator('[data-site-name], [data-widget-attack]').count(), 0);
-            assert.equal(await visitor.locator('.site-footer .site-title, .site-footer .site-icon').count(), 0);
+            assert.equal(await visitor.locator('.site-footer .site-title').textContent(), siteName);
+            assert.equal(await visitor.locator('.site-footer .site-title').evaluate(node => node.tagName), 'A');
+            assert.equal(await visitor.locator('.site-footer .site-icon').getAttribute('src'), icon);
+            assert.equal(await visitor.locator('.site-footer .site-icon').evaluate(node => getComputedStyle(node).width), '44px');
+            assert.equal(await visitor.locator('.site-footer .site-title').evaluate(node => getComputedStyle(node).fontSize), '22px');
             assert.equal(await visitor.locator('.site-footer .nx-design-widget-search h2').textContent(), heading);
             assert.equal(await visitor.locator('.site-footer .nx-design-widget-search .public-search').count(), 1);
-            assert.equal(await visitor.locator('.site-icon').evaluate(node => getComputedStyle(node).width), '56px');
-            assert.equal(await visitor.locator('.site-title').evaluate(node => getComputedStyle(node).fontSize), '26px');
+            assert.equal(await visitor.locator('.site-header .site-icon').evaluate(node => getComputedStyle(node).width), '56px');
+            assert.equal(await visitor.locator('.site-header .site-title').evaluate(node => getComputedStyle(node).fontSize), '26px');
             const query = '検索 & "確認"';
             const searchUrl = new URL(await visitor.locator('.site-header .public-search').getAttribute('action'), base);
             searchUrl.searchParams.set('q', query);
@@ -145,8 +157,8 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             await publish();
             await page.reload();
             await settled();
-            assert.equal(await preview.locator('.site-title').count(), 0, 'deleted site name remains absent after reload');
-            assert.equal(await preview.locator('.site-icon').count(), 1, 'site icon remains independent');
+            assert.equal(await preview.locator('.site-header .site-title').count(), 0, 'deleted site name remains absent after reload');
+            assert.equal(await preview.locator('.site-header .site-icon').count(), 1, 'site icon remains independent');
             const legacy = structuredClone((await catalog()).themes[theme].state);
             delete legacy.layout.headerWidgets;
             legacy.layout.headerRows = null;
@@ -164,12 +176,12 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             assert.equal(boxes.length, 3);
             assert(boxes.every((box, index) => index === 0 || box.top >= boxes[index - 1].bottom));
             assert(boxes[2].height < 100, 'native stacked search keeps its normal height');
-            console.log('PASS: ' + theme + ' unified widget types, header-only site identity, footer search, movement, deletion, escaping and mobile layout');
+            console.log('PASS: ' + theme + ' unified widget types, header and footer identity, footer search, movement, deletion, escaping and mobile layout');
         }
         const data = await catalog();
         for (const mutate of [
-            state => { state.layout.widgets.footer1 = [{type: 'site_icon'}]; },
-            state => { state.layout.widgets.footer_bottom1 = [{type: 'site_name'}]; },
+            state => { state.layout.widgets.footer_before = [{type: 'site_icon'}]; },
+            state => { state.layout.widgets.footer_bottom1 = [{type: 'site_name', size: 49}]; },
             state => { state.layout.columns = 'right'; state.layout.widgets.sidebar = [{type: 'site_name'}]; },
             state => { state.layout.widgets.header_after = [{type: 'site_icon'}]; },
             state => { state.layout.headerWidgets = 'true'; },

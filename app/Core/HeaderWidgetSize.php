@@ -43,14 +43,14 @@ final class HeaderWidgetSize
         foreach ($query as $type => $values) {
             $options = self::OPTIONS[$type] ?? null;
             if ($options === null || !is_array($values) || count($values) > $options['max'] - $options['min'] + 1) {
-                throw new InvalidArgumentException('ヘッダーのサイズ設定を確認してください。');
+                throw new InvalidArgumentException('サイトアイコン・サイト名のサイズ設定を確認してください。');
             }
             foreach ($values as $value) {
                 $size = self::validate($type, is_string($value) && ctype_digit($value) ? (int)$value : $value);
                 $attribute = '[data-nx-brand-size="' . $size . '"]';
                 $css .= $type === 'site_icon'
-                    ? ".site-header .site-icon$attribute { width: {$size}px; height: {$size}px; }\n"
-                    : ".site-header .site-title$attribute { font-size: {$size}px; }\n";
+                    ? ":is(.site-header, .site-footer) .site-icon$attribute { width: {$size}px; height: {$size}px; }\n"
+                    : ":is(.site-header, .site-footer) .site-title$attribute { font-size: {$size}px; }\n";
             }
         }
         return $css;
