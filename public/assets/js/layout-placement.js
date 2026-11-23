@@ -14,7 +14,13 @@
     ];
     const selector = '.nx-article-columns, .nx-article-column, .nx-article-buttons, .nx-article-cover, ' +
         '.nx-article-button, [data-nx-layout-width]';
+    const column = '.nx-article-columns > div.nx-article-column:not([data-nx-column-area])';
+    const mediaDirectory = new URL('../../uploads/media/', document.currentScript.src);
+    const imageFilename = /^[a-z0-9_-][a-z0-9_.-]{0,239}\.(?:jpe?g|png|gif|webp)$/i;
 
+    // Column backgrounds reference a file inside this installation's media directory.
+    window.nxColumnBackgroundUrl = filename => typeof filename === 'string' && imageFilename.test(filename)
+        ? new URL(filename, mediaDirectory).href : null;
 
     function updateSharedTracks(node) {
         const children = [...node.children];
@@ -35,6 +41,10 @@
         if (!scope) return;
         for (const node of scope.querySelectorAll(selector)) {
             if (node.classList.contains('nx-article-columns')) updateSharedTracks(node);
+            if (node.matches(column)) {
+                const backgroundUrl = window.nxColumnBackgroundUrl(node.dataset.nxColumnBackground);
+                node.style.setProperty('--nx-column-background-image', backgroundUrl ? 'url("' + CSS.escape(backgroundUrl) + '")' : '');
+            }
             for (const [attribute, property, min, max, format] of sizes) {
                 const text = node.getAttribute(attribute) || '';
                 const value = Number(text);

@@ -51,6 +51,11 @@ final class LayoutPlacement
                 && $element->parentNode instanceof \DOMElement
                 && in_array('nx-article-columns', self::classes($element->parentNode), true),
             'data-nx-column-width' => in_array('nx-article-column', $classes, true),
+            'data-nx-column-background' => $element->tagName === 'div'
+                && in_array('nx-article-column', $classes, true)
+                && !$element->hasAttribute('data-nx-column-area')
+                && $element->parentNode instanceof \DOMElement
+                && in_array('nx-article-columns', self::classes($element->parentNode), true),
             'data-nx-columns-align' => in_array('nx-article-columns', $classes, true)
                 && in_array($value, ['start', 'center', 'end', 'stretch'], true),
             'data-nx-buttons-edge' => in_array('nx-article-buttons', $classes, true) && $value === 'bottom',

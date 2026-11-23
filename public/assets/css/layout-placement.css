@@ -15,6 +15,13 @@
 .nx-article-buttons { --nx-layout-gap: 12px; }
 .nx-article-column { --nx-column-share: initial; }
 
+.nx-article-columns > div.nx-article-column[data-nx-column-background]:not([data-nx-column-area]) {
+    background-image: var(--nx-column-background-image, none);
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
 [data-nx-placement="flex-start"] { --nx-placement: flex-start; }
 [data-nx-placement="center"] { --nx-placement: center; }
 [data-nx-placement="flex-end"] { --nx-placement: flex-end; }

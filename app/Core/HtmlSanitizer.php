@@ -98,7 +98,7 @@ class HtmlSanitizer
             'data-nx-cover-margin-top',
             'data-nx-cover-margin-bottom',
             'data-nx-placement', 'data-nx-layout-width', 'data-nx-layout-gap', 'data-nx-columns-align',
-            'data-nx-column-width', 'data-nx-buttons-edge', 'data-nx-column-area',
+            'data-nx-column-width', 'data-nx-column-background', 'data-nx-buttons-edge', 'data-nx-column-area',
         ],
         'span' => [],
 
@@ -557,6 +557,8 @@ class HtmlSanitizer
             'data-nx-cover-pop' => self::sanitizeInteger($value, -300, 300),
             'data-nx-column-area', 'data-nx-placement', 'data-nx-columns-align', 'data-nx-buttons-edge',
             'data-nx-button-kind', 'data-nx-button-size', 'data-nx-button-icon' => $value,
+            'data-nx-column-background' =>
+                preg_match('/\A[a-z0-9_-][a-z0-9_.-]{0,239}\.(?:jpe?g|png|gif|webp)\z/i', $value) === 1 ? $value : null,
             'data-nx-layout-width', 'data-nx-column-width' => self::sanitizeInteger($value, 1, 100),
             'data-nx-layout-gap', 'data-nx-button-radius' => self::sanitizeInteger($value, 0, 64),
             'data-nx-button-background', 'data-nx-button-color', 'data-nx-button-border' =>
