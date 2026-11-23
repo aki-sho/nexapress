@@ -1243,6 +1243,7 @@
         const body = frame.contentDocument?.body;
         if (body) body.inert = true;
         window.nxApplyLayoutPlacement?.(body);
+        window.nxApplyArticleStyles?.(body);
         window.nxRefreshArticleCovers?.(body);
         previewOverlayObserver?.disconnect();
         previewOverlayObserver = new ResizeObserver(schedulePreviewOverlays);

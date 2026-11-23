@@ -69,6 +69,7 @@
 <script type="application/json" id="nx-design-data"><?= json_encode($designData, JSON_THROW_ON_ERROR | JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?></script>
 <script src="<?= e(nx_asset_url('assets/js/design-color.js')) ?>" defer></script>
 <script src="<?= e(nx_asset_url('assets/js/layout-placement.js')) ?>" defer></script>
+<script src="<?= e(nx_asset_url('assets/js/article-styles.js')) ?>" defer></script>
 <script src="<?= e(nx_asset_url('assets/js/article-cover.js')) ?>" defer></script>
 <script src="<?= e(nx_asset_url('assets/js/design-frame.js')) ?>" defer></script>
 <script src="<?= e(nx_asset_url('assets/js/design-page.js')) ?>" defer></script>

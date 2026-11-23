@@ -101,6 +101,16 @@
 .nx-article-cover[data-nx-placement="flex-end"] > .nx-article-cover-content { justify-content: safe flex-end; }
 .nx-article-cover[data-nx-placement] > .nx-article-cover-content > * { flex-shrink: 0; }
 
+/* Keep the outside spacing proportional to the column gap even at 100% width. */
+@media (min-width: 721px) {
+    .nx-article-columns[data-nx-placement="space-around"] {
+        padding-inline: min(calc(var(--nx-layout-gap) / 2), 10%);
+    }
+    .nx-article-columns[data-nx-placement="space-evenly"] {
+        padding-inline: min(var(--nx-layout-gap), 10%);
+    }
+}
+
 [data-nx-editor-gap] { display: block; block-size: 10px; flex: 0 0 10px; cursor: text; }
 [data-nx-editor-gap]:hover, [data-nx-editor-gap]:focus-visible { outline: 1px dashed #6689c7; }
 

@@ -420,6 +420,7 @@ function nx_head(?string $title = null): void
 
     <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/article-cover.css')) ?>">
     <?php if (!\app\Core\EditorPreview::active() && !\app\Core\Design::isPreview()): ?>
+        <script src="<?= e(nx_asset_url('assets/js/article-styles.js')) ?>" data-nx-article-style-render defer></script>
         <script src="<?= e(nx_asset_url('assets/js/article-cover.js')) ?>" data-nx-cover-render defer></script>
     <?php endif; ?>
     <?php if (\app\Core\EditorPreview::active()): ?>

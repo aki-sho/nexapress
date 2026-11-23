@@ -353,7 +353,7 @@ class HtmlSanitizer
             }
 
             if ($forDisplay && $child->hasAttribute('style')) {
-                self::moveTextAlignmentToClass($child, $tagName);
+                self::renderStyleAttributes($child, $tagName);
             }
 
             self::sanitizeChildren($child, $forDisplay);
@@ -365,8 +365,8 @@ class HtmlSanitizer
         }
     }
 
-    // Accept the existing saved inline alignment while serving it via a same-origin stylesheet.
-    private static function moveTextAlignmentToClass(\DOMElement $element, string $tagName): void
+    // Keep saved inline styles in the editor; public pages can apply them under a strict CSP.
+    private static function renderStyleAttributes(\DOMElement $element, string $tagName): void
     {
         $alignment = null;
         $otherStyles = [];
@@ -376,6 +376,10 @@ class HtmlSanitizer
             } else {
                 $otherStyles[] = $declaration;
             }
+        }
+        $element->removeAttribute('style');
+        if ($otherStyles !== []) {
+            $element->setAttribute('data-nx-display-style', implode('; ', $otherStyles));
         }
         if ($alignment === null) {
             return;
@@ -390,11 +394,6 @@ class HtmlSanitizer
         // Themes that omit the shared stylesheet can still render block alignment.
         if (in_array('align', self::ALLOWED_ATTRIBUTES[$tagName], true)) {
             $element->setAttribute('align', $alignment);
-        }
-        if ($otherStyles) {
-            $element->setAttribute('style', implode('; ', $otherStyles));
-        } else {
-            $element->removeAttribute('style');
         }
     }
 

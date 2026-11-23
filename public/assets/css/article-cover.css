@@ -4,6 +4,7 @@
     --nx-cover-out-top: 0px;
     --nx-cover-out-bottom: 0px;
     --nx-cover-viewport-aligned: 0;
+    --nx-cover-content-max-width: 1080px;
     --nx-cover-auto-base: #1e293b;
     --nx-cover-auto-ink: #fff;
     --nx-cover-base: var(--nx-cover-auto-base);
@@ -58,7 +59,7 @@
 
 .nx-article-cover > .nx-article-cover-content {
     width: 100%;
-    max-width: 1080px;
+    max-width: var(--nx-cover-content-max-width);
     min-width: 0;
     overflow-wrap: anywhere;
     text-align: var(--nx-cover-align, center);
@@ -121,6 +122,8 @@
 .nx-cover-vertical-bottom { --nx-cover-vertical: end; }
 .nx-cover-horizontal-left { --nx-cover-horizontal: start; --nx-cover-align: left; }
 .nx-cover-horizontal-right { --nx-cover-horizontal: end; --nx-cover-align: right; }
+.nx-cover-content-width-wide { --nx-cover-content-max-width: 1440px; }
+.nx-cover-content-width-full { --nx-cover-content-max-width: none; }
 .nx-cover-overlay-black { --nx-cover-opacity: .4; }
 .nx-cover-overlay-white { --nx-cover-overlay: #fff; --nx-cover-opacity: .4; --nx-cover-overlay-ink: #111827; }
 .nx-cover-overlay-navy { --nx-cover-overlay: #172554; --nx-cover-opacity: .4; }

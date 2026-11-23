@@ -134,8 +134,14 @@ $storedBody = \app\Core\HtmlSanitizer::sanitize($alignedBody);
 $displayBody = nx_post_content(['content' => $alignedBody], false);
 check(str_contains($storedBody, 'text-align: center') && !str_contains($storedBody, 'nx-content-align-')
     && str_contains($displayBody, 'class="intro nx-content-align-center"')
-    && str_contains($displayBody, 'style="color: #112233"') && !str_contains($displayBody, 'text-align:'),
-    'public rendering converts saved inline alignment to an external CSS class');
+    && str_contains($displayBody, 'data-nx-display-style="color: #112233"')
+    && !str_contains($displayBody, ' style=') && !str_contains($displayBody, 'text-align:'),
+    'public rendering serves saved alignment and text color without inline style attributes');
+$displayOnlyAttributes = '<p data-nx-display-style="color: #ffffff" style="color: #112233; font-size: 42px; font-weight: 900">色</p>';
+check(!str_contains(\app\Core\HtmlSanitizer::sanitize($displayOnlyAttributes), 'data-nx-display-style')
+    && str_contains(nx_post_content(['content' => $displayOnlyAttributes], false),
+        'data-nx-display-style="color: #112233; font-size: 42px; font-weight: 900"'),
+    'public formatting is derived from saved and validated declarations');
 $id = \app\Models\Page::create($validation['data'] + ['user_id' => 1]);
 \app\Models\PageRevision::create(\app\Models\Page::find($id), 1);
 \app\Models\Page::update($id, array_merge($validation['data'], ['title' => '変更後', 'status' => 'published']));
