@@ -8,6 +8,7 @@ use app\Core\Csrf;
 use app\Core\Design;
 use app\Core\DesignSpacing;
 use app\Core\DesignFrame;
+use app\Core\HeaderWidgetSize;
 use app\Core\PageLayout;
 use app\Core\Theme;
 use app\Models\Category;
@@ -84,6 +85,7 @@ final class DesignController extends Controller
                 array_map([Design::class, 'regionWidgetAreas'], array_keys(Design::REGIONS))),
             'headerWidgetAreas' => Design::headerWidgetAreas(),
             'headerWidgetTypes' => array_keys(Design::HEADER_WIDGETS),
+            'headerWidgetSizes' => HeaderWidgetSize::OPTIONS,
             'widgetLimit' => Design::MAX_WIDGETS, 'headerWidgetLimit' => Design::MAX_HEADER_WIDGETS,
             'chromeWidths' => Design::CHROME_WIDTHS,
             'spacingLimit' => DesignSpacing::MAX_PIXELS,

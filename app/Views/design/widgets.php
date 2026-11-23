@@ -7,11 +7,12 @@
         <?php if (!$headerArea) { continue; } ?>
         <?php $logo = $widget['type'] === 'site_icon' ? site_icon() : ''; ?>
         <?php if ($widget['type'] === 'site_icon' && $logo === '') { continue; } ?>
+        <?php $size = isset($widget['size']) ? ' data-nx-brand-size="' . e((string)$widget['size']) . '"' : ''; ?>
         <?php if (!$brandOpen): ?><div class="site-brand"><?php $brandOpen = true; endif; ?>
         <?php if ($widget['type'] === 'site_icon'): ?>
-            <a href="<?= e(url('')) ?>" class="site-icon-link"><img src="<?= e($logo) ?>" alt="<?= e(site_title()) ?>" class="site-icon"></a>
+            <a href="<?= e(url('')) ?>" class="site-icon-link"><img src="<?= e($logo) ?>" alt="<?= e(site_title()) ?>" class="site-icon"<?= $size ?>></a>
         <?php else: ?>
-            <h1 class="site-title"><a href="<?= e(url('')) ?>"><?= e(site_title()) ?></a></h1>
+            <h1 class="site-title"<?= $size ?>><a href="<?= e(url('')) ?>"><?= e(site_title()) ?></a></h1>
         <?php endif; ?>
         <?php continue; ?>
     <?php endif; ?>

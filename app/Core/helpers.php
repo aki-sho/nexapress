@@ -85,6 +85,7 @@ function nx_design_spacing_style(): void
     $stylesheets = [
         \app\Core\DesignSpacing::stylesheetUrl($layout['spacing']),
         \app\Core\DesignFrame::stylesheetUrl($layout['frames']),
+        \app\Core\HeaderWidgetSize::stylesheetUrl($layout['widgets']),
     ];
     foreach ($stylesheets as $stylesheet) {
         if ($stylesheet !== null) {

@@ -803,6 +803,9 @@ final class Design
                 'text' => self::text($widget['text'] ?? '', 1000),
                 'menu' => $menu,
             ];
+            if (isset(HeaderWidgetSize::OPTIONS[$type]) && array_key_exists('size', $widget)) {
+                $settings['size'] = HeaderWidgetSize::validate($type, $widget['size']);
+            }
             if (isset(Navigation::TYPES[$type])) {
                 if ($type === 'custom' && $settings['title'] === '') {
                     throw new InvalidArgumentException('任意リンクの表示名を入力してください。');

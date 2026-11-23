@@ -6,6 +6,7 @@ use app\Core\Controller;
 use app\Core\Design;
 use app\Core\DesignFrame;
 use app\Core\DesignSpacing;
+use app\Core\HeaderWidgetSize;
 use app\Core\Installer;
 use app\Core\PageLayout;
 use app\Models\Page;
@@ -41,6 +42,17 @@ class PageController extends Controller
         header('X-Content-Type-Options: nosniff');
         try {
             echo DesignSpacing::stylesheet($_GET);
+        } catch (InvalidArgumentException) {
+            http_response_code(400);
+        }
+    }
+
+    public function headerWidgetSizeStylesheet(): void
+    {
+        header('Content-Type: text/css; charset=UTF-8');
+        header('X-Content-Type-Options: nosniff');
+        try {
+            echo HeaderWidgetSize::stylesheet($_GET);
         } catch (InvalidArgumentException) {
             http_response_code(400);
         }

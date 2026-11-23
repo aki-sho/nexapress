@@ -73,15 +73,24 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             await widgets('header1', 0);
             assert.equal(await form.locator('[name="type"]').inputValue(), 'site_icon');
             assert.equal(await form.locator('[name="title"]').count(), 0);
+            assert.equal(await form.locator('[name="size"]').inputValue(), '32');
             assert((await form.locator('[name="type"] option').evaluateAll(nodes => nodes.map(node => node.value))).includes('site_name'));
             assert((await form.locator('[name="area"] option').evaluateAll(nodes => nodes.map(node => node.value)))
                 .every(area => initial.headerWidgetAreas.includes(area)));
             await page.screenshot({path: path.join(output, theme + '-header-widget-types.png')});
-            await form.locator('[data-action="cancel"]').click();
+            await form.locator('[name="size"]').fill('56');
+            await apply();
+            const previewIcon = preview.locator('.site-icon[data-nx-brand-size="56"]');
+            assert.equal(await previewIcon.evaluate(node => getComputedStyle(node).width), '56px');
             await widgets('header1', 1);
             assert.equal(await form.locator('[name="type"]').inputValue(), 'site_name');
+            assert.equal(await form.locator('[name="size"]').inputValue(), '24');
+            await form.locator('[name="size"]').fill('26');
             await selectWidgetLocation(form, 'header2', true);
+            assert.equal(await form.locator('[name="size"]').inputValue(), '26');
             await apply();
+            const previewTitle = preview.locator('.site-title[data-nx-brand-size="26"]');
+            assert.equal(await previewTitle.evaluate(node => getComputedStyle(node).fontSize), '26px');
             await widgets('header3', 0);
             const headerLocations = form.locator('[data-widget-row="form"] option');
             assert((await headerLocations.allTextContents()).includes('ヘッダー本体'));
@@ -106,7 +115,8 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             await settled();
             const saved = (await catalog()).themes[theme].state.layout;
             assert.equal(saved.headerWidgets, true);
-            assert(saved.widgets.header2.some(item => item.type === 'site_name'));
+            assert(saved.widgets.header1.some(item => item.type === 'site_icon' && item.size === 56));
+            assert(saved.widgets.header2.some(item => item.type === 'site_name' && item.size === 26));
             assert(saved.widgets.footer1.some(item => item.type === 'search'));
             await visitor.goto(base + '/');
             assert.equal(await visitor.locator('[data-widget-area="header1"] .site-icon').getAttribute('src'), icon);
@@ -115,6 +125,8 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             assert.equal(await visitor.locator('.site-footer .site-title, .site-footer .site-icon').count(), 0);
             assert.equal(await visitor.locator('.site-footer .nx-design-widget-search h2').textContent(), heading);
             assert.equal(await visitor.locator('.site-footer .nx-design-widget-search .public-search').count(), 1);
+            assert.equal(await visitor.locator('.site-icon').evaluate(node => getComputedStyle(node).width), '56px');
+            assert.equal(await visitor.locator('.site-title').evaluate(node => getComputedStyle(node).fontSize), '26px');
             const query = '検索 & "確認"';
             const searchUrl = new URL(await visitor.locator('.site-header .public-search').getAttribute('action'), base);
             searchUrl.searchParams.set('q', query);
@@ -161,6 +173,8 @@ module.exports = async function checkHeaderWidgets(page, base, output) {
             state => { state.layout.columns = 'right'; state.layout.widgets.sidebar = [{type: 'site_name'}]; },
             state => { state.layout.widgets.header_after = [{type: 'site_icon'}]; },
             state => { state.layout.headerWidgets = 'true'; },
+            state => { state.layout.widgets.header1 = [{type: 'site_icon', size: 97}]; },
+            state => { state.layout.widgets.header1 = [{type: 'site_name', size: 26.5}]; },
             state => { state.layout.widgets.header1 = [{type: 'site_name', title: ['invalid']}]; },
         ]) {
             const state = structuredClone(data.themes[data.active].state);

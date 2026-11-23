@@ -241,8 +241,11 @@
         let fields = field('種類', 'type', types, item.type, 'data-form-setting="type"') +
             (scope === 'columns' ? field('表示場所', 'area', destinations.map(id => [id, widgetAreaLabel(id)]), destination, 'required')
                 : widgetLocationFields(scope, destinations, destination, 'form'));
-        if (isHeaderWidgetType(item.type)) {
-            fields += '<p class="nx-design-note">サイトに登録した' + escape(data.widgets[item.type]) + 'を表示します。</p>';
+        const sizeOptions = data.headerWidgetSizes[item.type];
+        if (sizeOptions) {
+            fields += `<label>${escape(sizeOptions.label)}（px）
+                <input type="number" name="size" min="${sizeOptions.min}" max="${sizeOptions.max}" step="1"
+                    value="${escape(item.size ?? sizeOptions.default)}"></label>`;
         } else if (item.type === 'category') {
             fields += categoryField(item) + `<label><span data-category-title-label>${categoryTitleLabel(categoryIds(item).length)}</span>
                 <input name="title" maxlength="255" value="${escape(item.title)}"></label>`;
@@ -1192,6 +1195,7 @@
             rememberForm(input.form);
             editor.item.reference_id = null;
             delete editor.item.reference_ids;
+            delete editor.item.size;
             renderPanel('[data-form-setting="type"]');
         } else if (input.name === 'area' && editor) {
             rememberForm(input.form);
@@ -1248,6 +1252,15 @@
             return;
         }
         const item = {type: values.type, title: name, text: values.text?.trim() || '', menu: values.menu || 'footer', ...link};
+        const sizeOptions = data.headerWidgetSizes[values.type];
+        if (sizeOptions && values.size !== '') {
+            const size = Number(values.size);
+            if (!Number.isInteger(size) || size < sizeOptions.min || size > sizeOptions.max) {
+                showError(sizeOptions.label + 'は' + sizeOptions.min + '〜' + sizeOptions.max + 'pxの整数で入力してください。');
+                return;
+            }
+            if (size !== sizeOptions.default) item.size = size;
+        }
         if (destination === list && index >= 0) list[index] = item;
         else {
             if (index >= 0) list.splice(index, 1);
