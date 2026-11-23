@@ -35,7 +35,7 @@ final class EditorPreview
         $document['title'] = $title;
         try {
             $document['content'] = ArticleContent::sanitize($content);
-            $editorDisplay = isset($input['page_display']) ? PageLayout::editorChanges($input['page_display']) : null;
+            $editorDisplay = isset($input['page_display']) ? PageLayout::editorChanges($input['page_display'], $kind) : null;
         } catch (\InvalidArgumentException $exception) {
             http_response_code(422);
             echo e($exception->getMessage());

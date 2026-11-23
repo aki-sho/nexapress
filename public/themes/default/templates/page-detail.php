@@ -13,7 +13,7 @@
             <h1<?php \app\Core\EditorPreview::attribute('title'); ?>><?= e($page['title'] ?? '') ?></h1>
         <?php endif; ?>
 
-        <?php if (!empty($page['created_at'])): ?>
+        <?php if (($pageDesign['showCreatedAt'] ?? true) && !empty($page['created_at'])): ?>
             <p class="post-date"><?= e($page['created_at']) ?></p>
         <?php endif; ?>
 

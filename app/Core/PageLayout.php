@@ -25,6 +25,7 @@ final class PageLayout
     ];
     public const EMPTY_OVERRIDES = ['format' => 2];
     public const ARTICLE_PADDING_SIDES = ['top' => '上', 'right' => '右', 'bottom' => '下', 'left' => '左'];
+    private const DISPLAY_FLAGS = ['showTitle' => 'タイトル', 'showCreatedAt' => '作成日時'];
 
     public static function stylesheetUrl(array $layout, string $themeWidth): ?string
     {
@@ -147,19 +148,22 @@ final class PageLayout
         ];
     }
 
-    public static function editorChanges(mixed $input): array
+    public static function editorChanges(mixed $input, string $kind): array
     {
         if ($input === null) {
             return [];
-        }
-        if (!is_array($input) || array_diff(array_keys($input), ['title', 'width', 'sections'])) {
-            throw new InvalidArgumentException('ページの表示設定を確認してください。');
         }
         $choices = [
             'title' => ['field' => 'showTitle', 'values' => ['inherit' => null, 'show' => true, 'hide' => false]],
             'width' => ['field' => 'width', 'values' => ['inherit' => null] + array_combine(array_keys(self::WIDTHS), array_keys(self::WIDTHS))],
             'sections' => ['field' => 'enabled', 'values' => ['inherit' => null, 'sections' => true, 'blocks' => false]],
         ];
+        if ($kind === 'page') {
+            $choices['created_at'] = ['field' => 'showCreatedAt', 'values' => ['show' => true, 'hide' => false]];
+        }
+        if (!is_array($input) || array_diff_key($input, $choices)) {
+            throw new InvalidArgumentException('ページの表示設定を確認してください。');
+        }
         $changes = [];
         foreach ($input as $key => $value) {
             $choice = $choices[$key];
@@ -253,7 +257,7 @@ final class PageLayout
         if (!$layout['enabled'] && $layout['sections'] === []) {
             $patch = $layout['width'] === 'inherit' ? self::EMPTY_OVERRIDES
                 : ['format' => 2, 'width' => $layout['width']];
-            return $patch + array_intersect_key($layout, ['articlePadding' => true, 'showTitle' => true]);
+            return $patch + array_intersect_key($layout, ['articlePadding' => true] + self::DISPLAY_FLAGS);
         }
         $layout['format'] = 2;
         $layout['sectionCount'] = count($layout['sections']);
@@ -266,7 +270,7 @@ final class PageLayout
     public static function validateOverrides(array $input): array
     {
         if (($input['format'] ?? null) !== 2 ||
-            array_diff(array_keys($input), ['format', 'enabled', 'width', 'sectionCount', 'sections', 'articlePadding', 'showTitle'])) {
+            array_diff(array_keys($input), ['format', 'enabled', 'width', 'sectionCount', 'sections', 'articlePadding', ...array_keys(self::DISPLAY_FLAGS)])) {
             throw new InvalidArgumentException('ページのレイアウト設定を確認してください。');
         }
         $result = self::EMPTY_OVERRIDES;
@@ -276,11 +280,13 @@ final class PageLayout
             }
             $result['enabled'] = $input['enabled'];
         }
-        if (array_key_exists('showTitle', $input)) {
-            if (!is_bool($input['showTitle'])) {
-                throw new InvalidArgumentException('タイトルの表示設定を確認してください。');
+        foreach (self::DISPLAY_FLAGS as $field => $label) {
+            if (array_key_exists($field, $input)) {
+                if (!is_bool($input[$field])) {
+                    throw new InvalidArgumentException($label . 'の表示設定を確認してください。');
+                }
+                $result[$field] = $input[$field];
             }
-            $result['showTitle'] = $input['showTitle'];
         }
         if (array_key_exists('width', $input)) {
             if (!is_string($input['width']) || !isset(self::WIDTHS[$input['width']])) {
@@ -323,7 +329,7 @@ final class PageLayout
         $result = ['enabled' => false, 'width' => 'inherit', 'sections' => []];
         foreach ($layers as $layer) {
             $patch = self::overrides($layer);
-            foreach (['enabled', 'width', 'showTitle'] as $field) {
+            foreach (['enabled', 'width', ...array_keys(self::DISPLAY_FLAGS)] as $field) {
                 if (array_key_exists($field, $patch)) {
                     $result[$field] = $patch[$field];
                 }
@@ -365,8 +371,10 @@ final class PageLayout
         }
         $padding = self::articlePadding($layout['articlePadding'] ?? []);
         $validated = ['enabled' => $enabled, 'width' => $width, 'sections' => $result];
-        if (isset($layout['showTitle'])) {
-            $validated['showTitle'] = $layout['showTitle'];
+        foreach (array_keys(self::DISPLAY_FLAGS) as $field) {
+            if (isset($layout[$field])) {
+                $validated[$field] = $layout[$field];
+            }
         }
         if ($padding) {
             $validated['articlePadding'] = $padding;

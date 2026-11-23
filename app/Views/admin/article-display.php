@@ -18,8 +18,12 @@ $titleSetting = isset($displayFields['showTitle']) ? ($displayFields['showTitle'
 $sectionSetting = isset($displayFields['enabled']) ? ($displayFields['enabled'] ? 'sections' : 'blocks') : 'inherit';
 $settings = [
     'title' => ['自動タイトル', $titleSetting, ['inherit' => '引き継ぐ', 'show' => '表示', 'hide' => '非表示']],
-    'width' => ['本文幅', $displayFields['width'] ?? 'inherit', ['inherit' => '引き継ぐ'] + PageLayout::WIDTHS],
 ];
+if ($displayKind === 'page') {
+    $dateSetting = ($displayLayout['showCreatedAt'] ?? true) ? 'show' : 'hide';
+    $settings['created_at'] = ['作成日時', $dateSetting, ['show' => '表示', 'hide' => '非表示']];
+}
+$settings['width'] = ['本文幅', $displayFields['width'] ?? 'inherit', ['inherit' => '引き継ぐ'] + PageLayout::WIDTHS];
 if ($legacySections) {
     $settings['sections'] = ['本文の構成', $sectionSetting,
         ['inherit' => '引き継ぐ', 'blocks' => '本文ブロック', 'sections' => '既存のセクション']];

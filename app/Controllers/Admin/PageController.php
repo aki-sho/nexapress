@@ -66,7 +66,7 @@ class PageController extends Controller
         }
         $validation = PageValidator::validate($_POST, $id);
         try {
-            $display = PageLayout::editorChanges($_POST['page_display'] ?? null);
+            $display = PageLayout::editorChanges($_POST['page_display'] ?? null, 'page');
         } catch (InvalidArgumentException $exception) {
             $validation['errors'][] = $exception->getMessage();
         }

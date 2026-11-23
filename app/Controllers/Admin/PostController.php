@@ -550,7 +550,7 @@ class PostController extends Controller
     private function validateDisplay(array &$validation): array
     {
         try {
-            return PageLayout::editorChanges($_POST['page_display'] ?? null);
+            return PageLayout::editorChanges($_POST['page_display'] ?? null, 'post');
         } catch (InvalidArgumentException $exception) {
             $validation['valid'] = false;
             $validation['errors']['general'] = $exception->getMessage();
