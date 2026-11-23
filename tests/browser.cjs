@@ -16,287 +16,6 @@ async function createMediaFolder(page, name) {
     return page.url();
 }
 
-async function checkInheritedLayouts(page, base, output) {
-    const scope = id => page.locator('[data-layout-scope="' + id + '"]');
-    const field = name => page.locator('[data-page-field="' + name + '"]');
-    const color = page.locator('[data-page-details="colors"]');
-    const layout = page.locator('[data-page-details="layout"]');
-    async function openScope(id) {
-        if (!(await scope(id).evaluate(details => details.open))) await scope(id).locator('> summary').click();
-        await field('enabled').waitFor();
-    }
-    async function expand(details) {
-        if (!(await details.evaluate(element => element.open))) await details.locator('> summary').click();
-    }
-    async function setColor(value) {
-        await expand(color);
-        await field('hex').fill(value);
-        await field('hex').press('Tab');
-    }
-    async function selectDocument(kind, label) {
-        await field(kind).selectOption({label});
-        await field('enabled').waitFor();
-    }
-    async function waitPaint(rgb, width, columns) {
-        await page.waitForFunction(([rgb, width, columns]) => {
-            const frame = document.querySelector('#nx-design-frame');
-            const section = frame.contentDocument.querySelector('[data-layout-section="0"]');
-            if (!section) return false;
-            const inner = section.querySelector('.nx-page-section-inner');
-            return frame.contentWindow.getComputedStyle(section, '::before').backgroundColor === rgb &&
-                Math.abs(inner.clientWidth / section.clientWidth - width) < .01 &&
-                Number(section.dataset.columns) === columns;
-        }, [rgb, width, columns]);
-    }
-    async function publish() {
-        const [response] = await Promise.all([
-            page.waitForResponse(base + '/admin/design/publish'),
-            page.getByRole('button', {name: '公開', exact: true}).click(),
-        ]);
-        assert.equal(response.status(), 200, await response.text());
-        await page.getByRole('button', {name: '公開', exact: true}).waitFor();
-        await page.waitForFunction(() => document.querySelector('[data-action="publish"]').disabled);
-    }
-
-    assert.equal(await page.locator('[data-layout-scope]').count(), 5);
-    await openScope('all');
-    const previewValue = await field('previewTarget').locator('option').filter({hasText: '固定ページ · 本文なし published'}).first().getAttribute('value');
-    const snapshotUrl = base + '/admin/design/page-layout/' + previewValue.split(':')[1];
-    let releaseSnapshot;
-    const snapshotGate = new Promise(resolve => { releaseSnapshot = resolve; });
-    await page.route(snapshotUrl, async route => {
-        const response = await route.fetch();
-        await snapshotGate;
-        await route.fulfill({response});
-    });
-    await field('previewTarget').selectOption({label: '固定ページ · 本文なし published'});
-    await field('enabled').check();
-    await expand(color);
-    await field('hex').fill('#abc');
-    await Promise.all([
-        page.waitForResponse(snapshotUrl),
-        Promise.resolve().then(releaseSnapshot),
-    ]);
-    await page.waitForTimeout(200);
-    assert.equal(await field('hex').inputValue(), '#abc');
-    await field('hex').press('Tab');
-    await page.unroute(snapshotUrl);
-    await field('width').selectOption('full');
-    await setColor('#CBB380');
-    await expand(layout);
-    await field('widthMode').selectOption('percent');
-    await field('percent').fill('80');
-    await field('percent').press('Tab');
-    await field('columns').selectOption('2');
-    await waitPaint('rgb(203, 179, 128)', .8, 2);
-
-    await openScope('page');
-    await setColor('#F6E6E6');
-    await openScope('post');
-    await field('previewTarget').selectOption({label: '投稿 · 既存投稿'});
-    await setColor('#E5F0E7');
-    await expand(layout);
-    await field('percent').fill('65');
-    await field('percent').press('Tab');
-    await waitPaint('rgb(229, 240, 231)', .65, 2);
-
-    await openScope('page_item');
-    await selectDocument('page', '本文なし published');
-    assert(await field('enabled').isChecked());
-    await setColor('#112233');
-    await waitPaint('rgb(17, 34, 51)', .8, 2);
-    await openScope('post_item');
-    await selectDocument('post', '既存投稿');
-    await expand(layout);
-    await field('columns').selectOption('1');
-    await waitPaint('rgb(229, 240, 231)', .65, 1);
-    assert.equal(await page.locator('[data-layout-scope][open]').count(), 1);
-    assert(!(await (await page.request.get(base + '/legacy-post')).text()).includes('data-layout-section'));
-    await page.locator('[data-mode="published"]').click();
-    await page.waitForFunction(() => document.querySelector('#nx-design-frame').contentDocument.querySelector('.post-detail'));
-    await page.locator('[data-mode="draft"]').click();
-    await waitPaint('rgb(229, 240, 231)', .65, 1);
-    await page.screenshot({path: path.join(output, 'inherited-post-layout.png')});
-    await publish();
-
-    const guest = await page.context().browser().newContext({javaScriptEnabled: false, viewport: {width: 1440, height: 1000}});
-    for (const [pathName, rgb, width, columns] of [
-        ['/page/browser-empty-published', 'rgb(17, 34, 51)', .8, 2],
-        ['/legacy-post', 'rgb(229, 240, 231)', .65, 1],
-    ]) {
-        const publicPage = await guest.newPage();
-        await guest.route(base + pathName, async route => {
-            const response = await route.fetch();
-            await route.fulfill({response, headers: {...response.headers(), 'content-security-policy': "default-src 'self'"}});
-        });
-        await publicPage.goto(base + pathName);
-        const section = publicPage.locator('[data-layout-section="0"]');
-        const actual = await section.evaluate(element => [
-            getComputedStyle(element, '::before').backgroundColor,
-            element.querySelector('.nx-page-section-inner').clientWidth / element.clientWidth,
-            Number(element.dataset.columns),
-        ]);
-        assert.equal(actual[0], rgb);
-        assert(Math.abs(actual[1] - width) < .01);
-        assert.equal(actual[2], columns);
-        await publicPage.setViewportSize({width: 390, height: 844});
-        assert(await section.evaluate(element => {
-            const inner = element.querySelector('.nx-page-section-inner');
-            return getComputedStyle(inner).gridTemplateColumns.split(' ').length === 1 &&
-                document.documentElement.scrollWidth <= innerWidth + 1;
-        }));
-        await publicPage.close();
-    }
-    await guest.close();
-
-    await openScope('all');
-    await setColor('#FFF0AD');
-    await expand(layout);
-    await field('percent').fill('70');
-    await field('percent').press('Tab');
-    await openScope('page_item');
-    await waitPaint('rgb(17, 34, 51)', .7, 2);
-    await expand(color);
-    await page.locator('[data-page-inherit="color"]').check();
-    await waitPaint('rgb(246, 230, 230)', .7, 2);
-    await publish();
-    await page.reload();
-    await page.locator('[data-pane="page_layout"]').click();
-    await openScope('post_item');
-    await selectDocument('post', '既存投稿');
-    await waitPaint('rgb(229, 240, 231)', .65, 1);
-    await openScope('page_item');
-    await selectDocument('page', '本文なし published');
-    await waitPaint('rgb(246, 230, 230)', .7, 2);
-    await expand(color);
-    assert(await page.locator('[data-page-inherit="color"]').isChecked());
-    assert.equal(await page.getByRole('button', {name: '公開', exact: true}).isDisabled(), true);
-    await page.screenshot({path: path.join(output, 'inherited-page-layout.png')});
-    console.log('PASS: five layout editors, inherited fields, publication, resets and mobile geometry');
-}
-
-async function checkCommonLayoutFeedback(page, base, output) {
-    const field = name => page.locator('[data-page-field="' + name + '"]');
-    const status = page.locator('[data-page-preview-status]');
-    const conflict = page.locator('[data-page-preview-conflict]');
-    async function openScope(id) {
-        const details = page.locator('[data-layout-scope="' + id + '"]');
-        if (!(await details.evaluate(element => element.open))) await details.locator('> summary').click();
-        await field('enabled').waitFor();
-    }
-    async function waitCard() {
-        await page.waitForFunction(() => {
-            const document = window.document.querySelector('#nx-design-frame').contentDocument;
-            return document.querySelector('.post-detail') && !document.querySelector('[data-layout-section]');
-        });
-    }
-    async function waitGold() {
-        await page.waitForFunction(() => {
-            const frame = document.querySelector('#nx-design-frame');
-            const section = frame.contentDocument.querySelector('[data-layout-section="0"]');
-            return section && frame.contentWindow.getComputedStyle(section, '::before').backgroundColor === 'rgb(203, 179, 128)';
-        });
-    }
-    async function publish() {
-        const [response] = await Promise.all([
-            page.waitForResponse(base + '/admin/design/publish'),
-            page.getByRole('button', {name: '公開', exact: true}).click(),
-        ]);
-        assert.equal(response.status(), 200, await response.text());
-        await page.waitForFunction(() => document.querySelector('[data-action="publish"]').disabled);
-    }
-    await openScope('page_item');
-    await field('enabled').uncheck();
-    await waitCard();
-    await publish();
-    await openScope('all');
-    await field('previewTarget').selectOption({label: '固定ページ · 本文なし published'});
-    const target = await field('previewTarget').inputValue();
-    const colors = page.locator('[data-page-details="colors"]');
-    if (!(await colors.evaluate(details => details.open))) await colors.locator('> summary').click();
-    await field('hex').fill('#CBB380');
-    await field('hex').press('Tab');
-    await conflict.waitFor();
-    assert.equal(await conflict.innerText(), '編集中の「本文なし published」は、このページには適用されていません。\n確認先：固定ページのレイアウト');
-    assert.equal(await status.locator('dl').count(), 0);
-    await waitCard();
-    await page.screenshot({path: path.join(output, 'shared-layout-blocked.png')});
-    await status.getByRole('button', {name: '個別設定を解除', exact: true}).click();
-    assert((await conflict.innerText()).includes('確認先：固定のみの共通レイアウト'));
-    await status.getByRole('button', {name: '固定のみの共通レイアウトを開く', exact: true}).click();
-    await page.locator('[data-page-inherit="color"]').check();
-    await waitGold();
-    await status.getByRole('button', {name: '元の個別指定に戻す', exact: true}).click();
-    await waitCard();
-    await status.getByRole('button', {name: '個別設定を解除', exact: true}).click();
-    await waitGold();
-    assert.equal(await conflict.count(), 0);
-    await publish();
-    assert.equal(await status.getByRole('button', {name: '元の個別指定に戻す', exact: true}).count(), 0);
-    const snapshot = await (await page.request.get(base + '/admin/design/page-layout/' + target.split(':')[1])).json();
-    assert.deepEqual(snapshot.overrides, {format: 2});
-    const publicPage = await page.context().newPage();
-    await publicPage.goto(base + '/page/browser-empty-published');
-    assert.equal(await publicPage.locator('[data-layout-section="0"]').evaluate(section =>
-        getComputedStyle(section, '::before').backgroundColor), 'rgb(203, 179, 128)');
-    await publicPage.close();
-    await page.reload();
-    await page.locator('[data-pane="page_layout"]').click();
-    await openScope('all');
-    await field('previewTarget').selectOption(target);
-    await waitGold();
-    await status.getByRole('button', {name: 'このページの個別設定を開く', exact: true}).click();
-    assert.equal(await page.locator('[data-layout-scope="page_item"]').evaluate(details => details.open), true);
-    await page.locator('[data-page-action="section-remove"]').click();
-    await waitCard();
-    await openScope('all');
-    await conflict.waitFor();
-    assert((await conflict.innerText()).includes('確認先：固定ページのレイアウト'));
-    await status.getByRole('button', {name: '個別設定を解除', exact: true}).click();
-    await waitGold();
-
-    async function reloadIndividual() {
-        await page.reload();
-        await page.locator('[data-pane="page_layout"]').click();
-        await openScope('page_item');
-        await field('page').selectOption(target.split(':')[1]);
-        await field('enabled').waitFor();
-    }
-    await openScope('page_item');
-    await field('width').selectOption('wide');
-    await page.locator('[data-page-action="section-remove"]').click();
-    await waitCard();
-    assert.equal(await page.locator('[data-page-reset="enabled"]').count(), 1);
-    await field('enabled').uncheck();
-    await publish();
-    await reloadIndividual();
-    assert.equal(await field('enabled').isChecked(), false);
-    let deletion = await (await page.request.get(base + '/admin/design/page-layout/' + target.split(':')[1])).json();
-    assert.equal(deletion.overrides.sectionCount, 0);
-    assert.equal(deletion.overrides.enabled, false);
-    await page.locator('[data-page-reset="enabled"]').click();
-    await waitGold();
-    assert.equal(await field('width').inputValue(), 'wide');
-    await publish();
-    await reloadIndividual();
-    await waitGold();
-    deletion = await (await page.request.get(base + '/admin/design/page-layout/' + target.split(':')[1])).json();
-    assert.deepEqual(deletion.overrides, {format: 2, width: 'wide'});
-    await status.getByRole('button', {name: '個別設定を解除', exact: true}).click();
-    assert.equal(await status.getByText('共通設定を使用中', {exact: true}).count(), 1);
-    await waitGold();
-    await publish();
-    await reloadIndividual();
-    await waitGold();
-    deletion = await (await page.request.get(base + '/admin/design/page-layout/' + target.split(':')[1])).json();
-    assert.deepEqual(deletion.overrides, {format: 2});
-    assert.equal(await status.getByText('共通設定を使用中', {exact: true}).count(), 1);
-    assert.equal(await status.locator('[data-page-action="use-common"]').count(), 0);
-    console.log('PASS: one reset clears disabled/empty overrides, retains body width, and inheritance persists after publish/reload');
-    await page.screenshot({path: path.join(output, 'shared-layout-inherited.png')});
-    console.log('PASS: blocked shared styles show their source and restore inheritance, undo and published colors');
-}
-
 async function checkMediaEditor(page, base, output) {
     await page.goto(base + '/admin/media');
     const folderUrl = await createMediaFolder(page, '画像の検証');
@@ -440,7 +159,10 @@ async function checkMediaEditor(page, base, output) {
     assert(width === 400 && height === 711 && top[0] > top[2] && bottom[2] > bottom[0]);
     if (process.env.NEXAPRESS_TEST_CLASSIC_EDITOR) {
         await page.goto(base + '/admin/pages/create');
-        await page.getByRole('button', {name: 'メディア追加', exact: true}).click();
+        const editor = page.locator('.classic-editor');
+        await editor.locator('.classic-editor-content').click();
+        await page.keyboard.press('/');
+        await editor.locator('[data-insert-block="image"]').click();
         await page.locator('.classic-editor-media-item').filter({hasText: name + '（編集済み）'}).waitFor();
         await page.locator('.classic-editor-media-dialog').getByRole('button', {name: '閉じる', exact: true}).click();
     }
@@ -589,7 +311,7 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
             assert.equal(await form.locator('[name="content"]').inputValue(), '');
             await Promise.all([
                 page.waitForURL(url => /\/admin\/pages\/edit\/\d+$/.test(url.pathname), { timeout: 8000 }),
-                form.getByRole('button', {name: '保存', exact: true}).click(),
+                form.locator('button[type="submit"]:not([data-editor-save])').click(),
             ]);
             assert.equal(await form.locator('[name="status"]').inputValue(), status);
             assert.equal(await form.locator('[name="content"]').inputValue(), '');
@@ -673,10 +395,8 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
             });
         }
         console.log('PASS: desktop and mobile preview scroll one short page all the way to the footer');
-        await page.locator('[data-pane="page_layout"]').click();
-        await page.locator('[data-layout-scope="page_item"] > summary').click();
-        await page.locator('[data-page-field="page"]').selectOption({label: '既存ページ'});
-        await page.locator('[data-page-field="enabled"]').check();
+        assert.deepEqual(await page.locator('.nx-design-tabs button').allTextContents(), ['ヘッダー', '本文カラム', 'フッター']);
+        await require('./legacy-sections.cjs')(page, base, '既存ページ', 'full');
         const pagePanel = page.locator('#nx-design-panel');
         const sectionPicker = page.getByRole('combobox', {name: '編集するセクション'});
         const colorSettings = page.locator('[data-page-details="colors"]');
@@ -763,7 +483,7 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
 
         const [published] = await Promise.all([
             page.waitForResponse(base + '/admin/design/publish'),
-            page.getByRole('button', {name: '公開', exact: true}).click(),
+            page.getByRole('button', {name: 'セクションを反映', exact: true}).click(),
         ]);
         assert(published.ok());
         const guestContext = await browser.newContext({ viewport: { width: 1440, height: 1000 }, javaScriptEnabled: false });
@@ -793,8 +513,6 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
         }
         await guestContext.close();
         console.log('PASS: the published colors and column widths are visible with strict Content Security Policy');
-        await checkInheritedLayouts(page, base, output);
-        await checkCommonLayoutFeedback(page, base, output);
         await require('./design-spacing-overlay.cjs')(page, base, output);
         await require('./widget-highlight.cjs')(page, base, output);
         await require('./design-spacing.cjs')(page, base, output);

@@ -7,7 +7,9 @@ use app\Core\Controller;
 use app\Core\Csrf;
 use app\Core\Database;
 use app\Core\EditorPreview;
+use app\Core\PageLayout;
 use app\Core\PageValidator;
+use InvalidArgumentException;
 use app\Core\RequestSize;
 use app\Models\ContentBulk;
 use app\Models\Page;
@@ -63,6 +65,11 @@ class PageController extends Controller
             return;
         }
         $validation = PageValidator::validate($_POST, $id);
+        try {
+            $display = PageLayout::editorChanges($_POST['page_display'] ?? null);
+        } catch (InvalidArgumentException $exception) {
+            $validation['errors'][] = $exception->getMessage();
+        }
         $data = $validation['data'];
         $formPage = array_merge($page ?? [], $data);
         if ($validation['errors']) {
@@ -78,6 +85,7 @@ class PageController extends Controller
             } else {
                 $id = Page::create($data + ['user_id' => (int)Auth::user()['id']]);
             }
+            PageLayout::saveEditorDisplay($id, 'page', $display);
             $pdo->commit();
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {

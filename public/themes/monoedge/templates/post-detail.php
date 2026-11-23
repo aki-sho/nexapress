@@ -107,6 +107,7 @@ if ($updatedDateTime !== '') {
         <?php endif; ?>
 
         <header class="post-detail-header">
+            <?php if ($pageDesign['showTitle'] ?? true): ?>
             <h1<?php \app\Core\EditorPreview::attribute('title'); ?>>
                 <?= e(
                     (string)(
@@ -115,6 +116,7 @@ if ($updatedDateTime !== '') {
                     )
                 ) ?>
             </h1>
+            <?php endif; ?>
 
             <div class="post-detail-meta">
                 <?php if (

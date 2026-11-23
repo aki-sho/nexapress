@@ -67,3 +67,22 @@
     .post-category-create-fields { grid-template-columns: minmax(0, 1fr); }
     .post-category-create-fields button { justify-self: start; }
 }
+
+.article-display {
+    margin-block: 8px;
+    border: 1px solid var(--admin-compact-border, #d5dfed);
+    border-radius: 6px;
+    padding: 7px 10px;
+}
+.article-display summary { cursor: pointer; font-weight: 600; }
+.article-display-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    margin-top: 8px;
+}
+.article-display-fields label { flex: 1 1 110px; margin: 0; }
+.article-display-fields select { width: 100%; margin-top: 3px; padding: 5px 7px; }
+.article-sections-frame { display: block; width: 100%; height: 72vh; min-height: 480px; border: 0; margin-top: 8px; }
+.admin-layout.is-embedded { display: block; min-width: 0; }
+.admin-layout.is-embedded > .main { width: 100%; margin: 0; padding: 8px; }

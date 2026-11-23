@@ -104,11 +104,8 @@ module.exports = async function checkDesignAppearance(page, base, output) {
     assert.equal(await color(preview), 'none');
     await page.locator('[data-mode="draft"]').click();
 
-    await open('page_layout');
-    await page.locator('[data-layout-scope="page_item"] > summary').click();
-    await page.locator('[data-page-field="page"]').selectOption(String(fixed.id));
-    const enable = page.locator('[data-page-field="enabled"]');
-    if (!(await enable.isChecked())) await enable.check();
+    await publish();
+    await require('./legacy-sections.cjs')(page, base, fixed.name);
     await page.locator('[data-page-field="background"]').selectOption('full');
     const details = page.locator('[data-page-details="colors"]');
     if (!(await details.evaluate(element => element.open))) await details.locator('summary').click();
@@ -135,7 +132,7 @@ module.exports = async function checkDesignAppearance(page, base, output) {
         assert.equal(await sectionColor(visitor), 'rgba(24, 36, 58, 0.45)');
         assert.match(await color(visitor), /rgba\(215, 230, 255, 0\.6\)/);
         assert.match(await visitor.locator(slot('header_bottom1')).textContent(), /ご来店のご案内/);
-        await page.reload();
+        await page.goto(base + '/admin/design');
         await open('general');
         assert.equal(await page.locator('[data-setting="background-mode"]').inputValue(), 'color');
         await choose('background-mode', 'image');

@@ -84,7 +84,13 @@ module.exports = async (page, base) => {
     await previewBody.locator(firstCover + ' img[data-nx-cover-pop="36"]').waitFor();
     await assertProjection(previewBody, 'bottom', 36);
     await field('status').selectOption('published');
-    await Promise.all([page.waitForURL(/\/admin\/pages\/edit\/\d+$/), form.getByRole('button', {name: '保存', exact: true}).click()]);
+    await page.getByText('ページの表示', {exact: true}).click();
+    await page.locator('#article-display-title').selectOption('hide');
+    await editorFrame.locator('[data-nx-editor-field="body"][contenteditable="true"]').waitFor();
+    assert.equal(await editorFrame.locator('[data-nx-editor-field="title"]').count(), 0);
+    const save = editor.locator('[data-editor-save]');
+    assert.equal(await save.evaluate(button => button.previousElementSibling.dataset.command), 'removeFormat');
+    await Promise.all([page.waitForURL(/\/admin\/pages\/edit\/\d+$/), save.click()]);
     const pageId = page.url().split('/').pop();
     await page.reload();
     assert.match(await field('content').inputValue(), /data-nx-cover-pop="36"/);
@@ -117,25 +123,14 @@ module.exports = async (page, base) => {
         assert(await visitor.locator('[data-nx-cover-height="120"] > .nx-article-cover-content').evaluate(node =>
             node.scrollHeight > node.clientHeight && getComputedStyle(node).overflowY === 'auto'));
 
+        assert.equal(await visitor.locator('article.post-detail > h1').count(), 0);
         await page.goto(base + '/admin/design');
-        await page.getByRole('button', {name: 'ページ毎のレイアウト', exact: true}).click();
-        const scope = name => page.locator('[data-layout-scope="' + name + '"]');
+        await page.getByRole('button', {name: '本文カラム', exact: true}).click();
+        await page.locator('[data-setting="body-target"]').selectOption('page:' + pageId);
         const design = page.frameLocator('#nx-design-frame');
-        async function openPadding(name, targetName, target) {
-            await scope(name).locator('summary').first().click();
-            await scope(name).locator('[data-page-field="' + targetName + '"]').selectOption(target);
-            const padding = scope(name).locator('[data-page-details="article-padding"]');
-            await padding.waitFor();
-            if (!await padding.evaluate(node => node.open)) {
-                await padding.locator('summary').click();
-            }
-            return padding;
-        }
-        async function setPadding(padding, values) {
-            for (const [side, amount] of Object.entries(values)) {
-                await padding.locator('[data-article-padding="' + side + '"]').fill(String(amount));
-            }
-        }
+        const padding = page.locator('[data-chrome-details="columns:article-spacing"]');
+        await padding.locator('summary').click();
+
         async function checkPadding(target, expected) {
             await target.waitFor();
             return target.evaluate(node => {
@@ -143,44 +138,51 @@ module.exports = async (page, base) => {
                 return [style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft];
             }).then(actual => assert.deepEqual(actual, expected.map(px => px + 'px')));
         }
-        async function publish() {
-            const [response] = await Promise.all([
-                page.waitForResponse(base + '/admin/design/publish'),
-                page.getByRole('button', {name: '公開', exact: true}).click(),
-            ]);
-            assert.equal(response.status(), 200, await response.text());
+
+        for (const input of await padding.locator('[data-spacing-field]').all()) {
+            assert.notEqual(await input.inputValue(), '', 'show the numeric default');
         }
-        const common = await openPadding('all', 'previewTarget', 'page:' + pageId);
-        await setPadding(common, {top: 28, right: 24, bottom: 36, left: 20});
-        const item = await openPadding('page_item', 'page', pageId);
-        await setPadding(item, {bottom: 0, left: 12});
-        const post = await page.request.get(base + '/cover-layout-post-check');
-        assert.equal(post.status(), 200, await post.text());
-        const postPath = base + '/cover-layout-post-check';
+        for (const [side, amount] of Object.entries({Top: 28, Right: 24, Bottom: 0, Left: 12})) {
+            await padding.locator('[data-spacing-field="padding' + side + '"]').fill(String(amount));
+        }
+        await page.locator('#nx-design-stage[aria-busy="false"]').waitFor();
+        await checkPadding(design.locator('article.post-detail'), [28, 24, 0, 12]);
+
+        const [response] = await Promise.all([
+            page.waitForResponse(base + '/admin/design/publish'),
+            page.getByRole('button', {name: '公開', exact: true}).click(),
+        ]);
+        assert.equal(response.status(), 200, await response.text());
         const postVisitor = await guest.newPage();
-        await postVisitor.goto(postPath);
+        await postVisitor.goto(base + '/cover-layout-post-check');
         await assertProjection(postVisitor.locator('.post-content'), 'top', 48);
-        await publish();
-        await postVisitor.reload();
-        await checkPadding(postVisitor.locator('article.post-detail'), [28, 24, 36, 20]);
+        await checkPadding(postVisitor.locator('article.post-detail'), [28, 24, 0, 12]);
         await postVisitor.close();
         await visitor.reload();
         await checkPadding(visitor.locator('article.post-detail'), [28, 24, 0, 12]);
 
-        await scope('page_item').locator('[data-page-field="enabled"]').check();
-        await page.waitForFunction(() => {
-            const article = document.querySelector('#nx-design-frame').contentDocument.querySelector('article.nx-page-article');
-            return article?.ownerDocument.defaultView.getComputedStyle(article).paddingLeft === '12px';
-        });
-        await checkPadding(design.locator('article.nx-page-article'), [28, 24, 0, 12]);
-        await publish();
+        const catalogResponse = await page.request.get(base + '/admin/design');
+        const catalog = JSON.parse((await catalogResponse.text()).match(/<script type="application\/json" id="nx-design-data">(.*?)<\/script>/s)[1]);
+        const fixed = catalog.targets.page.find(item => String(item.id) === pageId);
+        await require('./legacy-sections.cjs')(page, base, fixed.name);
+        await page.goto(base + '/admin/pages/edit/' + pageId);
+        await page.getByText('既存のセクションを編集', {exact: true}).click();
+        const legacyEditor = page.frameLocator('.article-sections-frame');
+        await legacyEditor.getByRole('heading', {name: '既存のセクション', exact: true}).waitFor();
+        await legacyEditor.getByText('セクションの余白', {exact: true}).click();
+        const sectionPadding = legacyEditor.locator('[data-page-field="paddingTop"]');
+        assert.notEqual(await sectionPadding.inputValue(), '');
+        await sectionPadding.fill('0');
+        await legacyEditor.getByRole('button', {name: 'セクションを反映', exact: true}).click();
+        await legacyEditor.getByText('公開済み', {exact: true}).waitFor();
         await visitor.setViewportSize({width: 390, height: 844});
         await visitor.reload();
         await checkPadding(visitor.locator('article.nx-page-article'), [28, 24, 0, 12]);
+        assert.equal(await visitor.locator('.nx-page-section').evaluate(element => getComputedStyle(element).paddingTop), '0px');
         await assertProjection(visitor.locator('.post-content'), 'bottom', 36);
         assert(await visitor.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1));
     } finally {
         await guest.close();
     }
-    console.log('PASS: individual article padding overrides common values per side in normal and section layouts');
+    console.log('PASS: toolbar save, automatic title visibility and article/section padding in preview and published pages');
 };

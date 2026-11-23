@@ -6,7 +6,9 @@ use app\Core\Auth;
 use app\Core\Controller;
 use app\Core\Csrf;
 use app\Core\Database;
+use app\Core\PageLayout;
 use app\Core\PostValidator;
+use InvalidArgumentException;
 use app\Core\RequestSize;
 use app\Models\Category;
 use app\Models\ContentBulk;
@@ -131,6 +133,7 @@ class PostController extends Controller
             PostValidator::validate(
                 $_POST
             );
+        $display = $this->validateDisplay($validation);
 
         if (!$validation['valid']) {
             $this->renderForm(
@@ -152,14 +155,13 @@ class PostController extends Controller
             redirect_to('admin/login');
         }
 
+        $pdo = Database::connect();
         try {
-            $data =
-                $validation['data'];
-
-            $data['user_id'] =
-                $userId;
-
-            Post::create($data);
+            $data = $validation['data'] + ['user_id' => $userId];
+            $pdo->beginTransaction();
+            $id = Post::create($data);
+            PageLayout::saveEditorDisplay($id, 'post', $display);
+            $pdo->commit();
 
             nx_editor_saved();
 
@@ -169,6 +171,9 @@ class PostController extends Controller
 
             $this->redirectToList();
         } catch (Throwable $exception) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
             $this->renderForm(
                 $validation['data'],
                 url('admin/posts/store'),
@@ -237,6 +242,7 @@ class PostController extends Controller
                 $_POST,
                 $id
             );
+        $display = $this->validateDisplay($validation);
 
         if (!$validation['valid']) {
             $formPost = array_merge(
@@ -267,24 +273,7 @@ class PostController extends Controller
             return;
         }
 
-        /*
-         * 内容に変更がない場合は
-         * 履歴を増やさない
-         */
-        if (
-            !$this->hasChanges(
-                $post,
-                $validation['data']
-            )
-        ) {
-            $this->setNotice(
-                '変更内容はありませんでした。'
-            );
-
-            nx_editor_saved();
-
-            $this->redirectToList();
-        }
+        $contentChanged = $this->hasChanges($post, $validation['data']);
 
         $user = Auth::user();
 
@@ -301,29 +290,17 @@ class PostController extends Controller
         try {
             $pdo->beginTransaction();
 
-            /*
-             * 更新前の内容を編集履歴へ保存
-             */
-            PostRevision::createFromPost(
-                $post,
-                $userId
-            );
-
-            /*
-             * 新しい内容を投稿へ反映
-             */
-            Post::update(
-                $id,
-                $validation['data']
-            );
-
+            if ($contentChanged) {
+                PostRevision::createFromPost($post, $userId);
+                Post::update($id, $validation['data']);
+            }
+            $displayChanged = PageLayout::saveEditorDisplay($id, 'post', $display);
             $pdo->commit();
 
             nx_editor_saved();
 
-            $this->setNotice(
-                '投稿を更新しました。'
-            );
+            $this->setNotice($contentChanged || $displayChanged
+                ? '投稿を更新しました。' : '変更内容はありませんでした。');
 
             $this->redirectToList();
         } catch (Throwable $exception) {
@@ -568,6 +545,17 @@ class PostController extends Controller
                     $errors,
             ]
         );
+    }
+
+    private function validateDisplay(array &$validation): array
+    {
+        try {
+            return PageLayout::editorChanges($_POST['page_display'] ?? null);
+        } catch (InvalidArgumentException $exception) {
+            $validation['valid'] = false;
+            $validation['errors']['general'] = $exception->getMessage();
+            return [];
+        }
     }
 
     /*

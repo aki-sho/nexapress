@@ -16,7 +16,12 @@
     const spacingOverlay = root.querySelector('#nx-design-spacing-overlay');
     const widgetHighlight = root.querySelector('#nx-design-widget-highlight');
     const widgetNote = root.querySelector('#nx-design-widget-note');
-    const {linkTypes, targets, regions, regionRows, regionWidgetAreas} = data;
+    const {linkTypes, targets, regions, regionRows, regionWidgetAreas, legacyTarget} = data;
+    const homeTarget = {kind: 'page', id: ''};
+    const bodyTargets = [['', 'トップページ'], ...['page', 'post'].flatMap(kind =>
+        targets[kind].filter(item => item.published).map(item =>
+            [kind + ':' + item.id, (kind === 'page' ? '固定ページ · ' : '投稿 · ') + item.label]))];
+    let bodyTarget = data.pageLayout.home || bodyTargets.length === 1 ? '' : bodyTargets[1][0];
     const regionIds = Object.keys(regions);
     const regionParents = {header_after: 'header', footer_before: 'footer'};
     const regionLocations = Object.fromEntries(regionIds.flatMap(scope =>
@@ -26,7 +31,7 @@
     const areas = data.widgetAreas;
     const menus = {header: 'ヘッダーのリンク', footer: 'フッターのリンク'};
     const labels = {header: 'ヘッダー', header_rows: 'ヘッダーの段構成', columns: '本文カラム',
-        footer: 'フッター', footer_rows: 'フッターの段構成', page_layout: 'ページ毎のレイアウト', ...regions};
+        footer: 'フッター', footer_rows: 'フッターの段構成', page_layout: 'ページの表示', ...regions};
     const designColor = window.NexaPressDesignColor;
     const chromeOpen = new Map();
     const widgetHighlights = new Map();
@@ -47,7 +52,7 @@
     const layouts = Object.fromEntries(Object.entries(published).map(([id, item]) => [id, clone(item.layout)]));
     const conflicts = new Set();
     let background = clone(published[theme].background);
-    let pane = 'header';
+    let pane = legacyTarget ? 'page_layout' : 'header';
     let previewScope = pane;
     let mode = 'draft';
     let device = 'desktop';
@@ -136,10 +141,8 @@
         `<label>${label}<select name="${name}" ${attributes}>${options(pairs, current)}</select></label>`;
     const pageEditor = window.NexaPressPageEditor({
         panel, data, field, escape, changed, showError, checkResponse,
-        redraw: focus => pane === 'page_layout' ? renderPanel(focus) : renderStatus(),
-        preview: updatePreview, reveal: revealPreviewArea,
-        themeWidth: () => layouts[theme].width,
-        previewMode: () => mode,
+        redraw: renderPanel, preview: updatePreview, reveal: revealPreviewArea,
+        previewDocument: () => frame.contentDocument,
     });
     const frameEditor = window.NexaPressDesignFrame({
         panel, options: data.frameOptions, field, escape, showError,
@@ -284,6 +287,7 @@
 
     function spacingGroup(kind) {
         const area = kind === 'columns' ? 'body' : kind;
+        const isArticle = area === 'article';
         const spacing = layouts[theme].spacing[area];
         const highlighted = spacingOverlayArea === area;
         const fields = [
@@ -292,30 +296,40 @@
             ['paddingTop', '内側・上'], ['paddingBottom', '内側・下'],
             ['paddingLeft', '内側・左'], ['paddingRight', '内側・右'],
         ].map(([key, label]) => `<label><span class="nx-spacing-label">${label}（px）
-                <small class="nx-design-note" data-spacing-origin>${spacing[key] === null ? 'テーマ' : '指定'}</small></span>
+                <small class="nx-design-note" data-spacing-origin>${spacing[key] === null ? (isArticle ? '引き継ぎ' : 'テーマ') : '指定'}</small></span>
             <input type="number" ${spacing[key] === null ? 'step="any"' : `min="0" max="${data.spacingLimit}" step="1"`}
-                value="${escape(spacing[key])}" placeholder="プレビューを確認中"
+                value="${escape(spacing[key] ?? 0)}"
                 data-spacing-area="${area}" data-spacing-field="${key}">
             </label>`).join('');
-        return chromeGroup(kind, 'spacing', '余白',
+        return chromeGroup(isArticle ? 'columns' : kind, isArticle ? 'article-spacing' : 'spacing',
+            isArticle ? '記事枠の余白' : kind === 'columns' ? '本文全体の余白' : '余白',
             `<p class="nx-spacing-key" data-spacing-key ${highlighted ? '' : 'hidden'}>
                 <span data-spacing-color="margin">外側（margin）</span><span data-spacing-color="padding">内側（padding）</span></p>` +
             '<div class="nx-chrome-form-row">' + fields + '</div>' +
-            '<p class="nx-design-note">空欄にするとテーマの値に戻ります。</p>', false,
+            (isArticle ? '<p class="nx-design-note">空欄で元の余白を使用します。</p>' :
+                '<p class="nx-design-note">空欄にするとテーマの値に戻ります。</p>'), false,
             overlayButton('toggle-spacing', '余白', highlighted, `data-spacing-target="${area}"`));
     }
 
     const frameGroup = kind => chromeGroup(kind, 'frame', '枠', frameEditor.render(kind === 'columns' ? 'body' : kind));
-    const spacingScope = area => area === 'body' ? 'columns' : area;
+    const spacingScope = area => area === 'body' || area === 'article' ? 'columns' : area;
     const hasInnerSpacing = area => area === 'header' || area === 'footer';
     const spacingElement = (doc, area) => doc?.querySelector(regionIds.includes(area)
-        ? '[data-design-area="' + area + '"]' : area === 'body' ? '.site-main' : '.site-' + area);
+        ? '[data-design-area="' + area + '"]'
+        : area === 'article' ? 'article.post-detail, article.nx-page-article'
+            : area === 'body' ? '.site-main' : '.site-' + area);
 
     function syncSpacingValues() {
         if (stage.getAttribute('aria-busy') !== 'false' || frame.dataset.previewTheme !== theme) return;
         const preview = frame.contentDocument;
         const view = frame.contentWindow;
         if (!preview || !view) return;
+        const widthNote = panel.querySelector('[data-preview-width]');
+        const width = preview.querySelector('.site-main')?.dataset.contentWidth;
+        if (widthNote) {
+            widthNote.hidden = !width || width === layouts[theme].width;
+            widthNote.textContent = widthNote.hidden ? '' : '表示中のページの本文幅は「' + data.pageLayout.widths[width] + '」です。';
+        }
         for (const input of panel.querySelectorAll('[data-spacing-area]')) {
             const {spacingArea, spacingField} = input.dataset;
             if (layouts[theme].spacing[spacingArea][spacingField] !== null ||
@@ -639,14 +653,20 @@
         } else if (pane === 'header' || pane === 'footer') {
             panel.innerHTML = chromePanel(pane);
         } else if (pane === 'columns') {
-            panel.innerHTML = '<h2>本文カラム</h2>' + (supports('page_layout')
-                ? field('テーマの本文幅', 'width', pageEditor.widths, layout.width, 'data-setting="width"') : '') + field('レイアウト', 'columns',
-                [['none', '1カラム・本文のみ'], ['left', '2カラム・左サイドバー'], ['right', '2カラム・右サイドバー']],
-                layout.columns, 'data-setting="columns"') +
-                '<div class="nx-chrome-form-row"><label>列の合計幅（%）<input type="number" min="1" max="100" step="1" data-setting="body-width" value="' +
+            const layoutFields = '<div class="nx-chrome-form-row"><label>列の合計幅（%）' +
+                '<input type="number" min="1" max="100" step="1" data-setting="body-width" value="' +
                 (layout.bodyColumnsLayout?.width ?? 100) + '"></label>' +
                 field('配置', 'body-align', Object.entries(data.alignments), layout.bodyColumnsLayout?.align ?? 'center',
-                    'data-setting="body-align"') + '</div>' + spacingGroup('columns') + frameGroup('columns') + widgetGroup('columns');
+                    'data-setting="body-align"') + '</div>';
+            panel.innerHTML = '<h2>本文カラム</h2>' + (supports('page_layout')
+                ? field('プレビューするページ', 'body-target', bodyTargets, bodyTarget, 'data-setting="body-target"') +
+                    field('共通の本文幅', 'width', pageEditor.widths, layout.width, 'data-setting="width"') +
+                    '<small class="nx-design-note" data-preview-width hidden></small>' : '') +
+                field('レイアウト', 'columns',
+                    [['none', '1カラム・本文のみ'], ['left', '2カラム・左サイドバー'], ['right', '2カラム・右サイドバー']],
+                    layout.columns, 'data-setting="columns"') +
+                (layout.columns !== 'none' || layout.bodyColumnsLayout ? layoutFields : '') +
+                spacingGroup('columns') + spacingGroup('article') + frameGroup('columns') + widgetGroup('columns');
         } else if (pane === 'page_layout') {
             panel.innerHTML = pageEditor.render();
         } else if (pane === 'general') {
@@ -682,7 +702,6 @@
         root.querySelectorAll('[data-device]').forEach(control =>
             control.setAttribute('aria-pressed', String(control.dataset.device === device)));
         resizePreview();
-        pageEditor.refreshPreviewStatus();
     }
 
     function revealPreviewArea(preferSpacing = false) {
@@ -708,8 +727,15 @@
         schedulePreviewOverlays();
     }
 
+    function previewTarget() {
+        if (legacyTarget) return legacyTarget;
+        if (pane !== 'columns' || !bodyTarget) return homeTarget;
+        const [kind, id] = bodyTarget.split(':');
+        return {kind, id};
+    }
+
     function body(extra) {
-        const target = resetDraft?.target ?? pageEditor.target();
+        const target = resetDraft?.target ?? previewTarget();
         const design = resetDraft ? {reset: '1', theme} : {design: JSON.stringify(state())};
         return new URLSearchParams({
             _csrf_token: data.token, ...design,
@@ -826,7 +852,7 @@
             resetDraft = null;
             root.querySelector('[data-setting="theme"]').value = theme;
         } else {
-            resetDraft = {previousTheme: theme, previousMode: mode, target: pageEditor.target(), ready: false};
+            resetDraft = {previousTheme: theme, previousMode: mode, target: previewTarget(), ready: false};
             mode = 'draft';
         }
         changedResetPreview();
@@ -841,7 +867,7 @@
 
     async function publish() {
         if (publishButton.disabled) return;
-        const invalid = panel.querySelector('[data-spacing-area]:invalid, [data-frame-settings] input[type="number"]:invalid, [data-article-padding]:invalid');
+        const invalid = panel.querySelector('[data-spacing-area]:invalid, [data-frame-settings] input[type="number"]:invalid, [data-page-field]:invalid');
         if (invalid) {
             invalid.closest('details').open = true;
             invalid.reportValidity();
@@ -949,13 +975,15 @@
         if (!control || publishing) return;
         const target = control.dataset;
         if (target.pane) {
+            const previousTarget = previewTarget();
             spacingOverlayArea = null;
             spacingOverlay.hidden = true;
             pane = target.pane;
             previewScope = pane;
             editor = null;
             renderPanel();
-            revealPreviewArea();
+            if (same(previousTarget, previewTarget())) revealPreviewArea();
+            else updatePreview();
         } else if (target.mode || target.device) {
             mode = target.mode || mode;
             device = target.device || device;
@@ -1047,7 +1075,7 @@
         input.min = value === null ? '' : '0';
         input.max = value === null ? '' : String(data.spacingLimit);
         input.step = value === null ? 'any' : '1';
-        input.closest('label').querySelector('[data-spacing-origin]').textContent = value === null ? 'テーマ' : '指定';
+        input.closest('label').querySelector('[data-spacing-origin]').textContent = value === null ? (spacingArea === 'article' ? '引き継ぎ' : 'テーマ') : '指定';
         const spacing = layouts[theme].spacing[spacingArea];
         if (spacing[spacingField] === value) {
             showError();
@@ -1127,6 +1155,9 @@
                 previewScope = pane;
             }
             changed('[data-setting="theme"]');
+        } else if (setting === 'body-target') {
+            bodyTarget = input.value;
+            updatePreview();
         } else if (setting === 'reset-target' && resetDraft) {
             const [kind, id] = input.value ? input.value.split(':') : ['page', ''];
             resetDraft.target = {kind, id};
@@ -1254,6 +1285,7 @@
         revealPreviewArea();
         stage.setAttribute('aria-busy', 'false');
         syncSpacingValues();
+        pageEditor.syncSpacing();
         frameEditor.sync();
         schedulePreviewOverlays();
         if (resetDraft) renderStatus();
@@ -1261,5 +1293,6 @@
     window.addEventListener('resize', resizePreview);
     renderPanel();
     syncPreviewButtons();
-    updatePreview();
+    if (legacyTarget) pageEditor.load();
+    else updatePreview();
 })();

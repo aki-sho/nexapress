@@ -59,12 +59,13 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 27%);
 }
 
-.site-main[data-content-width="wide"] { max-width: 1440px; }
+.site-main[data-content-width="standard"] { --nx-page-content-max: var(--theme-content-width, 1080px); }
+.site-main[data-content-width="wide"] { --nx-page-content-max: 1440px; max-width: 1440px; }
 .site-main[data-content-width="full"] { max-width: none; }
 .site-main.nx-section-page { max-width: none; margin: 0; padding: 0; }
 
 .nx-page-section {
-    --nx-inner-width: min(var(--nx-section-width), calc(100% - 2 * var(--theme-gutter, 24px)));
+    --nx-inner-width: min(var(--nx-section-width), var(--nx-page-content-max, 100%), calc(100% - 2 * var(--theme-gutter, 24px)));
     position: relative;
     isolation: isolate;
     padding-block: clamp(24px, 5vw, 72px);

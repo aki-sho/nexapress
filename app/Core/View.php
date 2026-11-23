@@ -76,7 +76,7 @@ class View
         $layoutDocument = $layoutKind === 'page' ? ($page ?? null) : ($post ?? null);
         if ($layoutKind !== null && isset($layoutDocument['id']) &&
             in_array('page_layout', Theme::designAreas(Theme::active()), true)) {
-            $pageDesign = Design::pageLayout((int)$layoutDocument['id'], $layoutKind);
+            $pageDesign = Design::pageLayout((int)$layoutDocument['id'], $layoutKind, $editorDisplay ?? []);
             if ($pageDesign['enabled'] && $pageDesign['sections']) {
                 $viewPath = BASE_PATH . '/app/Views/design/page-layout.php';
             }
@@ -105,7 +105,9 @@ class View
             }
             $content = ob_get_clean();
             if (EditorPreview::active()) {
-                $content = EditorPreview::addMissingFields($content, $layoutDocument);
+                $content = EditorPreview::addMissingFields(
+                    $content, $layoutDocument, ($editorDisplay ?? null) === null
+                );
             }
             $themeLayoutPath = Theme::template('layout');
             require $themeLayoutPath ?: BASE_PATH . '/app/Views/layout.php';

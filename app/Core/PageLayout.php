@@ -30,6 +30,12 @@ final class PageLayout
     {
         $sections = $layout['enabled'] ? $layout['sections'] : [];
         $padding = $layout['articlePadding'] ?? [];
+        $articleSpacing = Design::settings()['spacing']['article'];
+        foreach (array_keys($padding) as $side) {
+            if ($articleSpacing['padding' . ucfirst($side)] !== null) {
+                unset($padding[$side]);
+            }
+        }
         if (!$sections && !$padding) {
             return null;
         }
@@ -41,6 +47,8 @@ final class PageLayout
             'share' => $section['share'],
             'gap' => $section['gap'],
             'columnsWidth' => $section['columnsWidth'] === 100 ? null : $section['columnsWidth'],
+            'paddingTop' => $section['paddingTop'],
+            'paddingBottom' => $section['paddingBottom'],
         ], $sections);
 
         $query = ['width' => $width, 'sections' => $sections, 'articlePadding' => $padding];
@@ -95,10 +103,17 @@ final class PageLayout
                 ? self::range(filter_var($section['columnsWidth'], FILTER_VALIDATE_INT), 1, 100)
                 : 100;
             $columnsWidthCss = $columnsWidth === 100 ? '' : "--nx-layout-width:$columnsWidth%;";
+            $spacingCss = '';
+            foreach (['paddingTop' => 'padding-top', 'paddingBottom' => 'padding-bottom'] as $field => $property) {
+                if (isset($section[$field])) {
+                    $pixels = self::range(filter_var($section[$field], FILTER_VALIDATE_INT), 0, DesignSpacing::MAX_PIXELS);
+                    $spacingCss .= "$property:{$pixels}px;";
+                }
+            }
             $rules[] = ".nx-page-section[data-layout-section=\"$index\"] {" .
                 "--nx-section-width:$sectionWidth;--nx-section-background:$color;--nx-section-foreground:$foreground;" .
                 "--nx-section-left:{$share}fr;--nx-section-right:{$right}fr;--nx-section-gap:$gap%;" .
-                "--nx-section-left-ratio:$leftRatio;--nx-section-right-ratio:$rightRatio;$columnsWidthCss}";
+                "--nx-section-left-ratio:$leftRatio;--nx-section-right-ratio:$rightRatio;$columnsWidthCss$spacingCss}";
         }
 
         return implode("\n", $rules);
@@ -130,6 +145,60 @@ final class PageLayout
             'layout' => self::resolve([$overrides]),
             'revision' => hash('sha256', self::json($overrides)),
         ];
+    }
+
+    public static function editorChanges(mixed $input): array
+    {
+        if ($input === null) {
+            return [];
+        }
+        if (!is_array($input) || array_diff(array_keys($input), ['title', 'width', 'sections'])) {
+            throw new InvalidArgumentException('ページの表示設定を確認してください。');
+        }
+        $choices = [
+            'title' => ['field' => 'showTitle', 'values' => ['inherit' => null, 'show' => true, 'hide' => false]],
+            'width' => ['field' => 'width', 'values' => ['inherit' => null] + array_combine(array_keys(self::WIDTHS), array_keys(self::WIDTHS))],
+            'sections' => ['field' => 'enabled', 'values' => ['inherit' => null, 'sections' => true, 'blocks' => false]],
+        ];
+        $changes = [];
+        foreach ($input as $key => $value) {
+            $choice = $choices[$key];
+            if (!is_string($value) || !array_key_exists($value, $choice['values'])) {
+                throw new InvalidArgumentException('ページの表示設定を確認してください。');
+            }
+            $changes[$choice['field']] = $choice['values'][$value];
+        }
+        return $changes;
+    }
+
+    public static function withEditorChanges(array $overrides, array $changes): array
+    {
+        foreach ($changes as $field => $value) {
+            if ($value === null) {
+                unset($overrides[$field]);
+            } else {
+                $overrides[$field] = $value;
+            }
+        }
+        return self::validateOverrides($overrides);
+    }
+
+    /** Use the article save transaction to preserve other layout fields. */
+    public static function saveEditorDisplay(int $id, string $kind, array $changes): bool
+    {
+        if (!$changes) {
+            return false;
+        }
+        $snapshot = self::snapshot($id, true, $kind);
+        if ($snapshot === null) {
+            throw new InvalidArgumentException('保存するページが見つかりません。');
+        }
+        $overrides = self::withEditorChanges($snapshot['overrides'], $changes);
+        if ($overrides === $snapshot['overrides']) {
+            return false;
+        }
+        self::save($id, $overrides, $kind);
+        return true;
     }
 
     /** Called after locking and checking the page revision in Design::publish. */
@@ -166,6 +235,7 @@ final class PageLayout
             'background' => 'full', 'color' => '#F4F5F7', 'widthMode' => 'theme',
             'percent' => 80, 'columns' => 1, 'share' => 50, 'gap' => 10,
             'columnsWidth' => 100, 'align' => 'flex-start', 'groups' => [[], []],
+            'paddingTop' => null, 'paddingBottom' => null,
         ];
     }
 
@@ -183,7 +253,7 @@ final class PageLayout
         if (!$layout['enabled'] && $layout['sections'] === []) {
             $patch = $layout['width'] === 'inherit' ? self::EMPTY_OVERRIDES
                 : ['format' => 2, 'width' => $layout['width']];
-            return $patch + array_intersect_key($layout, ['articlePadding' => true]);
+            return $patch + array_intersect_key($layout, ['articlePadding' => true, 'showTitle' => true]);
         }
         $layout['format'] = 2;
         $layout['sectionCount'] = count($layout['sections']);
@@ -196,7 +266,7 @@ final class PageLayout
     public static function validateOverrides(array $input): array
     {
         if (($input['format'] ?? null) !== 2 ||
-            array_diff(array_keys($input), ['format', 'enabled', 'width', 'sectionCount', 'sections', 'articlePadding'])) {
+            array_diff(array_keys($input), ['format', 'enabled', 'width', 'sectionCount', 'sections', 'articlePadding', 'showTitle'])) {
             throw new InvalidArgumentException('ページのレイアウト設定を確認してください。');
         }
         $result = self::EMPTY_OVERRIDES;
@@ -205,6 +275,12 @@ final class PageLayout
                 throw new InvalidArgumentException('セクションの表示設定を確認してください。');
             }
             $result['enabled'] = $input['enabled'];
+        }
+        if (array_key_exists('showTitle', $input)) {
+            if (!is_bool($input['showTitle'])) {
+                throw new InvalidArgumentException('タイトルの表示設定を確認してください。');
+            }
+            $result['showTitle'] = $input['showTitle'];
         }
         if (array_key_exists('width', $input)) {
             if (!is_string($input['width']) || !isset(self::WIDTHS[$input['width']])) {
@@ -247,7 +323,7 @@ final class PageLayout
         $result = ['enabled' => false, 'width' => 'inherit', 'sections' => []];
         foreach ($layers as $layer) {
             $patch = self::overrides($layer);
-            foreach (['enabled', 'width'] as $field) {
+            foreach (['enabled', 'width', 'showTitle'] as $field) {
                 if (array_key_exists($field, $patch)) {
                     $result[$field] = $patch[$field];
                 }
@@ -289,6 +365,9 @@ final class PageLayout
         }
         $padding = self::articlePadding($layout['articlePadding'] ?? []);
         $validated = ['enabled' => $enabled, 'width' => $width, 'sections' => $result];
+        if (isset($layout['showTitle'])) {
+            $validated['showTitle'] = $layout['showTitle'];
+        }
         if ($padding) {
             $validated['articlePadding'] = $padding;
         }
@@ -338,6 +417,8 @@ final class PageLayout
             'columns' => $columns, 'share' => self::range($input['share'] ?? null, 20, 80),
             'gap' => self::range($input['gap'] ?? null, 0, 30),
             'align' => $align, 'columnsWidth' => $columnsWidth,
+            'paddingTop' => isset($input['paddingTop']) ? self::range($input['paddingTop'], 0, DesignSpacing::MAX_PIXELS) : null,
+            'paddingBottom' => isset($input['paddingBottom']) ? self::range($input['paddingBottom'], 0, DesignSpacing::MAX_PIXELS) : null,
             'groups' => [array_values(array_map([self::class, 'element'], $groups[0])),
                 array_values(array_map([self::class, 'element'], $groups[1]))],
         ];

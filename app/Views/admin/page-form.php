@@ -23,6 +23,12 @@
             <option value="draft" <?= ($page['status'] ?? 'draft') === 'draft' ? 'selected' : '' ?>>下書き</option>
             <option value="published" <?= ($page['status'] ?? '') === 'published' ? 'selected' : '' ?>>公開</option>
         </select></div>
+        <?php
+        $displayKind = 'page';
+        $displayDocument = $page;
+        require __DIR__ . '/article-display.php';
+        ?>
         <button type="submit">保存</button>
     </form>
+    <?php require __DIR__ . '/article-sections.php'; ?>
 </section>

@@ -38,19 +38,40 @@ final class DesignController extends Controller
         $contentChoices = static fn(array $item): array => [
             'id' => (int)$item['id'],
             'name' => $item['title'],
+            'published' => $item['status'] === 'published',
             'label' => $item['title'] . ($item['status'] === 'published' ? '' : '（非公開）'),
         ];
 
         $general = general_config();
         $pages = array_map($contentChoices, Page::all());
-        $this->view('admin/design', ['designData' => [
+        $posts = array_map($contentChoices, Post::navigationChoices());
+        $legacyTarget = null;
+        $requested = $_GET['layout'] ?? null;
+        if ($requested !== null) {
+            if (is_string($requested) && preg_match('/\A(page|post):([1-9][0-9]*)\z/', $requested, $match)) {
+                [, $kind, $id] = $match;
+                $choices = $kind === 'page' ? $pages : $posts;
+                if (in_array('page_layout', $catalog[$active]['areas'], true) &&
+                    in_array((int)$id, array_column($choices, 'id'), true) &&
+                    Design::pageLayout((int)$id, $kind)['sections']) {
+                    $legacyTarget = ['kind' => $kind, 'id' => $id];
+                }
+            }
+            if ($legacyTarget === null) {
+                http_response_code(404);
+                echo '対象のセクションが見つかりません。';
+                return;
+            }
+        }
+        $this->view('admin/design', ['embedded' => $legacyTarget !== null, 'designData' => [
+            'legacyTarget' => $legacyTarget,
             'active' => $active, 'themes' => $catalog,
             'targets' => [
                 'page' => $pages,
                 'category' => array_map(static fn(array $category): array => [
                     'id' => (int)$category['id'], 'label' => $category['name'],
                 ], Category::all()),
-                'post' => array_map($contentChoices, Post::navigationChoices()),
+                'post' => $posts,
             ],
             'linkTypes' => Navigation::TYPES, 'widgets' => Design::WIDGETS,
             'regions' => Design::REGIONS, 'token' => Csrf::token(),
@@ -85,8 +106,7 @@ final class DesignController extends Controller
                 'home' => ($general['homepage_mode'] ?? '') === 'page' ? (int)($general['homepage_page_id'] ?? 0) : 0,
                 'widths' => PageLayout::WIDTHS, 'elements' => PageLayout::ELEMENTS,
                 'scopes' => PageLayout::SCOPES, 'sectionDefaults' => PageLayout::sectionDefaults(),
-                'articlePaddingSides' => PageLayout::ARTICLE_PADDING_SIDES,
-                'images' => array_map(static fn(array $image): array => [
+                'images' => $legacyTarget === null ? [] : array_map(static fn(array $image): array => [
                     'id' => (int)$image['id'], 'label' => $image['title'],
                 ], Media::images()),
                 'sectionLimit' => PageLayout::MAX_SECTIONS, 'elementLimit' => PageLayout::MAX_ELEMENTS,

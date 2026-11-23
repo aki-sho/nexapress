@@ -21,7 +21,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     async function publish() {
         const [response] = await Promise.all([
             page.waitForResponse(base + '/admin/design/publish'),
-            page.getByRole('button', {name: '公開', exact: true}).click(),
+            page.locator('[data-action="publish"]').click(),
         ]);
         assert.equal(response.status(), 200, await response.text());
         await page.waitForFunction(() => document.querySelector('[data-action="publish"]').disabled);
@@ -390,12 +390,10 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     assert(Math.abs(bodyTrackWidth + 24 - bodyGeometry.width * .8) < 2, JSON.stringify(bodyGeometry));
     assert(Math.abs(bodyGeometry.start - bodyGeometry.width * .2 / 3) < 2, JSON.stringify(bodyGeometry));
 
-    await page.locator('[data-pane="page_layout"]').click();
-    const editor = page.locator('[data-layout-scope="page_item"]');
-    await editor.locator('> summary').click();
+    await publish();
+    await require('./legacy-sections.cjs')(page, base, '既存ページ');
+    const editor = page.locator('#nx-design-panel');
     const sectionField = name => editor.locator('[data-page-field="' + name + '"]');
-    await sectionField('page').selectOption({label: '既存ページ'});
-    await sectionField('enabled').check();
     const sectionDetails = editor.locator('[data-page-details="layout"]');
     if (!(await sectionDetails.evaluate(node => node.open))) await sectionDetails.locator('summary').click();
     assert.deepEqual(await sectionField('align').locator('option').allTextContents(), placementOptions);

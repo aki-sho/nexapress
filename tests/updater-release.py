@@ -232,8 +232,15 @@ function curl_setopt_array($handle, array $options): bool {
                 if tuple(map(int, target.split('.'))) >= (2, 10, 0):
                     status, body, _ = admin.request('/admin/design')
                     data = json.loads(re.search(r'<script type="application/json" id="nx-design-data">(.*?)</script>', body, re.S)[1])
-                    check(status == 200 and 'ページ毎のレイアウト' in body and len(data['pageLayout']['scopes']) == 3,
-                          ref + ': updated design editor offers shared page and post layouts')
+                    if tuple(map(int, target.split('.'))) >= (2, 37, 0):
+                        check(status == 200 and 'data-pane="page_layout"' not in body
+                              and 'article' in data['themes'][data['active']]['state']['layout']['spacing'],
+                              ref + ': Design exposes article spacing through Body settings')
+                        check('name="page_display[title]"' in admin.request('/admin/pages/create')[1],
+                              ref + ': page display settings are available in the article form')
+                    else:
+                        check(status == 200 and 'ページ毎のレイアウト' in body and len(data['pageLayout']['scopes']) == 3,
+                              ref + ': updated design editor offers shared page and post layouts')
                     if tuple(map(int, version.split('.'))) < (2, 25, 0) <= tuple(map(int, target.split('.'))):
                         frame = {'mode': 'theme', 'line': None, 'radius': None}
                         frames = dict.fromkeys(['header', 'body', 'footer'], frame)

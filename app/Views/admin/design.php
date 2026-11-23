@@ -1,17 +1,17 @@
 <?php $title = 'デザイン'; ?>
 <section class="nx-design-editor" id="nx-design-editor">
     <div class="nx-design-toolbar">
-        <h1>デザイン</h1>
+        <h1><?= !empty($embedded) ? '既存のセクション' : 'デザイン' ?></h1>
         <div class="nx-design-actions">
-            <button type="button" class="button secondary small" data-action="reset" disabled>デザインを初期状態に戻す</button>
+            <button type="button" class="button secondary small" data-action="reset" <?= !empty($embedded) ? 'hidden' : '' ?> disabled>デザインを初期状態に戻す</button>
             <span id="nx-design-status" role="status" aria-live="polite">公開済み</span>
-            <button type="button" class="button" data-action="publish" disabled>公開</button>
+            <button type="button" class="button" data-action="publish" disabled><?= !empty($embedded) ? 'セクションを反映' : '公開' ?></button>
         </div>
     </div>
     <p id="nx-design-error" class="error-message" role="alert" hidden></p>
     <div class="nx-design-editor-grid">
         <div class="nx-design-controls">
-            <div class="nx-design-nav">
+            <div class="nx-design-nav" <?= !empty($embedded) ? 'hidden' : '' ?>>
                 <label>編集中のテーマ
                     <select data-setting="theme">
                         <?php foreach ($designData['themes'] as $id => $theme): ?>
@@ -28,7 +28,6 @@
                 <div class="nx-design-tabs" role="group" aria-label="編集する項目">
                     <?php foreach ([
                         'header' => 'ヘッダー', 'columns' => '本文カラム', 'footer' => 'フッター',
-                        'page_layout' => 'ページ毎のレイアウト',
                     ] as $key => $label): ?>
                         <button type="button" data-pane="<?= e($key) ?>"
                             aria-pressed="<?= $key === 'header' ? 'true' : 'false' ?>"><?= e($label) ?></button>

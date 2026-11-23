@@ -144,7 +144,7 @@ module.exports = async function checkSharedColumnContent(page, base) {
     await mode('visual');
     assert.equal(await visual.locator('[data-nx-column-area="below"] img').count(), 1);
     await form.locator('[name="status"]').selectOption('published');
-    await form.getByRole('button', {name: '保存', exact: true}).click();
+    await form.locator('button[type="submit"]:not([data-editor-save])').click();
     await page.waitForURL(/\/admin\/pages\/edit\/\d+$/);
     assert.equal(await visual.locator('[data-nx-column-area="above"]').count(), 2);
 

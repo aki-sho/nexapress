@@ -31,7 +31,6 @@
 .nx-design-nav { display: grid; gap: 9px; background: #f4f7fc; border-bottom: 1px solid var(--design-line); }
 .nx-design-theme-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
 .nx-design-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.nx-design-tabs [data-pane="page_layout"] { grid-column: 1 / -1; }
 .nx-design-tabs button, .nx-design-switch button, .nx-design-small {
     padding: 5px 8px;
     border: 1px solid var(--design-line);

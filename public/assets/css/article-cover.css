@@ -157,9 +157,9 @@
     .nx-cover-width-wide { --nx-cover-width: min(1440px, calc(100cqw - 32px)); }
     .nx-cover-width-full { --nx-cover-width: 100cqw; }
 
-    /* Extend only from a centered content column. */
-    .site-main:not(.nx-design-main)
-        :is(.post-detail, .nx-page-section[data-columns="1"] .nx-page-section-column)
+    /* Page width is the limit. A single full-width column can extend to the screen edges. */
+    .site-main[data-content-width="full"]:not(.nx-design-main, [data-nx-layout-width]:not([data-nx-layout-width="100"]))
+        :is(.post-detail, .nx-page-section[data-full-width-section] .nx-page-section-column)
         > .post-content > :is(.nx-cover-width-wide, .nx-cover-width-full) {
         --nx-cover-viewport-aligned: 1;
         width: var(--nx-cover-width);

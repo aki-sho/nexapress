@@ -83,21 +83,19 @@ module.exports = async function checkDesign(page, base, output) {
         }, [['page', fixed.id, {format: 2}], ['post', post.id, {format: 2}],
             ['page', local.id, {format: 2, enabled: false}]]);
         await page.goto(base + '/admin/design');
-        await page.locator('[data-pane="page_layout"]').click();
-        await page.locator('[data-layout-scope="all"] > summary').click();
-        const target = page.locator('[data-page-field="previewTarget"]');
+        await page.locator('[data-pane="columns"]').click();
+        const target = page.locator('[data-setting="body-target"]');
         await target.selectOption('page:' + fixed.id);
         await waitPreview();
         const previewSidebar = await page.frameLocator('#nx-design-frame').locator('aside.nx-design-sidebar').count();
         check('section page sidebar exists in the design iframe', () => assert.equal(previewSidebar, 1));
         await target.selectOption('page:' + local.id);
         await waitPreview();
-        const localWarning = await page.locator('[data-page-preview-conflict]').allTextContents();
-        check('switching to a cached overridden page shows its inheritance warning', () =>
-            assert(localWarning.some(text => text.includes('デザイン検証・個別'))));
+        const ordinary = page.frameLocator('#nx-design-frame');
+        await ordinary.locator('article.post-detail').waitFor();
+        const sectionCount = await ordinary.locator('.nx-page-section').count();
+        check('switching to a page using body blocks shows the regular article', () => assert.equal(sectionCount, 0));
         await target.selectOption('page:' + fixed.id);
-        const staleWarning = await page.locator('[data-page-preview-conflict]').count();
-        check('switching to a cached page refreshes its inheritance warning', () => assert.equal(staleWarning, 0));
         await waitPreview();
         await visitor.goto(base + '/page/legacy');
         const publishedSidebar = await visitor.locator('aside.nx-design-sidebar').count();
@@ -214,8 +212,7 @@ module.exports = async function checkDesign(page, base, output) {
             await visitor.goto(base + '/page/legacy');
             assert.equal(await visitor.locator('aside.nx-design-sidebar').count(), 0);
             await page.goto(base + '/admin/design');
-            await page.locator('[data-pane="page_layout"]').click();
-            await page.locator('[data-layout-scope="all"] > summary').click();
+            await page.locator('[data-pane="columns"]').click();
             await target.selectOption('page:' + fixed.id);
             await waitPreview();
             assert.equal(await page.frameLocator('#nx-design-frame').locator('aside .nx-design-empty').count(), 1);
@@ -229,7 +226,7 @@ module.exports = async function checkDesign(page, base, output) {
         console.log('PASS: both themes, page/post sections, left/right/hidden/empty sidebars, three widths, responsive stacking and live preview');
     } catch (error) {
         console.log('Design UI:', await page.locator('#nx-design-error').textContent(),
-            await page.locator('[data-page-preview-status]').allTextContents());
+            await page.locator('[data-preview-width]').allTextContents());
         await page.screenshot({path: path.join(output, 'design-audit-failure.png'), fullPage: true});
         throw error;
     } finally {

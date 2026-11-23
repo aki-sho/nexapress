@@ -15,7 +15,7 @@ $placementAttributes = $placement ? \app\Core\LayoutPlacement::attributes($place
         <aside class="nx-design-sidebar" data-widget-area="sidebar" aria-label="サイドバー"><?php nx_design_widgets('sidebar'); ?></aside>
     </div>
 <?php elseif ($useSections): ?>
-    <main class="site-main nx-section-page"<?= $placementAttributes ?>><?= $content ?></main>
+    <main class="site-main nx-section-page" data-content-width="<?= e($width) ?>"<?= $placementAttributes ?>><?= $content ?></main>
 <?php else: ?>
     <main class="site-main" data-content-width="<?= e($width) ?>"<?= $placementAttributes ?>><?= $content ?? '' ?></main>
 <?php endif; ?>

@@ -95,7 +95,7 @@ module.exports = async (page, base, output) => {
     assert.equal((await page.request.get(base + '/page/editor-preview-page')).status(), 404);
     await Promise.all([
         page.waitForURL(/\/admin\/pages\/edit\/\d+$/),
-        page.locator('form[data-editor-kind]').getByRole('button', {name: '保存', exact: true}).click(),
+        page.locator('form[data-editor-kind]').locator('button[type="submit"]:not([data-editor-save])').click(),
     ]);
     await openPreview();
     assert.equal(await previewTitle.textContent(), 'プレビューから作成した固定ページ');

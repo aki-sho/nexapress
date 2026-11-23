@@ -120,7 +120,7 @@ module.exports = async function verifyArticlePlacement(page, base) {
     assert.match(html, /data-nx-buttons-edge="bottom"/);
     assert.doesNotMatch(html, /data-nx-editor-gap|contenteditable=|data-nx-button-label/);
     await form.locator('[name="status"]').selectOption('published');
-    await form.getByRole('button', {name: '保存', exact: true}).click();
+    await form.locator('button[type="submit"]:not([data-editor-save])').click();
     await page.waitForURL(/\/admin\/pages\/edit\/\d+$/);
 
     const published = await page.context().browser().newPage({viewport: {width: 1440, height: 900}});

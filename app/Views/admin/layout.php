@@ -29,7 +29,8 @@
 </head>
 <body>
 
-<div class="admin-layout">
+<div class="admin-layout<?= !empty($embedded) ? ' is-embedded' : '' ?>">
+    <?php if (empty($embedded)): ?>
     <aside class="sidebar">
         <h2><?= e(site_title()) ?></h2>
 
@@ -215,6 +216,7 @@
             <?php if (function_exists('nx_logout_form')) { nx_logout_form(); } ?>
         </nav>
     </aside>
+    <?php endif; ?>
 
     <main class="main">
         <?= $content ?? '' ?>
@@ -224,8 +226,11 @@
     <?php do_action('admin_footer'); ?>
 <?php endif; ?>
 <?php
-$savedEditorKeys = $_SESSION['editor_saved_keys'] ?? [];
-unset($_SESSION['editor_saved_keys']);
+$savedEditorKeys = [];
+if (empty($embedded)) {
+    $savedEditorKeys = $_SESSION['editor_saved_keys'] ?? [];
+    unset($_SESSION['editor_saved_keys']);
+}
 ?>
 <script type="application/json" id="editor-drafts-config"><?= json_encode([
     'userId' => (int)(\app\Core\Auth::user()['id'] ?? 0), 'base' => base_url(), 'savedKeys' => $savedEditorKeys,

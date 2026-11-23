@@ -454,6 +454,12 @@ foreach (
                         <?php $renderError('status'); ?>
                     </div>
 
+                    <?php
+                    $displayKind = 'post';
+                    $displayDocument = $post;
+                    require __DIR__ . '/article-display.php';
+                    ?>
+
                     <?php if ($isEdit): ?>
                         <dl class="post-form-meta">
                             <div>
@@ -695,6 +701,7 @@ foreach (
             </button>
         </div>
     </form>
+    <?php require __DIR__ . '/article-sections.php'; ?>
 </section>
 <?php if (Permission::can('categories.manage')): ?>
     <script src="<?= e(nx_asset_url('assets/js/post-categories.js')) ?>" defer></script>

@@ -9,7 +9,9 @@
 <?php else: ?>
     <article class="post-detail">
         <?php if (!empty($isPreview)): ?><p class="preview-notice">固定ページのプレビューです。未公開の内容を表示しています。</p><?php endif; ?>
-        <h1<?php \app\Core\EditorPreview::attribute('title'); ?>><?= e($page['title'] ?? '') ?></h1>
+        <?php if ($pageDesign['showTitle'] ?? true): ?>
+            <h1<?php \app\Core\EditorPreview::attribute('title'); ?>><?= e($page['title'] ?? '') ?></h1>
+        <?php endif; ?>
 
         <?php if (!empty($page['created_at'])): ?>
             <p class="post-date"><?= e($page['created_at']) ?></p>

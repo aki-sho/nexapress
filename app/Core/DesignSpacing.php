@@ -7,7 +7,7 @@ use InvalidArgumentException;
 final class DesignSpacing
 {
     public const AREAS = [
-        'header' => 'header', 'body' => 'columns', 'footer' => 'footer',
+        'header' => 'header', 'body' => 'columns', 'article' => 'columns', 'footer' => 'footer',
         'header_after' => 'header_after', 'footer_before' => 'footer_before',
     ];
     public const MAX_PIXELS = 9999;
@@ -26,6 +26,7 @@ final class DesignSpacing
     private const SELECTORS = [
         'header' => '.site-header, .site-header[data-design-width]',
         'body' => '.site-main, .site-main.nx-section-page',
+        'article' => 'article.post-detail:not(.nx-editor-preview-extra), article.nx-page-article',
         'footer' => '.site-footer, .site-footer[data-design-width]',
         'header_after' => '.nx-design-region[data-design-area="header_after"]',
         'footer_before' => '.nx-design-region[data-design-area="footer_before"]',

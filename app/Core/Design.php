@@ -171,7 +171,7 @@ final class Design
         return "body { background-image: url(\"$url\"); background-position: center top; background-repeat: no-repeat; background-size: cover; }\n";
     }
 
-    public static function pageLayout(int $id, string $kind = 'page'): array
+    public static function pageLayout(int $id, string $kind = 'page', array $editorChanges = []): array
     {
         if (self::$preview['reset'] ?? false) {
             return PageLayout::resolve([]);
@@ -184,7 +184,7 @@ final class Design
                 break;
             }
         }
-        return PageLayout::resolve([$common['all'], $common[$kind], $individual]);
+        return PageLayout::resolve([$common['all'], $common[$kind], PageLayout::withEditorChanges($individual, $editorChanges)]);
     }
 
     public static function menuLinks(string $menu, bool $includeHomeFallback = true): array

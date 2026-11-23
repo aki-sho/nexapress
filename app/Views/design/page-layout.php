@@ -7,19 +7,30 @@ use app\Models\Navigation;
 $title = $layoutDocument['title'];
 $body = null;
 $images = [];
-$hasArticlePadding = !empty($pageDesign['articlePadding']);
+$addTitle = ($pageDesign['showTitle'] ?? null) === true;
+foreach ($pageDesign['sections'] as $section) {
+    if (in_array('page_title', array_column(array_merge(...$section['groups']), 'type'), true)) {
+        $addTitle = false;
+        break;
+    }
+}
 ?>
-<?php if ($hasArticlePadding): ?><article class="nx-page-article"><?php endif; ?>
+<article class="nx-page-article">
 <?php if (!empty($isPreview)): ?><p class="preview-notice">未公開の内容を表示しています。</p><?php endif; ?>
 <?php foreach ($pageDesign['sections'] as $index => $section): ?>
     <?php
     $groups = $section['columns'] === 2 ? $section['groups'] : [array_merge(...$section['groups'])];
+    if ($index === 0 && $addTitle) {
+        array_unshift($groups[0], ['type' => 'page_title']);
+    }
     $placement = ['align' => $section['align']];
     if ($section['columnsWidth'] !== 100) {
         $placement['width'] = $section['columnsWidth'];
     }
     ?>
-    <section class="nx-page-section" data-layout-section="<?= $index ?>" data-background="<?= e($section['background']) ?>"
+    <?php $fullSection = $section['columns'] === 1 && $section['columnsWidth'] === 100 &&
+        ($section['widthMode'] === 'theme' || $section['percent'] === 100) && $section['background'] !== 'content'; ?>
+    <section class="nx-page-section" data-layout-section="<?= $index ?>" data-background="<?= e($section['background']) ?>"<?= $fullSection ? ' data-full-width-section' : '' ?>
         data-columns="<?= $section['columns'] ?>"<?= \app\Core\LayoutPlacement::attributes($placement) ?>>
         <div class="nx-page-section-inner">
             <?php foreach ($groups as $elements): ?>
@@ -27,7 +38,9 @@ $hasArticlePadding = !empty($pageDesign['articlePadding']);
                     <?php foreach ($elements as $element): ?>
                         <?php switch ($element['type']):
                             case 'page_title': ?>
-                                <h1<?php \app\Core\EditorPreview::attribute('title'); ?>><?= e($title) ?></h1>
+                                <?php if ($pageDesign['showTitle'] ?? true): ?>
+                                    <h1<?php \app\Core\EditorPreview::attribute('title'); ?>><?= e($title) ?></h1>
+                                <?php endif; ?>
                                 <?php break;
                             case 'page_content': ?>
                                 <div class="post-content"<?php \app\Core\EditorPreview::attribute('body'); ?>><?= $body ??= nx_post_content($layoutDocument) ?></div>
@@ -68,4 +81,4 @@ $hasArticlePadding = !empty($pageDesign['articlePadding']);
         </div>
     </section>
 <?php endforeach; ?>
-<?php if ($hasArticlePadding): ?></article><?php endif; ?>
+</article>

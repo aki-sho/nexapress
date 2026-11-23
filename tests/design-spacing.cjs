@@ -57,8 +57,7 @@ module.exports = async function checkSpacingValues(page, base, output) {
             return parseFloat(getComputedStyle(element).marginLeft);
         });
         assert.equal(Number.isInteger(fractionalMargin), false);
-        await open('header');
-        await open('columns');
+        await page.evaluate(() => window.dispatchEvent(new Event('resize')));
         assert.equal(await input('marginLeft').inputValue(), String(fractionalMargin));
         assert(await input('marginLeft').evaluate(element => element.validity.valid), 'fractional computed values remain valid');
 

@@ -35,6 +35,7 @@ final class EditorPreview
         $document['title'] = $title;
         try {
             $document['content'] = ArticleContent::sanitize($content);
+            $editorDisplay = isset($input['page_display']) ? PageLayout::editorChanges($input['page_display']) : null;
         } catch (\InvalidArgumentException $exception) {
             http_response_code(422);
             echo e($exception->getMessage());
@@ -64,15 +65,17 @@ final class EditorPreview
 
         self::$active = true;
         try {
-            View::render($kind . '-detail', [$kind => $document, 'isHomepage' => $homepage ?? false]);
+            View::render($kind . '-detail', [
+                $kind => $document, 'isHomepage' => $homepage ?? false, 'editorDisplay' => $editorDisplay,
+            ]);
         } finally {
             self::$active = false;
         }
     }
 
-    public static function addMissingFields(string $content, array $document): string
+    public static function addMissingFields(string $content, array $document, bool $showTitle): string
     {
-        $title = str_contains($content, 'data-nx-editor-field="title"');
+        $title = !$showTitle || str_contains($content, 'data-nx-editor-field="title"');
         $body = str_contains($content, 'data-nx-editor-field="body"');
         if ($title && $body) {
             return $content;
