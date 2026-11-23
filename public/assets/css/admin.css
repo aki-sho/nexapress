@@ -525,6 +525,8 @@
     }
 }
 
+.admin-table .admin-public-link { overflow-wrap: anywhere; }
+
 .content-bulk-actions {
     display: flex;
     flex-wrap: wrap;

@@ -44,20 +44,23 @@ $action = !empty($category['id'])
                 <th>ID</th>
                 <th>カテゴリ名</th>
                 <th>スラッグ</th>
+                <th scope="col">公開ページ</th>
                 <th>操作</th>
             </tr>
         </thead>
         <tbody>
             <?php if (empty($categories)): ?>
                 <tr>
-                    <td colspan="4">カテゴリはまだありません。</td>
+                    <td colspan="5">カテゴリはまだありません。</td>
                 </tr>
             <?php else: ?>
                 <?php foreach ($categories as $item): ?>
+                    <?php $publicUrl = category_url($item); ?>
                     <tr>
                         <td><?= e($item['id']) ?></td>
                         <td><?= e($item['name']) ?></td>
                         <td><?= e($item['slug']) ?></td>
+                        <td><a class="admin-public-link" href="<?= e($publicUrl) ?>" target="_blank" rel="noopener"><?= e($publicUrl) ?></a></td>
                         <td>
                             <a class="button secondary" href="<?= url('admin/categories/edit/' . $item['id']) ?>">編集</a>
 

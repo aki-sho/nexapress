@@ -41,6 +41,35 @@ module.exports = async function checkContentBulk(page, base) {
         }
     };
     try {
+        await page.goto(base + '/admin/categories');
+        await page.getByRole('columnheader', {name: '公開ページ', exact: true}).waitFor();
+        const category = row(page, 'ニュース').locator('a.admin-public-link');
+        assert.equal(await category.textContent(), '/category/news');
+        const [archive] = await Promise.all([page.waitForEvent('popup'), category.click()]);
+        try {
+            await archive.waitForURL(base + '/category/news');
+            await archive.getByRole('heading', {name: 'ニュース', exact: true}).waitFor();
+        } finally {
+            await archive.close();
+        }
+        await page.goto(base + '/admin/pages');
+        const token = await csrf(page);
+        const usePageUrl = async pageUrlType => {
+            const response = await page.request.post(base + '/admin/settings/url/update', {
+                form: {_csrf_token: token, site_url_mode: 'root', post_url_type: 'slug', page_url_type: pageUrlType},
+                maxRedirects: 0,
+            });
+            assert.equal(response.status(), 302);
+        };
+        await usePageUrl('slug');
+        try {
+            await page.reload();
+            assert.equal(await row(page, '既存ページ').locator('a.admin-public-link').getAttribute('href'), '/legacy');
+            await checkPublic(['/legacy'], [200]);
+        } finally {
+            await usePageUrl('page_slug');
+        }
+
         for (const target of ['pages', 'posts']) {
             const isPage = target === 'pages';
             const title = letter => '一括検証 ' + target + ' ' + letter;
@@ -77,6 +106,20 @@ module.exports = async function checkContentBulk(page, base) {
 
             await apply(page, 'published', '2件を公開しました。');
             await checkPublic(urls, [200, 200, 404]);
+            if (isPage) {
+                await page.getByRole('columnheader', {name: '公開ページ', exact: true}).waitFor();
+                await row(page, title('C')).getByText('公開後に表示', {exact: true}).waitFor();
+                assert.equal(await row(page, title('C')).locator('a.admin-public-link').count(), 0);
+                const publicPage = row(page, title('A')).locator('a.admin-public-link');
+                assert.equal(await publicPage.textContent(), urls[0]);
+                const [published] = await Promise.all([page.waitForEvent('popup'), publicPage.click()]);
+                try {
+                    await published.waitForURL(base + urls[0]);
+                    await published.getByRole('heading', {name: title('A'), exact: true}).waitFor();
+                } finally {
+                    await published.close();
+                }
+            }
             for (const letter of ['A', 'B']) {
                 await row(page, title(letter)).getByRole('cell', {name: '公開', exact: true}).waitFor();
             }
@@ -144,7 +187,7 @@ module.exports = async function checkContentBulk(page, base) {
         } finally {
             await author.close();
         }
-        console.log('PASS bulk publish and draft, trash and restore, authorization, page revisions and existing single actions');
+        console.log('PASS public page links from both lists, draft visibility, bulk changes, permissions and page revisions');
     } finally {
         await visitor.close();
     }

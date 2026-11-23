@@ -17,7 +17,9 @@
         <th scope="col" class="content-bulk-selection">
             <input type="checkbox" form="content-bulk" data-content-bulk-all aria-label="この一覧をすべて選択" hidden>
         </th>
-        <th>タイトル</th><th>スラッグ</th><th>状態</th><th>投稿者</th><th>操作</th>
+        <th>タイトル</th><th>スラッグ</th><th>状態</th><th>投稿者</th>
+        <?php if (!$trash): ?><th scope="col">公開ページ</th><?php endif; ?>
+        <th>操作</th>
     </tr></thead><tbody>
     <?php foreach ($pages as $page): ?><tr>
         <td class="content-bulk-selection">
@@ -26,6 +28,16 @@
         </td>
         <td><?= e($page['title']) ?></td><td><?= e($page['slug']) ?></td>
         <td><?= $page['status'] === 'published' ? '公開' : '下書き' ?></td><td><?= e($page['author_name'] ?? '') ?></td>
+        <?php if (!$trash): ?>
+            <td>
+                <?php if ($page['status'] === 'published'): ?>
+                    <?php $publicUrl = page_url($page); ?>
+                    <a class="admin-public-link" href="<?= e($publicUrl) ?>" target="_blank" rel="noopener"><?= e($publicUrl) ?></a>
+                <?php else: ?>
+                    公開後に表示
+                <?php endif; ?>
+            </td>
+        <?php endif; ?>
         <td><div class="core-actions">
         <?php if (!$trash): ?>
             <a href="<?= e(url('admin/pages/edit/' . $page['id'])) ?>">編集</a>
