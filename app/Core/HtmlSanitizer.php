@@ -14,7 +14,7 @@ class HtmlSanitizer
      */
     private const ALLOWED_ATTRIBUTES = [
         'p' => [
-            'align',
+            'align', 'data-nx-placement', 'data-nx-layout-width', 'data-nx-layout-gap', 'data-nx-buttons-edge',
         ],
         'br' => [],
         'hr' => [],
@@ -70,6 +70,8 @@ class HtmlSanitizer
             'href',
             'target',
             'rel',
+            'data-nx-button-kind', 'data-nx-button-size', 'data-nx-button-icon', 'data-nx-button-radius',
+            'data-nx-button-background', 'data-nx-button-color', 'data-nx-button-border',
         ],
 
         'img' => [
@@ -105,6 +107,8 @@ class HtmlSanitizer
             'data-nx-cover-height',
             'data-nx-cover-margin-top',
             'data-nx-cover-margin-bottom',
+            'data-nx-placement', 'data-nx-layout-width', 'data-nx-layout-gap', 'data-nx-columns-align',
+            'data-nx-column-width', 'data-nx-buttons-edge',
         ],
         'span' => [],
 
@@ -456,7 +460,8 @@ class HtmlSanitizer
                     $tagName
                 );
 
-            if ($sanitizedValue === null) {
+            if ($sanitizedValue === null ||
+                (str_starts_with($name, 'data-nx-') && !LayoutPlacement::articleAttribute($element, $name, $sanitizedValue))) {
                 $element->removeAttribute($name);
 
                 continue;
@@ -556,6 +561,12 @@ class HtmlSanitizer
             'data-nx-cover-margin-top', 'data-nx-cover-margin-bottom' =>
                 self::sanitizeInteger($value, 0, self::COVER_MARGIN_MAX_PIXELS),
             'data-nx-cover-pop' => self::sanitizeInteger($value, -300, 300),
+            'data-nx-placement', 'data-nx-columns-align', 'data-nx-buttons-edge',
+            'data-nx-button-kind', 'data-nx-button-size', 'data-nx-button-icon' => $value,
+            'data-nx-layout-width', 'data-nx-column-width' => self::sanitizeInteger($value, 1, 100),
+            'data-nx-layout-gap', 'data-nx-button-radius' => self::sanitizeInteger($value, 0, 64),
+            'data-nx-button-background', 'data-nx-button-color', 'data-nx-button-border' =>
+                preg_match('/\A#[0-9a-f]{6}\z/i', $value) === 1 ? strtolower($value) : null,
             'class' =>
                 self::sanitizeClass($value),
 

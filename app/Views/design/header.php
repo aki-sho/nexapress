@@ -1,6 +1,6 @@
 <header class="site-header"<?= $design['headerWidth'] === 'theme' ? '' : ' data-design-width="' . e($design['headerWidth']) . '"' ?>>
     <?php if ($hasAbove): ?>
-        <div class="site-header-inner nx-design-header-band" data-widget-area="header_above">
+        <div class="site-header-inner nx-design-header-band" data-widget-area="header_above"<?= $design['headerAboveLayout'] ? \app\Core\LayoutPlacement::attributes($design['headerAboveLayout']) : '' ?>>
             <?php nx_design_widgets('header_above', $searchQuery, $includeHomeFallback); ?>
         </div>
     <?php endif; ?>

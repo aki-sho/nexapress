@@ -40,6 +40,7 @@ final class PageLayout
             'percent' => $section['widthMode'] === 'percent' ? $section['percent'] : null,
             'share' => $section['share'],
             'gap' => $section['gap'],
+            'columnsWidth' => $section['columnsWidth'] === 100 ? null : $section['columnsWidth'],
         ], $sections);
 
         $query = ['width' => $width, 'sections' => $sections, 'articlePadding' => $padding];
@@ -88,9 +89,16 @@ final class PageLayout
             $gap = self::range(filter_var($section['gap'] ?? null, FILTER_VALIDATE_INT), 0, 30);
             $foreground = DesignColor::foreground($color, $background);
             $right = 100 - $share;
+            $leftRatio = $share / 100;
+            $rightRatio = $right / 100;
+            $columnsWidth = isset($section['columnsWidth'])
+                ? self::range(filter_var($section['columnsWidth'], FILTER_VALIDATE_INT), 1, 100)
+                : 100;
+            $columnsWidthCss = $columnsWidth === 100 ? '' : "--nx-layout-width:$columnsWidth%;";
             $rules[] = ".nx-page-section[data-layout-section=\"$index\"] {" .
                 "--nx-section-width:$sectionWidth;--nx-section-background:$color;--nx-section-foreground:$foreground;" .
-                "--nx-section-left:{$share}fr;--nx-section-right:{$right}fr;--nx-section-gap:$gap%;}";
+                "--nx-section-left:{$share}fr;--nx-section-right:{$right}fr;--nx-section-gap:$gap%;" .
+                "--nx-section-left-ratio:$leftRatio;--nx-section-right-ratio:$rightRatio;$columnsWidthCss}";
         }
 
         return implode("\n", $rules);
@@ -156,7 +164,8 @@ final class PageLayout
     {
         return [
             'background' => 'full', 'color' => '#F4F5F7', 'widthMode' => 'theme',
-            'percent' => 80, 'columns' => 1, 'share' => 50, 'gap' => 10, 'groups' => [[], []],
+            'percent' => 80, 'columns' => 1, 'share' => 50, 'gap' => 10,
+            'columnsWidth' => 100, 'align' => 'flex-start', 'groups' => [[], []],
         ];
     }
 
@@ -311,7 +320,9 @@ final class PageLayout
         $widthMode = $input['widthMode'] ?? null;
         $columns = $input['columns'] ?? null;
         $groups = $input['groups'] ?? null;
-        if (!in_array($background, ['full', 'content', 'none'], true) ||
+        $align = $input['align'] ?? 'flex-start';
+        $columnsWidth = LayoutPlacement::width($input['columnsWidth'] ?? 100);
+        if (!LayoutPlacement::valid($align) || !in_array($background, ['full', 'content', 'none'], true) ||
             $color === null ||
             !in_array($widthMode, ['theme', 'percent'], true) || !in_array($columns, [1, 2], true) ||
             !is_array($groups) || array_keys($groups) !== [0, 1] || !is_array($groups[0]) || !is_array($groups[1])) {
@@ -326,6 +337,7 @@ final class PageLayout
             'percent' => self::range($input['percent'] ?? null, 40, 100),
             'columns' => $columns, 'share' => self::range($input['share'] ?? null, 20, 80),
             'gap' => self::range($input['gap'] ?? null, 0, 30),
+            'align' => $align, 'columnsWidth' => $columnsWidth,
             'groups' => [array_values(array_map([self::class, 'element'], $groups[0])),
                 array_values(array_map([self::class, 'element'], $groups[1]))],
         ];

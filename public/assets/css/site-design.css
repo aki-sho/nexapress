@@ -108,7 +108,7 @@
 .nx-page-section-column > :is(h1, h2, p) { margin: 0; }
 .nx-page-text { white-space: pre-wrap; }
 .nx-page-section .post-content { color: inherit; }
-.nx-page-section:not([data-background="none"]) .post-content a { color: inherit; text-decoration: underline; }
+.nx-page-section:not([data-background="none"]) .post-content a:not(.nx-article-button) { color: inherit; text-decoration: underline; }
 .nx-page-image { display: block; max-width: 100%; height: auto; border-radius: 10px; }
 .nx-page-button {
     justify-self: start;

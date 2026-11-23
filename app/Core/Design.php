@@ -16,12 +16,7 @@ final class Design
     public const CHROME_WIDTHS = ['theme' => 'テーマの既定幅（現在の表示）'] + PageLayout::WIDTHS;
     public const DEFAULT_BACKGROUND = ['mode' => 'theme', 'color' => '#F5F6F8', 'media_id' => null];
 
-    public const ALIGNMENTS = [
-        'flex-start' => '左寄せ',
-        'center' => '中央寄せ',
-        'flex-end' => '右寄せ',
-        'space-between' => '両端揃え',
-    ];
+    public const ALIGNMENTS = LayoutPlacement::OPTIONS;
 
     public static function widgetAreas(): array
     {
@@ -89,21 +84,13 @@ final class Design
     ];
     public const REGION_ROWS = ['above' => '上段', 'top' => '本体', 'bottom' => '下段'];
     public const REGION_DIRECTIONS = ['column' => '縦並び', 'row' => '横並び'];
-    public const REGION_ALIGNMENTS = [
-        'column' => [
-            'auto' => '幅いっぱい',
-            'flex-start' => self::ALIGNMENTS['flex-start'],
-            'center' => self::ALIGNMENTS['center'],
-            'flex-end' => self::ALIGNMENTS['flex-end'],
-        ],
-        'row' => [
-            'auto' => self::ALIGNMENTS['flex-start'],
-            'center' => self::ALIGNMENTS['center'],
-            'flex-end' => self::ALIGNMENTS['flex-end'],
-            'space-between' => self::ALIGNMENTS['space-between'],
-        ],
+    public const REGION_WIDTHS = ['auto' => '自動', 'full' => '幅いっぱい', 'fit' => '中身に合わせる'];
+    public const REGION_CROSS_ALIGNMENTS = [
+        'flex-start' => '先頭揃え', 'center' => '中央揃え', 'flex-end' => '末尾揃え',
     ];
-    private const REGION_ROW_DEFAULT = ['direction' => 'column', 'align' => 'auto', 'columns' => 1];
+    private const REGION_ROW_DEFAULT = [
+        'direction' => 'column', 'align' => 'flex-start', 'columns' => 1, 'width' => 'auto', 'cross' => 'flex-start',
+    ];
     private const REGION_EXTRA_ROW_DEFAULT = ['enabled' => false] + self::REGION_ROW_DEFAULT;
     private const REGION_DEFAULT = self::REGION_ROW_DEFAULT + [
         'above' => self::REGION_EXTRA_ROW_DEFAULT,
@@ -281,6 +268,8 @@ final class Design
                     throw new InvalidArgumentException('本文のカラム構成が正しくありません。');
                 }
                 $defaults['columns'] = $columns;
+                $defaults['bodyColumnsLayout'] = isset($layout['bodyColumnsLayout'])
+                    ? self::rowSettings($layout['bodyColumnsLayout'], false) : null;
                 $defaults['widgets']['sidebar'] = self::widgets($layout['widgets']['sidebar'] ?? [], 'sidebar');
             } elseif ($area === 'footer') {
                 $footer = $layout['footer'] ?? null;
@@ -302,6 +291,8 @@ final class Design
                         }
                         $defaults[$key] = $enabled;
                     }
+                    $defaults['headerAboveLayout'] = isset($layout['headerAboveLayout'])
+                        ? self::rowSettings($layout['headerAboveLayout'], false) : null;
                     $defaults['widgets']['header_above'] = self::widgets($layout['widgets']['header_above'] ?? [], 'header_above');
                     if ($defaults['headerRows'] !== null) {
                         $defaults['headerBelow'] = false;
@@ -585,7 +576,11 @@ final class Design
         $saved = $stored['themes'][$theme] ?? [];
         $layout = array_replace($defaults, $saved);
         $layout['widgets'] = array_replace($defaults['widgets'], $saved['widgets'] ?? []);
-        $layout['regions'] = array_replace_recursive($defaults['regions'], $saved['regions'] ?? []);
+        foreach (array_keys(self::REGIONS) as $region) {
+            if (isset($saved['regions'][$region])) {
+                $layout['regions'][$region] = self::regionLayout($saved['regions'][$region]);
+            }
+        }
         $layout['spacing'] = DesignSpacing::validate($saved['spacing'] ?? []);
         $layout['frames'] = DesignFrame::validate($saved['frames'] ?? []);
         return self::headerWidgetLayout($layout);
@@ -635,9 +630,11 @@ final class Design
             'header' => ['placement' => 'row', 'logo' => true, 'name' => true, 'menu' => true, 'search' => true],
             'headerRows' => null,
             'headerAbove' => false,
+            'headerAboveLayout' => null,
             'headerBelow' => false,
             'headerWidth' => 'theme',
             'columns' => 'none',
+            'bodyColumnsLayout' => null,
             'width' => 'standard',
             'footer' => 1,
             'footerRows' => null,
@@ -723,21 +720,38 @@ final class Design
         $direction = $value['direction'] ?? null;
         $align = $value['align'] ?? null;
         $columns = $value['columns'] ?? 1;
-        if (!is_string($direction) || !is_string($align) || !isset(self::REGION_ALIGNMENTS[$direction][$align]) ||
-            !in_array($columns, [1, 2, 3, 4, 5], true)) {
-            throw new InvalidArgumentException('ウィジェットのカラム数・並び方・配置を確認してください。');
+        $width = $value['width'] ?? 'auto';
+        $cross = $value['cross'] ?? 'flex-start';
+        if (!array_key_exists('width', $value)) {
+            if ($direction === 'column' && is_string($align) && isset(self::REGION_CROSS_ALIGNMENTS[$align])) {
+                $cross = $align;
+                $width = 'fit';
+                $align = 'flex-start';
+            } elseif ($align === 'auto') {
+                $align = 'flex-start';
+            }
         }
-        return ['direction' => $direction, 'align' => $align, 'columns' => $columns];
+        if (!is_string($direction) || !isset(self::REGION_DIRECTIONS[$direction]) || !LayoutPlacement::valid($align) ||
+            !is_string($width) || !isset(self::REGION_WIDTHS[$width]) ||
+            !is_string($cross) || !isset(self::REGION_CROSS_ALIGNMENTS[$cross]) ||
+            !in_array($columns, [1, 2, 3, 4, 5], true)) {
+            throw new InvalidArgumentException('ウィジェットのカラム数・並び方・幅・配置を確認してください。');
+        }
+        return ['direction' => $direction, 'align' => $align, 'columns' => $columns, 'width' => $width, 'cross' => $cross];
     }
 
     private static function rowSettings(mixed $value, bool $hasColumns): array
     {
-        if (!is_array($value) || array_diff(array_keys($value), $hasColumns ? ['columns', 'align'] : ['align']) ||
-            !in_array($value['align'] ?? null, array_keys(self::ALIGNMENTS), true) ||
+        if (!is_array($value) || array_diff(array_keys($value), $hasColumns ? ['columns', 'align', 'width'] : ['align', 'width']) ||
+            !LayoutPlacement::valid($value['align'] ?? null) ||
             ($hasColumns && !in_array($value['columns'] ?? null, [1, 2, 3, 4, 5], true))) {
             throw new InvalidArgumentException('各段のカラム数・配置を確認してください。');
         }
-        return $hasColumns ? ['columns' => $value['columns'], 'align' => $value['align']] : ['align' => $value['align']];
+        $result = $hasColumns ? ['columns' => $value['columns'], 'align' => $value['align']] : ['align' => $value['align']];
+        if (array_key_exists('width', $value)) {
+            $result['width'] = LayoutPlacement::width($value['width']);
+        }
+        return $result;
     }
 
     private static function menu(mixed $items, int $limit): array

@@ -1,0 +1,195 @@
+.nx-article-columns, .nx-article-buttons, .nx-article-cover,
+.nx-chrome-row, .nx-design-header-band, .nx-design-region, .nx-design-region-column,
+.nx-design-main, .nx-page-section { --nx-placement: flex-start; --nx-layout-width: 100%; }
+.nx-article-columns { --nx-columns-count: 2; --nx-columns-align: stretch; --nx-layout-gap: 16px; }
+.nx-article-columns.nx-article-columns--3 { --nx-columns-count: 3; }
+.nx-article-columns.nx-article-columns--4 { --nx-columns-count: 4; }
+.nx-article-buttons { --nx-layout-gap: 12px; }
+.nx-article-column { --nx-column-share: initial; }
+
+[data-nx-placement="flex-start"] { --nx-placement: flex-start; }
+[data-nx-placement="center"] { --nx-placement: center; }
+[data-nx-placement="flex-end"] { --nx-placement: flex-end; }
+[data-nx-placement="space-between"] { --nx-placement: space-between; }
+[data-nx-placement="space-around"] { --nx-placement: space-around; }
+[data-nx-placement="space-evenly"] { --nx-placement: space-evenly; }
+
+:is(.post-content, .classic-editor-content) .nx-article-columns:is(
+    [data-nx-placement], [data-nx-layout-width], [data-nx-layout-gap], [data-nx-columns-align],
+    :has(> .nx-article-column[data-nx-column-width])
+) {
+    --nx-article-available: calc(var(--nx-layout-width) - (var(--nx-columns-count) - 1) * var(--nx-layout-gap));
+    display: flex;
+    justify-content: var(--nx-placement);
+    align-items: var(--nx-columns-align);
+    gap: var(--nx-layout-gap);
+}
+.nx-article-columns[data-nx-columns-align="start"] { --nx-columns-align: flex-start; }
+.nx-article-columns[data-nx-columns-align="center"] { --nx-columns-align: center; }
+.nx-article-columns[data-nx-columns-align="end"] { --nx-columns-align: flex-end; }
+.nx-article-columns > .nx-article-column {
+    flex: 0 1 max(0px, calc(var(--nx-article-available, 100%) * var(--nx-column-share, 1 / var(--nx-columns-count))));
+    box-sizing: border-box;
+}
+:is(.post-content, .classic-editor-content) .nx-article-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: var(--nx-placement);
+    align-items: center;
+    gap: var(--nx-layout-gap);
+    inline-size: var(--nx-layout-width);
+    min-inline-size: 0;
+}
+.nx-article-column:has(> .nx-article-buttons[data-nx-buttons-edge]) {
+    display: flex;
+    flex-direction: column;
+}
+.nx-article-column > .nx-article-buttons[data-nx-buttons-edge] { margin-block-start: auto; }
+
+:is(.post-content, .classic-editor-content) .nx-article-button:is(
+    [data-nx-button-kind], [data-nx-button-size], [data-nx-button-radius],
+    [data-nx-button-background], [data-nx-button-border], [data-nx-button-color], [data-nx-button-icon]
+) {
+    display: inline-flex;
+    align-items: baseline;
+    gap: .45em;
+    max-inline-size: 100%;
+    box-sizing: border-box;
+    padding: var(--nx-button-padding, .5em .85em);
+    border-radius: var(--nx-button-radius, .3em);
+    background: var(--nx-button-background, var(--nx-button-fill, #2357c5));
+    color: var(--nx-button-color, var(--nx-button-ink, #fff));
+    border: var(--nx-button-border-width, 0px) solid var(--nx-button-border, currentColor);
+    font-size: var(--nx-button-font-size, 1em);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+.nx-article-button[data-nx-button-kind="outline"] {
+    --nx-button-fill: transparent;
+    --nx-button-ink: #2357c5;
+    --nx-button-border-width: 1px;
+}
+.nx-article-button[data-nx-button-kind="text"] {
+    --nx-button-fill: transparent;
+    --nx-button-ink: #2357c5;
+    --nx-button-padding: 0;
+}
+.nx-article-button[data-nx-button-size="small"] { --nx-button-font-size: .875em; }
+.nx-article-button[data-nx-button-size="large"] { --nx-button-font-size: 1.2em; }
+.nx-article-button[data-nx-button-icon="arrow"]::after { content: "→"; }
+.nx-article-button[data-nx-button-icon="external"]::after { content: "↗"; }
+.nx-article-button[data-nx-button-icon="download"]::after { content: "↓"; }
+.nx-article-button-label { min-inline-size: 0; }
+.nx-article-button-label[data-nx-button-label]:empty::before { content: "表示文字"; opacity: .65; }
+
+.nx-article-cover[data-nx-placement] { align-items: stretch; }
+.nx-article-cover[data-nx-placement] > .nx-article-cover-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: var(--nx-placement);
+    min-block-size: 0;
+}
+.nx-article-cover[data-nx-placement="center"] > .nx-article-cover-content { justify-content: safe center; }
+.nx-article-cover[data-nx-placement="flex-end"] > .nx-article-cover-content { justify-content: safe flex-end; }
+.nx-article-cover[data-nx-placement] > .nx-article-cover-content > * { flex-shrink: 0; }
+
+[data-nx-editor-gap] { display: block; block-size: 10px; flex: 0 0 10px; cursor: text; }
+[data-nx-editor-gap]:hover, [data-nx-editor-gap]:focus-visible { outline: 1px dashed #6689c7; }
+
+@media (max-width: 720px) {
+    :is(.post-content, .classic-editor-content) .nx-article-columns:is(
+        [data-nx-placement], [data-nx-layout-width], [data-nx-layout-gap], [data-nx-columns-align],
+        :has(> .nx-article-column[data-nx-column-width])
+    ) {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .nx-article-columns > .nx-article-column { flex: 0 0 auto; }
+}
+
+@supports (width: attr(data-nx-layout-width %)) {
+    [data-nx-layout-width] { --nx-layout-width: attr(data-nx-layout-width %, 100%); }
+    [data-nx-layout-gap] { --nx-layout-gap: attr(data-nx-layout-gap px, 16px); }
+    .nx-article-column[data-nx-column-width] { --nx-column-share: calc(attr(data-nx-column-width type(<number>), 50) / 100); }
+    .nx-article-button[data-nx-button-radius] { --nx-button-radius: attr(data-nx-button-radius px, 5px); }
+    .nx-article-button[data-nx-button-background] { --nx-button-background: attr(data-nx-button-background type(<color>)); }
+    .nx-article-button[data-nx-button-color] { --nx-button-color: attr(data-nx-button-color type(<color>)); }
+    .nx-article-button[data-nx-button-border] { --nx-button-border: attr(data-nx-button-border type(<color>)); }
+}
+
+.nx-chrome-row[data-nx-placement] { --nx-chrome-justify: var(--nx-placement); }
+.nx-chrome-row[data-columns="1"] { --nx-chrome-count: 1; }
+.nx-chrome-row[data-columns="2"] { --nx-chrome-count: 2; }
+.nx-chrome-row[data-columns="3"] { --nx-chrome-count: 3; }
+.nx-chrome-row[data-columns="4"] { --nx-chrome-count: 4; }
+.nx-chrome-row[data-columns="5"] { --nx-chrome-count: 5; }
+.nx-chrome-row[data-nx-layout-width] > .nx-chrome-column {
+    flex-basis: max(0px, calc((var(--nx-layout-width) - 16px * (var(--nx-chrome-count) - 1)) / var(--nx-chrome-count)));
+}
+.site-header-inner.nx-design-header-band[data-nx-placement] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: var(--nx-placement);
+}
+.site-header-inner.nx-design-header-band[data-nx-layout-width] > * { max-inline-size: var(--nx-layout-width); }
+
+:is(.nx-design-region, .nx-design-region-column)[data-nx-placement][data-region-direction] {
+    display: flex;
+    justify-content: var(--nx-placement);
+    align-items: var(--nx-region-cross, flex-start);
+}
+:is(.nx-design-region, .nx-design-region-column)[data-region-direction="column"] {
+    flex-direction: column;
+    min-width: 0;
+}
+:is(.nx-design-region, .nx-design-region-column)[data-region-cross="center"] { --nx-region-cross: center; }
+:is(.nx-design-region, .nx-design-region-column)[data-region-cross="flex-end"] { --nx-region-cross: flex-end; }
+:is(.nx-design-region, .nx-design-region-column)[data-region-width="full"] > *,
+:is(.nx-design-region, .nx-design-region-column)[data-region-direction="column"][data-region-width="auto"] > * {
+    inline-size: 100%;
+}
+:is(.nx-design-region, .nx-design-region-column)[data-region-direction="column"] > * { max-inline-size: 100%; }
+:is(.nx-design-region, .nx-design-region-column)[data-region-direction="column"] > .nx-design-empty { flex: 0 0 auto; }
+
+.nx-design-main[data-nx-placement] { justify-content: var(--nx-placement); }
+.nx-design-main[data-nx-layout-width] {
+    --nx-body-column-gap: min(24px, calc(var(--nx-layout-width) / 2));
+    --nx-body-column-side: calc(var(--nx-layout-width) * .27);
+    --nx-body-column-main: calc(var(--nx-layout-width) - var(--nx-body-column-side) - var(--nx-body-column-gap));
+    column-gap: var(--nx-body-column-gap);
+    grid-template-columns: minmax(0, var(--nx-body-column-main)) minmax(0, var(--nx-body-column-side));
+}
+.nx-design-main.nx-design-main--left[data-nx-layout-width] {
+    grid-template-columns: minmax(0, var(--nx-body-column-side)) minmax(0, var(--nx-body-column-main));
+}
+main.site-main[data-nx-layout-width] { inline-size: var(--nx-layout-width); }
+main.site-main[data-nx-layout-width]:is([data-nx-placement="flex-start"], [data-nx-placement="space-between"]) {
+    margin-inline: 0 auto;
+}
+main.site-main[data-nx-layout-width][data-nx-placement="flex-end"] { margin-inline: auto 0; }
+main.site-main[data-nx-layout-width]:is([data-nx-placement="center"], [data-nx-placement="space-around"], [data-nx-placement="space-evenly"]) {
+    margin-inline: auto;
+}
+
+.nx-page-section[data-nx-placement] > .nx-page-section-inner { justify-content: var(--nx-placement); }
+.nx-page-section[data-nx-layout-width] > .nx-page-section-inner {
+    grid-template-columns: minmax(0, var(--nx-layout-width));
+}
+.nx-page-section[data-columns="2"][data-nx-layout-width] > .nx-page-section-inner {
+    --nx-section-column-gap: min(var(--nx-section-gap), calc(var(--nx-layout-width) / 2));
+    --nx-section-available: calc(var(--nx-layout-width) - var(--nx-section-column-gap));
+    column-gap: var(--nx-section-column-gap);
+    grid-template-columns:
+        minmax(0, calc(var(--nx-section-available) * var(--nx-section-left-ratio, .5)))
+        minmax(0, calc(var(--nx-section-available) * var(--nx-section-right-ratio, .5)));
+}
+.nx-article-column > .nx-article-buttons[data-nx-buttons-edge] ~ .nx-article-buttons[data-nx-buttons-edge] { margin-block-start: 0; }
+
+@media (max-width: 720px) {
+    .nx-chrome-row[data-nx-layout-width] > .nx-chrome-column { flex-basis: 100%; }
+    .nx-design-main[data-nx-layout-width], .nx-design-main.nx-design-main--left[data-nx-layout-width],
+    .nx-page-section[data-columns="2"][data-nx-layout-width] > .nx-page-section-inner {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

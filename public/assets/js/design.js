@@ -476,13 +476,15 @@
     const columnChoices = Array.from({length: 5}, (_, index) => [index + 1, (index + 1) + 'カラム']);
 
     function regionRowFields(scope, row) {
-        const {columns, direction, align} = regionRow(scope, row);
+        const {columns, direction, align, width, cross} = regionRow(scope, row);
         const control = (label, key, choices, value) => field(label, 'region-' + key, choices, value,
             `data-region-scope="${scope}" data-region-row="${row}" data-region-field="${key}"`);
         return '<div class="nx-chrome-form-row nx-region-row-controls">' +
             control('カラム数', 'columns', columnChoices, columns) +
             control('並び方', 'direction', Object.entries(data.regionDirections), direction) +
-            control('配置', 'align', Object.entries(data.regionAlignments[direction]), align) +
+            control('幅', 'width', Object.entries(data.regionWidths), width) +
+            control('配置', 'align', Object.entries(data.alignments), align) +
+            control(direction === 'row' ? '縦の揃え' : '横の揃え', 'cross', Object.entries(data.regionCrossAlignments), cross) +
             '</div>';
     }
 
@@ -537,9 +539,13 @@
         const rows = chromeRows(kind);
         const title = kind === 'header' ? 'ヘッダー' : 'フッター';
         const capable = supports(kind + '_rows');
-        const control = (label, row, name, choices, value) => field(label, kind + '-' + row + '-' + name, choices, value,
-            `data-chrome="${kind}" data-chrome-row="${row}" data-chrome-field="${name}"` +
-            (kind === 'footer' && row === 'top' && name === 'columns' ? ' data-setting="footer"' : ''));
+        const control = (label, row, name, choices, value) => {
+            const attributes = 'data-chrome="' + kind + '" data-chrome-row="' + row + '" data-chrome-field="' + name + '"';
+            return name === 'width'
+                ? '<label>' + label + '<input type="number" min="1" max="100" step="1" value="' + value + '" ' + attributes + '></label>'
+                : field(label, kind + '-' + row + '-' + name, choices, value, attributes +
+                    (kind === 'footer' && row === 'top' && name === 'columns' ? ' data-setting="footer"' : ''));
+        };
         let html = '<h2>' + title + '</h2>';
         if (supports(kind)) {
             const width = kind + 'Width';
@@ -555,14 +561,17 @@
             const structure = chromeStructure(kind, above, rows.split);
             html += chromeGroup(kind, 'structure', '段構成', structure, true);
             const shownRows = ['top'];
-            if (kind === 'footer' && above) shownRows.unshift('above');
+            if (above) shownRows.unshift('above');
             if (rows.split) shownRows.push('bottom');
             for (const row of shownRows) {
-                const settings = row === 'above' ? layout.footerAbove : rows[row] ?? {align: 'center'};
+                const upperHeader = kind === 'header' && row === 'above';
+                const settings = upperHeader ? layout.headerAboveLayout ?? {align: 'flex-start'}
+                    : row === 'above' ? layout.footerAbove : rows[row] ?? {align: 'center'};
                 const count = kind === 'footer' && row === 'top' ? layout.footer : settings.columns;
                 const label = {above: '上段', top: title + '本体', bottom: '下段'}[row];
                 html += chromeGroup(kind, row, label + 'のカラム・配置',
-                    '<div class="nx-chrome-form-row">' + control('カラム数', row, 'columns', columnChoices, count) +
+                    '<div class="nx-chrome-form-row">' + (upperHeader ? '' : control('カラム数', row, 'columns', columnChoices, count)) +
+                    control(upperHeader ? '幅（%）' : '列の合計幅（%）', row, 'width', [], settings.width ?? 100) +
                     control('配置', row, 'align', Object.entries(data.alignments), settings.align) + '</div>', kind === 'footer');
             }
         } else if (kind === 'footer') {
@@ -633,7 +642,11 @@
             panel.innerHTML = '<h2>本文カラム</h2>' + (supports('page_layout')
                 ? field('テーマの本文幅', 'width', pageEditor.widths, layout.width, 'data-setting="width"') : '') + field('レイアウト', 'columns',
                 [['none', '1カラム・本文のみ'], ['left', '2カラム・左サイドバー'], ['right', '2カラム・右サイドバー']],
-                layout.columns, 'data-setting="columns"') + spacingGroup('columns') + frameGroup('columns') + widgetGroup('columns');
+                layout.columns, 'data-setting="columns"') +
+                '<div class="nx-chrome-form-row"><label>列の合計幅（%）<input type="number" min="1" max="100" step="1" data-setting="body-width" value="' +
+                (layout.bodyColumnsLayout?.width ?? 100) + '"></label>' +
+                field('配置', 'body-align', Object.entries(data.alignments), layout.bodyColumnsLayout?.align ?? 'center',
+                    'data-setting="body-align"') + '</div>' + spacingGroup('columns') + frameGroup('columns') + widgetGroup('columns');
         } else if (pane === 'page_layout') {
             panel.innerHTML = pageEditor.render();
         } else if (pane === 'general') {
@@ -1054,15 +1067,24 @@
         const input = event.target;
         const {setting, formSetting, chrome, chromeRow, chromeField, widgetRow, regionScope, regionRow: row, regionField} = input.dataset;
         if (chrome) {
-            if (chrome === 'footer' && chromeRow === 'above') {
-                layouts[theme].footerAbove[chromeField] = chromeField === 'columns' ? Number(input.value) : input.value;
+            if (chromeField === 'width' && (!input.value || !input.validity.valid)) {
+                showError('幅は1〜100％で指定してください。');
+                return;
+            }
+            const value = ['columns', 'width'].includes(chromeField) ? Number(input.value) : input.value;
+            if (chrome === 'header' && chromeRow === 'above') {
+                const layout = layouts[theme].headerAboveLayout ??= {align: 'flex-start'};
+                layout[chromeField] = value;
+            } else if (chrome === 'footer' && chromeRow === 'above') {
+                layouts[theme].footerAbove[chromeField] = value;
             } else if (chrome === 'footer' && chromeRow === 'top' && chromeField === 'columns') {
                 layouts[theme].footer = Number(input.value);
             } else if (chrome === 'footer' && chromeRow === 'top') {
-                ensureChrome(chrome).top = {align: input.value};
+                const top = ensureChrome(chrome).top ??= {align: 'center'};
+                top[chromeField] = value;
             } else {
                 const rows = ensureChrome(chrome);
-                rows[chromeRow][chromeField] = chromeField === 'columns' ? Number(input.value) : input.value;
+                rows[chromeRow][chromeField] = value;
                 if (chrome === 'header') {
                     for (const position of Object.values(rows.positions)) {
                         if (!rows.split) position.row = 'top';
@@ -1090,9 +1112,6 @@
         } else if (regionField) {
             const settings = regionRow(regionScope, row);
             settings[regionField] = regionField === 'columns' ? Number(input.value) : input.value;
-            if (regionField === 'direction' && !Object.hasOwn(data.regionAlignments[settings.direction], settings.align)) {
-                settings.align = 'auto';
-            }
             previewScope = regionScope;
             changed(`[data-region-scope="${regionScope}"][data-region-row="${row}"][data-region-field="${regionField}"]`);
         } else if (setting === 'theme') {
@@ -1125,6 +1144,15 @@
         } else if (setting === 'background-mode' || setting === 'background-image') {
             if (setting === 'background-mode') background.mode = input.value;
             else background.media_id = input.value ? Number(input.value) : null;
+            changed('[data-setting="' + setting + '"]');
+        } else if (setting === 'body-width' || setting === 'body-align') {
+            if (setting === 'body-width' && (!input.value || !input.validity.valid)) {
+                showError('幅は1〜100％で指定してください。');
+                return;
+            }
+            const layout = layouts[theme].bodyColumnsLayout ??= {align: 'center'};
+            if (setting === 'body-width') layout.width = Number(input.value);
+            else layout.align = input.value;
             changed('[data-setting="' + setting + '"]');
         } else if (['columns', 'footer', 'width', 'headerWidth', 'footerWidth'].includes(setting)) {
             layouts[theme][setting] = setting === 'footer' ? Number(input.value) : input.value;
@@ -1214,6 +1242,7 @@
         // Keep the site controls read-only while allowing the iframe's native scrolling.
         const body = frame.contentDocument?.body;
         if (body) body.inert = true;
+        window.nxApplyLayoutPlacement?.(body);
         window.nxRefreshArticleCovers?.(body);
         previewOverlayObserver?.disconnect();
         previewOverlayObserver = new ResizeObserver(schedulePreviewOverlays);

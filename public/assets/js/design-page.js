@@ -125,8 +125,9 @@
         }
 
         const ratio = item => {
-            const space = 100 - item.gap;
-            return `左 ${Number((space * item.share / 100).toFixed(2))}% ・ 間隔 ${item.gap}% ・ 右 ${Number((space * (100 - item.share) / 100).toFixed(2))}%`;
+            const gap = Math.min(item.gap, item.columnsWidth / 2);
+            const space = item.columnsWidth - gap;
+            return `左 ${Number((space * item.share / 100).toFixed(2))}% ・ 間隔 ${gap}% ・ 右 ${Number((space * (100 - item.share) / 100).toFixed(2))}%`;
         };
         const elementLabel = element => {
             const detail = element.text || images.find(image => image.id === element.media_id)?.label;
@@ -259,6 +260,9 @@
                     ${inheritedSelect('中身の幅', 'widthMode', [['theme', 'ページの本文幅に合わせる'], ['percent', '割合を指定']])}
                     ${item.widthMode === 'percent' ? integer('画面幅に対する割合（%）', 'percent', 40, 100) : ''}
                     ${inheritedSelect('カラム数', 'columns', [[1, '1カラム'], [2, '2カラム']])}
+                    ${integer('列の合計幅（%）', 'columnsWidth', 1, 100)}
+                    ${select('配置', 'align', Object.entries(data.alignments), item.align)}
+                    ${owns(sectionOverrides(), 'align') ? reset('align', '配置を' + labelForInheritance() + 'に戻す') : ''}
                     ${item.columns === 2 ? `<div class="nx-page-color-fields">
                         ${integer('左への配分（%）', 'share', 20, 80)}${integer('列の間隔（%）', 'gap', 0, 30)}</div>
                         <p class="nx-design-note nx-page-ratio" data-page-ratio>${ratio(item)}</p>` : ''}
@@ -541,7 +545,7 @@
             } else {
                 const item = section();
                 if (!item) return;
-                if (['percent', 'share', 'gap'].includes(name)) {
+                if (['percent', 'share', 'gap', 'columnsWidth'].includes(name)) {
                     if (!input.validity.valid) {
                         input.value = sectionOverrides()[name] ?? '';
                         showError('幅・配分・間隔は指定範囲内の整数で入力してください。');
@@ -550,7 +554,7 @@
                     if (value === '') delete editSection()[name];
                     else editSection()[name] = Number(value);
                     prune();
-                } else if (['columns', 'background', 'widthMode'].includes(name)) {
+                } else if (['columns', 'background', 'widthMode', 'align'].includes(name)) {
                     if (value === 'inherit') delete editSection()[name];
                     else editSection()[name] = name === 'columns' ? Number(value) : value;
                     prune();
@@ -566,7 +570,7 @@
                     editElements()[elementIndex][name] = value.trim();
                 }
             }
-            if (['percent', 'share', 'gap', 'text', 'alt', 'url'].includes(name)) {
+            if (['percent', 'share', 'gap', 'columnsWidth', 'text', 'alt', 'url'].includes(name)) {
                 refreshValues();
                 return;
             }
@@ -589,7 +593,7 @@
             if (input.dataset.colorField) return;
             const name = input.dataset.pageField;
             if (!name || !section()) return;
-            if (['percent', 'share', 'gap'].includes(name) && input.validity.valid) {
+            if (['percent', 'share', 'gap', 'columnsWidth'].includes(name) && input.validity.valid) {
                 if (input.value === '') delete editSection()[name];
                 else editSection()[name] = Number(input.value);
                 prune();

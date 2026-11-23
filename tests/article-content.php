@@ -4,6 +4,7 @@ use app\Core\ArticleContent;
 
 require __DIR__ . '/../app/Core/ArticleContent.php';
 require __DIR__ . '/../app/Core/HtmlSanitizer.php';
+require __DIR__ . '/../app/Core/LayoutPlacement.php';
 
 $body = str_repeat('あ', intdiv(ArticleContent::MAX_BYTES, 3));
 $check = static function (bool $ok, string $message): void {

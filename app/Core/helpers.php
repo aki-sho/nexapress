@@ -155,10 +155,10 @@ function nx_design_footer(): void
             $visible = (bool)$design['widgets']['footer_above' . $column];
         }
         if ($visible) {
-            $sections['above'] = ['prefix' => 'footer_above', 'columns' => $above['columns'], 'align' => $above['align']];
+            $sections['above'] = ['prefix' => 'footer_above'] + $above;
         }
     }
-    $sections['top'] = ['prefix' => 'footer', 'columns' => $design['footer'], 'align' => $rows['top']['align'] ?? null];
+    $sections['top'] = ['prefix' => 'footer', 'columns' => $design['footer']] + ($rows['top'] ?? ['align' => null]);
     if ($rows['split'] ?? false) {
         $sections['bottom'] = ['prefix' => 'footer_bottom'] + $rows['bottom'];
     }

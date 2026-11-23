@@ -1,7 +1,7 @@
     <?php foreach (['top', 'bottom'] as $row): ?>
         <?php if ($row === 'bottom' && !$rows['split']) { continue; } ?>
         <div class="site-header-inner nx-chrome-row<?= !empty($nativeHeader) ? ' nx-design-header-native' . ($header['placement'] === 'stack' ? ' nx-design-header-stacked' : '') : '' ?>" data-chrome="header" data-chrome-row="<?= e($row) ?>"
-             data-columns="<?= (int)$rows[$row]['columns'] ?>" data-align="<?= e($rows[$row]['align']) ?>">
+             data-columns="<?= (int)$rows[$row]['columns'] ?>" data-align="<?= e($rows[$row]['align']) ?>"<?= \app\Core\LayoutPlacement::attributes($rows[$row]) ?>>
             <?php for ($column = 1; $column <= $rows[$row]['columns']; $column++): ?>
                 <?php $area = ($row === 'top' ? 'header' : 'header_bottom') . $column; ?>
                 <div class="nx-chrome-column" data-chrome-column="<?= $column ?>" data-widget-area="<?= e($area) ?>">

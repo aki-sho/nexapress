@@ -14,9 +14,13 @@ $hasArticlePadding = !empty($pageDesign['articlePadding']);
 <?php foreach ($pageDesign['sections'] as $index => $section): ?>
     <?php
     $groups = $section['columns'] === 2 ? $section['groups'] : [array_merge(...$section['groups'])];
+    $placement = ['align' => $section['align']];
+    if ($section['columnsWidth'] !== 100) {
+        $placement['width'] = $section['columnsWidth'];
+    }
     ?>
     <section class="nx-page-section" data-layout-section="<?= $index ?>" data-background="<?= e($section['background']) ?>"
-        data-columns="<?= $section['columns'] ?>">
+        data-columns="<?= $section['columns'] ?>"<?= \app\Core\LayoutPlacement::attributes($placement) ?>>
         <div class="nx-page-section-inner">
             <?php foreach ($groups as $elements): ?>
                 <div class="nx-page-section-column">

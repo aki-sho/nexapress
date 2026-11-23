@@ -75,7 +75,7 @@
 .nx-article-cover-content figure.nx-article-image { margin-inline: 0; }
 .nx-article-cover-content img { max-width: 100%; height: auto; }
 .nx-article-cover-content a:not(.nx-article-button) { color: inherit; text-decoration: underline; }
-.post-content .nx-article-cover .nx-article-cover-content a.nx-article-button { color: #fff; text-decoration: none; }
+.post-content .nx-article-cover .nx-article-cover-content a.nx-article-button { color: var(--nx-button-color, var(--nx-button-ink, #fff)); text-decoration: none; }
 
 .nx-article-cover[data-nx-cover-height="auto"] { --nx-cover-height: 0px; }
 .nx-article-cover[data-nx-cover-height]:not([data-nx-cover-height="auto"]) {

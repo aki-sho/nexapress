@@ -103,14 +103,29 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     const headerDirection = regionalField('header_after', 'top', 'direction');
     const headerAlign = regionalField('header_after', 'top', 'align');
     assert.equal(await headerDirection.inputValue(), 'column');
-    assert.equal(await headerAlign.inputValue(), 'auto');
-    await headerAlign.selectOption('flex-end');
+    const placementOptions = ['先頭寄せ', '中央寄せ', '末尾寄せ', '両端揃え', '両側に配分', 'すべて等間隔'];
+    assert.equal(await headerAlign.inputValue(), 'flex-start');
+    const headerWidth = regionalField('header_after', 'top', 'width');
+    assert.deepEqual(await headerWidth.locator('option').allTextContents(), ['自動', '幅いっぱい', '中身に合わせる']);
+    assert.deepEqual(await headerAlign.locator('option').allTextContents(), placementOptions);
+    await headerWidth.selectOption('fit');
+    await regionalField('header_after', 'top', 'cross').selectOption('flex-end');
     await frame.locator('[data-design-area="header_after"][data-region-direction="column"][data-region-align="flex-end"]').waitFor();
     await page.locator('#nx-design-stage[aria-busy="false"]').waitFor();
-    assert.equal(await region(frame, 'header_after').evaluate(node => getComputedStyle(node).justifyItems), 'end');
+    assert(await region(frame, 'header_after').evaluate(node => {
+        const box = node.getBoundingClientRect();
+        const widget = node.firstElementChild.getBoundingClientRect();
+        return Math.abs(box.right - parseFloat(getComputedStyle(node).paddingRight) - widget.right) < 1;
+    }), 'a content-width widget is placed at the end of the cross axis');
+    await addWidget('header_after', 'header_after', 'ヘッダー直下の連絡先');
+    await openGroup('header_after', 'top');
+    await headerWidth.selectOption('auto');
+    await regionalField('header_after', 'top', 'cross').selectOption(
+        initial.themes.default.state.layout.regions.header_after.cross);
+    await headerAlign.selectOption('space-around');
     await headerDirection.selectOption('row');
-    assert.equal(await headerAlign.inputValue(), 'flex-end', 'shared alignment is retained when switching direction');
-    assert.deepEqual(await headerAlign.locator('option').allTextContents(), ['左寄せ', '中央寄せ', '右寄せ', '両端揃え']);
+    assert.equal(await headerAlign.inputValue(), 'space-around', 'shared placement is retained when switching direction');
+    assert.deepEqual(await headerAlign.locator('option').allTextContents(), placementOptions);
     await headerAlign.selectOption('center');
     await frame.locator('[data-design-area="header_after"][data-region-direction="row"][data-region-align="center"]').waitFor();
     await page.locator('#nx-design-stage[aria-busy="false"]').waitFor();
@@ -134,7 +149,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     await set('footer', 'top', 'align', 'flex-end');
     await set('footer', 'bottom', 'align', 'space-between');
     assert.equal(await control('footer', 'bottom', 'columns').locator('option').count(), 5);
-    assert.equal(await control('footer', 'bottom', 'align').locator('option').count(), 4);
+    assert.deepEqual(await control('footer', 'bottom', 'align').locator('option').allTextContents(), placementOptions);
     await addWidget('footer', 'footer4', 'フッター本体4');
     await addWidget('footer', 'footer1', 'フッター上段3', 'footer_above3');
     await addWidget('footer', 'footer_bottom5', 'フッター下段5');
@@ -147,7 +162,8 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     await direction.selectOption('row');
     await regionAlign.selectOption('space-between');
     await direction.selectOption('column');
-    assert.equal(await regionAlign.inputValue(), 'auto', 'row-only alignment falls back to the vertical default');
+    assert.equal(await regionAlign.inputValue(), 'space-between', 'placement applies along the selected direction');
+    assert.deepEqual(await regionAlign.locator('option').allTextContents(), placementOptions);
     await direction.selectOption('row');
     await regionAlign.selectOption('space-between');
     await frame.locator('[data-design-area="footer_before"][data-region-direction="row"][data-region-align="space-between"]').waitFor();
@@ -231,7 +247,8 @@ module.exports = async function checkChromeLayouts(page, base, output) {
         });
         assert.equal(geometry.display, 'flex');
         assert.equal(geometry.justify, alignment);
-        assert(geometry.tops.length >= 2 && geometry.tops.every(y => Math.abs(y - geometry.tops[0]) < 1));
+        assert(geometry.tops.length >= 2 && geometry.tops.every(y => Math.abs(y - geometry.tops[0]) < 1),
+            area + ' ' + JSON.stringify(geometry));
         assert(Math.abs(geometry.leftGap - geometry.rightGap) < 1);
         if (alignment === 'space-between') assert(Math.abs(geometry.leftGap) < 1);
     }
@@ -257,7 +274,7 @@ module.exports = async function checkChromeLayouts(page, base, output) {
         state => { state.layout.footerRows.bottom.align = 'url(https://example.test/)'; },
         state => { state.layout.headerRows.positions.menu.row = 'other'; },
         state => { state.layout.regions.header_after.direction = 'diagonal'; },
-        state => { state.layout.regions.footer_before = {direction: 'column', align: 'space-between'}; },
+        state => { state.layout.regions.footer_before.width = 'wide'; },
     ]) {
         const state = structuredClone(data.themes.default.state);
         mutate(state);
@@ -347,6 +364,76 @@ module.exports = async function checkChromeLayouts(page, base, output) {
     } finally {
         await publishedPage.close();
     }
-    console.log('PASS: upper/lower header/footer columns (1–5), four Flex alignments, content slots, strict CSP, responsive layout, validation, retained rows and independent themes');
+    console.log('PASS: upper/lower header/footer columns (1–5), six Flex alignments, content slots, strict CSP, responsive layout, validation, retained rows and independent themes');
     console.log('PASS: independent outside region editors, retained links, per-column widgets, spacing, responsive rows and persistence');
+
+    await open('columns');
+    const body = frame.locator('.nx-design-main[data-nx-layout-width="80"][data-nx-placement="space-evenly"]');
+    const bodyPlacement = page.locator('[data-setting="body-align"]');
+    const bodyWidth = page.locator('[data-setting="body-width"]');
+    assert.deepEqual(await bodyPlacement.locator('option').allTextContents(), placementOptions);
+    await page.locator('[data-setting="columns"]').selectOption('right');
+    await bodyWidth.fill('80');
+    await bodyWidth.press('Tab');
+    await bodyPlacement.selectOption('space-evenly');
+    await body.waitFor();
+    const bodyGeometry = await body.evaluate(node => {
+        const style = getComputedStyle(node);
+        const width = node.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+        const tracks = style.gridTemplateColumns.split(' ').map(parseFloat);
+        const start = node.firstElementChild.getBoundingClientRect().left - node.getBoundingClientRect().left - parseFloat(style.paddingLeft);
+        return {width, tracks, start, alignment: style.justifyContent};
+    });
+    assert.equal(bodyGeometry.alignment, 'space-evenly');
+    assert.equal(bodyGeometry.tracks.length, 2);
+    const bodyTrackWidth = bodyGeometry.tracks.reduce((sum, width) => sum + width, 0);
+    assert(Math.abs(bodyTrackWidth + 24 - bodyGeometry.width * .8) < 2, JSON.stringify(bodyGeometry));
+    assert(Math.abs(bodyGeometry.start - bodyGeometry.width * .2 / 3) < 2, JSON.stringify(bodyGeometry));
+
+    await page.locator('[data-pane="page_layout"]').click();
+    const editor = page.locator('[data-layout-scope="page_item"]');
+    await editor.locator('> summary').click();
+    const sectionField = name => editor.locator('[data-page-field="' + name + '"]');
+    await sectionField('page').selectOption({label: '既存ページ'});
+    await sectionField('enabled').check();
+    const sectionDetails = editor.locator('[data-page-details="layout"]');
+    if (!(await sectionDetails.evaluate(node => node.open))) await sectionDetails.locator('summary').click();
+    assert.deepEqual(await sectionField('align').locator('option').allTextContents(), placementOptions);
+    await sectionField('columns').selectOption('2');
+    await sectionField('columnsWidth').fill('70');
+    await sectionField('columnsWidth').press('Tab');
+    await sectionField('gap').fill('10');
+    await sectionField('gap').press('Tab');
+    await sectionField('align').selectOption('space-around');
+    const section = frame.locator('[data-layout-section="0"][data-nx-layout-width="70"][data-nx-placement="space-around"]');
+    await section.waitFor();
+    const verifySection = async (section, stacked) => {
+        const geometry = await section.locator('.nx-page-section-inner').evaluate(node => {
+            const style = getComputedStyle(node);
+            const width = node.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+            const tracks = style.gridTemplateColumns.split(' ').map(parseFloat);
+            const start = node.firstElementChild.getBoundingClientRect().left - node.getBoundingClientRect().left - parseFloat(style.paddingLeft);
+            return {width, tracks, start, alignment: style.justifyContent};
+        });
+        assert.equal(geometry.alignment, 'space-around');
+        assert.equal(geometry.tracks.length, stacked ? 1 : 2);
+        if (!stacked) {
+            const trackWidth = geometry.tracks.reduce((sum, width) => sum + width, 0);
+            assert(Math.abs(trackWidth - geometry.width * .6) < 2, JSON.stringify(geometry));
+            assert(Math.abs(geometry.start - geometry.width * .3 / 4) < 2, JSON.stringify(geometry));
+        }
+    };
+    await verifySection(section, false);
+    await publish();
+    const publicSection = await page.context().browser().newPage({viewport: {width: 1440, height: 900}});
+    try {
+        await publicSection.goto(base + '/page/legacy');
+        const section = publicSection.locator('[data-layout-section="0"][data-nx-layout-width="70"]');
+        await verifySection(section, false);
+        await publicSection.setViewportSize({width: 390, height: 844});
+        await verifySection(section, true);
+    } finally {
+        await publicSection.close();
+    }
+    console.log('PASS: body columns and page sections use the same six placement options and independent widths in preview and on the published page');
 };

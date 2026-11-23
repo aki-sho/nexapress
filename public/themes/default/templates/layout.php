@@ -14,12 +14,14 @@ $footerPart = Theme::part('footer');
     <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/base.css')) ?>">
     <?php nx_theme_styles(); ?>
     <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/public-features.css')) ?>">
+    <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/layout-placement.css')) ?>">
     <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/site-design.css')) ?>">
     <?php nx_design_background_style(); ?>
     <?php nx_design_spacing_style(); ?>
     <?php if (Auth::check()): ?>
         <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/admin-preview.css')) ?>">
     <?php endif; ?>
+    <script src="<?= e(nx_asset_url('assets/js/layout-placement.js')) ?>" data-nx-layout-render defer></script>
 </head>
 <body>
     <?php nexapress_admin_header(); ?>

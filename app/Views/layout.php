@@ -9,6 +9,8 @@
 <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/admin-preview.css')) ?>">
 <?php endif; ?>
 <link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/public-features.css')) ?>">
+<link rel="stylesheet" href="<?= e(nx_asset_url('assets/css/layout-placement.css')) ?>">
+    <script src="<?= e(nx_asset_url('assets/js/layout-placement.js')) ?>" data-nx-layout-render defer></script>
 </head>
 <body>
 
