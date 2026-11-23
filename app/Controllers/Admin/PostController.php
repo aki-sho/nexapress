@@ -7,6 +7,7 @@ use app\Core\Controller;
 use app\Core\Csrf;
 use app\Core\Database;
 use app\Core\PostValidator;
+use app\Core\RequestSize;
 use app\Models\Category;
 use app\Models\Media;
 use app\Models\Post;
@@ -106,6 +107,7 @@ class PostController extends Controller
     {
         Auth::requireLogin();
 
+        RequestSize::requirePostWithinLimit();
         $this->requireCsrf();
 
         $validation =
@@ -199,6 +201,7 @@ class PostController extends Controller
     ): void {
         Auth::requireLogin();
 
+        RequestSize::requirePostWithinLimit();
         $this->requireCsrf();
 
         $post = Post::find($id);
@@ -388,6 +391,7 @@ class PostController extends Controller
 
     public function editorPreview(int $id = 0): void
     {
+        RequestSize::requirePostWithinLimit();
         $this->requireCsrf();
         $post = $id === 0 ? ['id' => 0, 'status' => 'draft'] : Post::findPreview($id);
         if ($post === null) {

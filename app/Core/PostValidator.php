@@ -18,12 +18,6 @@ class PostValidator
     private const EXCERPT_MAX_LENGTH = 1000;
 
     /*
-     * posts.contentがTEXT型のため
-     * 最大値より少し余裕を持たせる
-     */
-    private const CONTENT_MAX_BYTES = 65000;
-
-    /*
      * 投稿入力値を検証
      *
      * 戻り値：
@@ -113,25 +107,15 @@ class PostValidator
         /*
          * 本文を安全化
          */
-        $content =
-            HtmlSanitizer::sanitize(
-                (string)(
-                    $input['content']
-                    ?? ''
-                )
-            );
-
-        if (!self::hasVisibleContent($content)) {
-            $errors['content'] =
-                '本文を入力してください。';
-        } elseif (
-            strlen($content)
-            > self::CONTENT_MAX_BYTES
-        ) {
-            $errors['content'] =
-                '本文のデータ量が大きすぎます。'
-                . '画像はメディアへアップロードし、'
-                . '本文には画像URLを挿入してください。';
+        $submittedContent = $input['content'] ?? '';
+        $content = is_string($submittedContent) ? $submittedContent : '';
+        try {
+            $content = ArticleContent::sanitize($submittedContent);
+            if (!self::hasVisibleContent($content)) {
+                $errors['content'] = '本文を入力してください。';
+            }
+        } catch (\InvalidArgumentException $exception) {
+            $errors['content'] = $exception->getMessage();
         }
 
         /*

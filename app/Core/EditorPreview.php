@@ -33,7 +33,13 @@ final class EditorPreview
             return;
         }
         $document['title'] = $title;
-        $document['content'] = HtmlSanitizer::sanitize($content);
+        try {
+            $document['content'] = ArticleContent::sanitize($content);
+        } catch (\InvalidArgumentException $exception) {
+            http_response_code(422);
+            echo e($exception->getMessage());
+            return;
+        }
         if ($kind === 'post') {
             $category = filter_var($input['category_id'] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             $image = filter_var($input['featured_media_id'] ?? '', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);

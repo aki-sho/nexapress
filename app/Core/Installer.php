@@ -278,7 +278,7 @@ class Installer
 
                 excerpt TEXT NULL,
 
-                content TEXT NOT NULL,
+                content MEDIUMTEXT NOT NULL,
 
                 status VARCHAR(20) NOT NULL
                     DEFAULT 'draft',
@@ -337,7 +337,7 @@ class Installer
 
                 excerpt TEXT NULL,
 
-                content TEXT NOT NULL,
+                content MEDIUMTEXT NOT NULL,
 
                 status VARCHAR(20) NOT NULL
                     DEFAULT 'draft',
@@ -376,7 +376,7 @@ class Installer
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 title VARCHAR(255) NOT NULL,
                 slug VARCHAR(255) NOT NULL UNIQUE,
-                content TEXT NOT NULL,
+                content MEDIUMTEXT NOT NULL,
                 status VARCHAR(20) NOT NULL
                     DEFAULT 'draft',
                 user_id INT NOT NULL,

@@ -8,6 +8,7 @@ use app\Core\Csrf;
 use app\Core\Database;
 use app\Core\EditorPreview;
 use app\Core\PageValidator;
+use app\Core\RequestSize;
 use app\Models\Page;
 use app\Models\PageRevision;
 use Throwable;
@@ -46,6 +47,7 @@ class PageController extends Controller
 
     private function save(?int $id): void
     {
+        RequestSize::requirePostWithinLimit();
         Csrf::requireValid($_POST['_csrf_token'] ?? null);
         $page = $id === null ? null : $this->page($id);
         if ($id !== null && !$page) {
@@ -92,6 +94,7 @@ class PageController extends Controller
 
     public function editorPreview(int $id = 0): void
     {
+        RequestSize::requirePostWithinLimit();
         Csrf::requireValid($_POST['_csrf_token'] ?? null);
         $page = $id === 0 ? ['id' => 0, 'status' => 'draft'] : $this->page($id);
         if ($page !== null) {

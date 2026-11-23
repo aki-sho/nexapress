@@ -11,7 +11,7 @@
     </div>
     <?php if (!empty($notice)): ?><p role="status"><?= e($notice) ?></p><?php endif; ?>
     <?php if (!empty($error)): ?><p class="error-message" role="alert"><?= e($error) ?></p><?php endif; ?>
-    <form action="<?= e($action) ?>" method="post" class="post-form" data-editor-kind="page" data-editor-id="<?= (int)($page['id'] ?? 0) ?>" data-editor-unsaved="<?= !empty($error) ? '1' : '0' ?>">
+    <form action="<?= e($action) ?>" method="post" enctype="multipart/form-data" class="post-form" data-editor-kind="page" data-editor-id="<?= (int)($page['id'] ?? 0) ?>" data-editor-unsaved="<?= !empty($error) ? '1' : '0' ?>">
         <input type="hidden" name="_csrf_token" value="<?= e(\app\Core\Csrf::token()) ?>">
         <div class="form-group"><label for="content">本文（任意）</label>
             <textarea id="content" name="content" rows="18"><?= e($page['content'] ?? '') ?></textarea></div>

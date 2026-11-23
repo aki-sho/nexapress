@@ -13,7 +13,13 @@ class PageValidator
             ? trim((string)($input[$key] ?? '')) : '';
         $title = trim(strip_tags($text('title')));
         $slug = PostValidator::normalizeSlug($text('slug') ?: $title);
-        $content = HtmlSanitizer::sanitize($text('content'));
+        $submittedContent = $input['content'] ?? '';
+        $content = is_string($submittedContent) ? $submittedContent : '';
+        try {
+            $content = ArticleContent::sanitize($submittedContent);
+        } catch (\InvalidArgumentException $exception) {
+            $errors[] = $exception->getMessage();
+        }
         $status = $text('status') ?: 'draft';
         if ($title === '' || nx_text_length($title) > 255) {
             $errors[] = 'タイトルは1〜255文字で入力してください。';
@@ -24,9 +30,6 @@ class PageValidator
             $errors[] = 'スラッグが空か、長すぎるか、システムで使用されています。';
         } elseif (Page::slugExists($slug, $id)) {
             $errors[] = '同じスラッグの固定ページが存在します（ゴミ箱を含みます）。';
-        }
-        if (strlen($content) > 65000) {
-            $errors[] = '本文は65KB以内で入力してください。';
         }
         if (!in_array($status, ['draft', 'published'], true)) {
             $errors[] = '公開状態が正しくありません。';

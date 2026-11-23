@@ -47,6 +47,9 @@ function check(bool $condition, string $label): void {
 $create = new ReflectionMethod(\app\Core\Installer::class, 'createTables');
 $create->setAccessible(true);
 $create->invoke(null, $pdo, 'nx_');
+foreach (['posts', 'pages', 'post_revisions'] as $name) {
+    $pdo->exec("ALTER TABLE nx_{$name} MODIFY COLUMN content TEXT NOT NULL");
+}
 foreach (['administrator' => 'admin', 'editor' => 'editor', 'author' => 'author', 'viewer' => 'viewer'] as $role => $username) {
     \app\Models\User::create(['username' => $username, 'name' => $username, 'email' => $username . '@example.test',
         'password_hash' => password_hash('Test-Password-2026', PASSWORD_DEFAULT), 'role' => $role]);
@@ -72,7 +75,7 @@ if ($from22) {
 foreach ($from22 ? ['1.7.0', '2.0.0', '2.2.0'] : ['1.7.0', '2.0.0', '2.2.0', '2.3.0'] as $version) {
     $pdo->prepare('INSERT INTO nx_nexapress_migrations (migration) VALUES (?)')->execute([$version]);
 }
-$expected = ['2.4.0', '2.5.0', '2.7.0', '2.9.0', '2.10.0'];
+$expected = ['2.4.0', '2.5.0', '2.7.0', '2.9.0', '2.10.0', '2.33.0'];
 check(\app\Core\Migrator::run($fixture . '/database/migrations') === ($from22 ? ['2.3.0', ...$expected] : $expected),
     $from22 ? 'upgrade from 2.2.0' : 'upgrade from 2.3.0');
 check(\app\Models\Page::find(1)['content'] === '<p>既存の内容</p>', 'migration preserves existing content');
@@ -118,8 +121,13 @@ check(\app\Models\Post::countPublicArchive(null, '%') === 0, 'LIKE wildcards are
 check(nx_public_archive_path('search') === 'post/archive/search', 'existing plain-slug content keeps its URL');
 check(count(\app\Models\Post::publicArchive(1, '', 10, 10)) === 2, 'category pagination');
 $validation = \app\Core\PageValidator::validate(['title' => '安全なページ', 'slug' => 'safe', 'content' => '<p>本文</p><script>alert(1)</script>', 'status' => 'draft']);
-$oversized = \app\Core\PageValidator::validate(['title' => '長い本文', 'slug' => 'oversized-page', 'content' => str_repeat('x', 65001)]);
-check($oversized['errors'] === ['本文は65KB以内で入力してください。'], 'oversized fixed-page content is still rejected');
+$limit = \app\Core\ArticleContent::MAX_BYTES;
+$oversized = \app\Core\PageValidator::validate(['title' => '長い本文', 'slug' => 'oversized-page', 'content' => str_repeat('x', $limit + 1)]);
+check(count($oversized['errors']) === 1 && str_contains($oversized['errors'][0], '6,553,500'), 'oversized fixed-page content is rejected');
+$schema = $pdo->query("SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME IN ('nx_posts', 'nx_pages', 'nx_post_revisions', 'nx_page_revisions') AND COLUMN_NAME = 'content'")
+    ->fetchAll(PDO::FETCH_COLUMN);
+check(count($schema) === 4 && array_unique($schema) === ['mediumtext'], 'content columns support extended storage after migration');
 check($validation['errors'] === [] && !str_contains($validation['data']['content'], '<script'), 'page content is sanitized');
 $alignedBody = '<p class="intro" style="text-align: left; color: #112233; text-align: center">中央揃え</p>';
 $storedBody = \app\Core\HtmlSanitizer::sanitize($alignedBody);
