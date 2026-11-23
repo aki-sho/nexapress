@@ -242,6 +242,13 @@ function media_size_label(int $bytes): string
                                         <input type="text" id="media-title-<?= $id ?>" name="title" value="<?= e($mediaTitle) ?>">
                                     </div>
 
+                                    <?php if ($isImage): ?>
+                                        <div class="form-group">
+                                            <label for="media-url-<?= $id ?>">画像URL</label>
+                                            <input type="text" id="media-url-<?= $id ?>" value="<?= e($url) ?>" readonly data-media-image-url>
+                                        </div>
+                                    <?php endif; ?>
+
                                     <div class="form-group">
                                         <label for="media-description-<?= $id ?>">説明</label>
                                         <textarea id="media-description-<?= $id ?>" name="description" rows="5"><?= e($media['description'] ?? '') ?></textarea>

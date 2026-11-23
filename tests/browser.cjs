@@ -40,7 +40,13 @@ async function checkMediaEditor(page, base, output) {
     const originalUrl = await card.locator('img').getAttribute('src');
     assert.equal(page.url(), folderUrl);
     await card.locator('.media-thumb-button').click();
-    const open = page.locator('.media-modal[open] [data-open-image-editor]');
+    const detail = page.getByRole('dialog', {name: name + 'の詳細'});
+    const imageUrl = detail.getByLabel('画像URL', {exact: true});
+    assert.equal(await imageUrl.inputValue(), new URL(originalUrl, base).href);
+    assert(await imageUrl.evaluate(input => input.readOnly && input.name === ''));
+    await imageUrl.click();
+    assert(await imageUrl.evaluate(input => input.selectionStart === 0 && input.selectionEnd === input.value.length));
+    const open = detail.locator('[data-open-image-editor]');
     const saveUrl = await open.getAttribute('data-save-url');
     await open.click();
 

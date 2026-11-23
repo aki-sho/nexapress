@@ -6,8 +6,14 @@
     document.addEventListener('click', event => {
         const open = event.target.closest('[data-open-media-dialog]');
         if (open) {
-            document.getElementById(open.dataset.openMediaDialog).showModal();
+            const dialog = document.getElementById(open.dataset.openMediaDialog);
+            const imageUrl = dialog.querySelector('[data-media-image-url]');
+            if (imageUrl) {
+                imageUrl.value = dialog.querySelector('.media-large-image').src;
+            }
+            dialog.showModal();
         }
+        event.target.closest('[data-media-image-url]')?.select();
         if (event.target.closest('[data-close-media-dialog]')) {
             event.target.closest('dialog').close();
         }
