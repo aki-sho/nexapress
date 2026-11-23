@@ -220,7 +220,7 @@ function nx_asset_url(string $path): string
 function nx_theme_styles(): void
 {
     foreach (\app\Core\Theme::stylesheetPaths() as $path) {
-        echo '<link rel="stylesheet" href="' . e(nx_asset_url($path)) . '">' . "\n";
+        echo '<link rel="stylesheet" href="' . e(nx_asset_url(\app\Core\ThemeEditor::stylesheet($path))) . '">' . "\n";
     }
 }
 
@@ -456,12 +456,12 @@ function nexapress_admin_header(): void
     <?php
 }
 
-function nx_logout_form(): void
+function nx_logout_form(string $icon = ''): void
 {
     ?>
     <form class="logout-form" action="<?= e(url('admin/logout')) ?>" method="post">
         <input type="hidden" name="_csrf_token" value="<?= e(\app\Core\Csrf::token()) ?>">
-        <button type="submit">ログアウト</button>
+        <button type="submit"><?= $icon ?>ログアウト</button>
     </form>
     <?php
 }

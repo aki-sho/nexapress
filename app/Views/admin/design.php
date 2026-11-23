@@ -23,6 +23,9 @@
                 </label>
                 <div class="nx-design-theme-actions">
                     <a href="<?= e(url('admin/themes')) ?>">使用するテーマを変更</a>
+                    <?php if (empty($embedded) && \app\Core\Permission::can('themes.edit')): ?>
+                        <a href="<?= e(url('admin/themes/editor')) ?>">テーマエディタ</a>
+                    <?php endif; ?>
                     <button type="button" class="nx-design-small" data-pane="general" aria-pressed="false">全体設定</button>
                 </div>
                 <div class="nx-design-tabs" role="group" aria-label="編集する項目">

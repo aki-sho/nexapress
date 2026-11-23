@@ -63,9 +63,12 @@ class Theme
             : [];
     }
 
-    public static function stylesheetPaths(): array
+    public static function stylesheetPaths(?string $theme = null): array
     {
-        $directory = 'themes/' . self::active() . '/';
+        if ($theme !== null && !self::exists($theme)) {
+            return [];
+        }
+        $directory = 'themes/' . ($theme ?? self::active()) . '/';
         $manifest = BASE_PATH . '/public/' . $directory . 'theme.php';
         $info = is_file($manifest) ? require $manifest : [];
         $styles = $info['styles'] ?? [];
@@ -147,11 +150,10 @@ class Theme
         $name = trim($name, '/');
 
         // テーマ内のテンプレートファイルを探す
-        $path = BASE_PATH . '/public/themes/' . $theme . '/templates/' . $name . '.php';
-
-        // テンプレートが存在すれば、そのパスを返す
-        if (file_exists($path)) {
-            return $path;
+        $file = 'templates/' . $name . '.php';
+        $path = BASE_PATH . '/public/themes/' . $theme . '/' . $file;
+        if (is_file($path)) {
+            return ThemeEditor::template($theme, $file, $path);
         }
 
         // 見つからない場合は null を返す
@@ -167,11 +169,10 @@ class Theme
         $theme = self::active();
 
         // テーマ内の parts ファイルを探す
-        $path = BASE_PATH . '/public/themes/' . $theme . '/templates/parts/' . $name . '.php';
-
-        // パーツが存在すれば、そのパスを返す
-        if (file_exists($path)) {
-            return $path;
+        $file = 'templates/parts/' . $name . '.php';
+        $path = BASE_PATH . '/public/themes/' . $theme . '/' . $file;
+        if (is_file($path)) {
+            return ThemeEditor::template($theme, $file, $path);
         }
 
         // 見つからない場合は null を返す

@@ -335,6 +335,8 @@ $router->post('/admin/pages/status/{id}', 'app\Controllers\Admin\PageController@
 // テーマ管理
 $router->get('/admin/themes', 'app\Controllers\Admin\ThemeController@index');
 $router->post('/admin/themes/update', 'app\Controllers\Admin\ThemeController@update');
+$router->get('/admin/themes/editor', 'app\Controllers\Admin\ThemeEditorController@index');
+$router->post('/admin/themes/editor/update', 'app\Controllers\Admin\ThemeEditorController@update');
 
 // メディア管理
 $router->get('/admin/media', 'app\Controllers\Admin\MediaController@index');

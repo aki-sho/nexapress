@@ -1,0 +1,61 @@
+/* Theme source editor */
+.nx-theme-editor .admin-page-header p {
+    margin: 4px 0 0;
+    color: #475569;
+}
+.nx-theme-editor-layout {
+    display: grid;
+    grid-template-columns: minmax(156px, 216px) minmax(0, 1fr);
+    align-items: start;
+    gap: 16px;
+}
+.nx-theme-editor-files,
+.nx-theme-editor-form {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid #d5dfed;
+    border-radius: 8px;
+    background: #fff;
+}
+.nx-theme-editor-files h2 {
+    margin: 0 0 5px;
+    font-size: 14px;
+}
+.nx-theme-editor-files ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.nx-theme-editor-files ul + h2 { margin-top: 14px; }
+.nx-theme-editor-files a {
+    display: block;
+    padding: 6px;
+    border-radius: 4px;
+    color: #334155;
+    overflow-wrap: anywhere;
+}
+.nx-theme-editor-files a:hover,
+.nx-theme-editor-files [aria-current="page"] {
+    color: #1747a6;
+    background: #eaf1ff;
+}
+.nx-theme-editor-form label { overflow-wrap: anywhere; }
+.nx-theme-editor-form textarea,
+.nx-theme-editor-form pre {
+    max-width: 100%;
+    overflow: auto;
+    font: 14px/1.55 Consolas, "Courier New", monospace;
+    tab-size: 2;
+}
+.nx-theme-editor-form textarea {
+    display: block;
+    min-height: 320px;
+    margin: 10px 0;
+    resize: vertical;
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+@media (max-width: 1000px) {
+    .nx-theme-editor-layout { grid-template-columns: minmax(0, 1fr); }
+    .nx-theme-editor-files ul { display: flex; flex-wrap: wrap; gap: 4px; }
+}
