@@ -12,6 +12,8 @@ class HtmlSanitizer
     /*
      * 使用を許可するHTMLタグと属性
      */
+    private const TEXT_LAYOUT = ['align', 'data-nx-placement', 'data-nx-layout-width'];
+
     private const ALLOWED_ATTRIBUTES = [
         'p' => [
             'align', 'data-nx-placement', 'data-nx-layout-width', 'data-nx-layout-gap', 'data-nx-buttons-edge',
@@ -19,24 +21,12 @@ class HtmlSanitizer
         'br' => [],
         'hr' => [],
 
-        'h1' => [
-            'align',
-        ],
-        'h2' => [
-            'align',
-        ],
-        'h3' => [
-            'align',
-        ],
-        'h4' => [
-            'align',
-        ],
-        'h5' => [
-            'align',
-        ],
-        'h6' => [
-            'align',
-        ],
+        'h1' => self::TEXT_LAYOUT,
+        'h2' => self::TEXT_LAYOUT,
+        'h3' => self::TEXT_LAYOUT,
+        'h4' => self::TEXT_LAYOUT,
+        'h5' => self::TEXT_LAYOUT,
+        'h6' => self::TEXT_LAYOUT,
 
         'strong' => [],
         'b' => [],
@@ -108,7 +98,7 @@ class HtmlSanitizer
             'data-nx-cover-margin-top',
             'data-nx-cover-margin-bottom',
             'data-nx-placement', 'data-nx-layout-width', 'data-nx-layout-gap', 'data-nx-columns-align',
-            'data-nx-column-width', 'data-nx-buttons-edge',
+            'data-nx-column-width', 'data-nx-buttons-edge', 'data-nx-column-area',
         ],
         'span' => [],
 
@@ -367,6 +357,11 @@ class HtmlSanitizer
             }
 
             self::sanitizeChildren($child, $forDisplay);
+            if ($child->hasAttribute('data-nx-column-area') && !$child->hasChildNodes()) {
+                $parent->removeChild($child);
+            } elseif ($forDisplay && $tagName === 'div') {
+                LayoutPlacement::renderColumnTracks($child);
+            }
         }
     }
 
@@ -561,7 +556,7 @@ class HtmlSanitizer
             'data-nx-cover-margin-top', 'data-nx-cover-margin-bottom' =>
                 self::sanitizeInteger($value, 0, self::COVER_MARGIN_MAX_PIXELS),
             'data-nx-cover-pop' => self::sanitizeInteger($value, -300, 300),
-            'data-nx-placement', 'data-nx-columns-align', 'data-nx-buttons-edge',
+            'data-nx-column-area', 'data-nx-placement', 'data-nx-columns-align', 'data-nx-buttons-edge',
             'data-nx-button-kind', 'data-nx-button-size', 'data-nx-button-icon' => $value,
             'data-nx-layout-width', 'data-nx-column-width' => self::sanitizeInteger($value, 1, 100),
             'data-nx-layout-gap', 'data-nx-button-radius' => self::sanitizeInteger($value, 0, 64),

@@ -1,7 +1,15 @@
 .nx-article-columns, .nx-article-buttons, .nx-article-cover,
 .nx-chrome-row, .nx-design-header-band, .nx-design-region, .nx-design-region-column,
 .nx-design-main, .nx-page-section { --nx-placement: flex-start; --nx-layout-width: 100%; }
-.nx-article-columns { --nx-columns-count: 2; --nx-columns-align: stretch; --nx-layout-gap: 16px; }
+.nx-article-columns {
+    --nx-columns-count: 2;
+    --nx-columns-align: stretch;
+    --nx-layout-gap: 16px;
+    --nx-column-track-1: initial;
+    --nx-column-track-2: initial;
+    --nx-column-track-3: initial;
+    --nx-column-track-4: initial;
+}
 .nx-article-columns.nx-article-columns--3 { --nx-columns-count: 3; }
 .nx-article-columns.nx-article-columns--4 { --nx-columns-count: 4; }
 .nx-article-buttons { --nx-layout-gap: 12px; }
@@ -14,7 +22,7 @@
 [data-nx-placement="space-around"] { --nx-placement: space-around; }
 [data-nx-placement="space-evenly"] { --nx-placement: space-evenly; }
 
-:is(.post-content, .classic-editor-content) .nx-article-columns:is(
+:is(.post-content, .classic-editor-content) .nx-article-columns:not(:has(> [data-nx-column-area])):is(
     [data-nx-placement], [data-nx-layout-width], [data-nx-layout-gap], [data-nx-columns-align],
     :has(> .nx-article-column[data-nx-column-width])
 ) {
@@ -97,7 +105,7 @@
 [data-nx-editor-gap]:hover, [data-nx-editor-gap]:focus-visible { outline: 1px dashed #6689c7; }
 
 @media (max-width: 720px) {
-    :is(.post-content, .classic-editor-content) .nx-article-columns:is(
+    :is(.post-content, .classic-editor-content) .nx-article-columns:not(:has(> [data-nx-column-area])):is(
         [data-nx-placement], [data-nx-layout-width], [data-nx-layout-gap], [data-nx-columns-align],
         :has(> .nx-article-column[data-nx-column-width])
     ) {
@@ -107,8 +115,65 @@
     .nx-article-columns > .nx-article-column { flex: 0 0 auto; }
 }
 
+:is(.post-content, .classic-editor-content) :is(p, h1, h2, h3, h4, h5, h6)[data-nx-layout-width]:not(.nx-article-buttons) {
+    box-sizing: border-box;
+    inline-size: var(--nx-layout-width, 100%);
+    margin-inline: 0 auto;
+    overflow-wrap: anywhere;
+}
+:is(.post-content, .classic-editor-content) :is(p, h1, h2, h3, h4, h5, h6)[data-nx-layout-width]:not(.nx-article-buttons)[data-nx-placement="flex-end"] {
+    margin-inline: auto 0;
+}
+:is(.post-content, .classic-editor-content) :is(p, h1, h2, h3, h4, h5, h6)[data-nx-layout-width]:not(.nx-article-buttons):is(
+    [data-nx-placement="center"], [data-nx-placement="space-around"], [data-nx-placement="space-evenly"]
+) {
+    margin-inline: auto;
+}
+
+/* The shared areas span the same grid lines as the first and last columns. */
+:is(.post-content, .classic-editor-content) .nx-article-columns:has(> [data-nx-column-area]) {
+    --nx-shared-default: calc(1 / var(--nx-columns-count));
+    --nx-shared-gap: min(var(--nx-layout-gap), calc(var(--nx-layout-width) / (var(--nx-columns-count) - 1)));
+    --nx-shared-width: calc(var(--nx-layout-width) - (var(--nx-columns-count) - 1) * var(--nx-shared-gap));
+    --nx-track-1: minmax(0, calc(var(--nx-shared-width) * var(--nx-column-track-1, var(--nx-shared-default))));
+    --nx-track-2: minmax(0, calc(var(--nx-shared-width) * var(--nx-column-track-2, var(--nx-shared-default))));
+    --nx-track-3: minmax(0, calc(var(--nx-shared-width) * var(--nx-column-track-3, var(--nx-shared-default))));
+    --nx-track-4: minmax(0, calc(var(--nx-shared-width) * var(--nx-column-track-4, var(--nx-shared-default))));
+    display: grid;
+    grid-template-columns: var(--nx-track-1) var(--nx-track-2);
+    justify-content: var(--nx-placement);
+    align-items: var(--nx-columns-align);
+    column-gap: var(--nx-shared-gap);
+    row-gap: var(--nx-layout-gap);
+}
+:is(.post-content, .classic-editor-content) .nx-article-columns.nx-article-columns--3:has(> [data-nx-column-area]) {
+    grid-template-columns: var(--nx-track-1) var(--nx-track-2) var(--nx-track-3);
+}
+:is(.post-content, .classic-editor-content) .nx-article-columns.nx-article-columns--4:has(> [data-nx-column-area]) {
+    grid-template-columns: var(--nx-track-1) var(--nx-track-2) var(--nx-track-3) var(--nx-track-4);
+}
+.nx-article-columns > [data-nx-column-area] {
+    grid-column: 1 / -1;
+    align-self: stretch;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+}
+.nx-article-columns > [data-nx-column-area] > :first-child { margin-block-start: 0; }
+.nx-article-columns > [data-nx-column-area] > :last-child { margin-block-end: 0; }
+
+@media (max-width: 720px) {
+    :is(.post-content, .classic-editor-content) .nx-article-columns[class]:has(> [data-nx-column-area]) {
+        grid-template-columns: minmax(0, 1fr);
+        align-items: stretch;
+    }
+}
+
 @supports (width: attr(data-nx-layout-width %)) {
     [data-nx-layout-width] { --nx-layout-width: attr(data-nx-layout-width %, 100%); }
+    [data-nx-column-track-1] { --nx-column-track-1: attr(data-nx-column-track-1 type(<number>)); }
+    [data-nx-column-track-2] { --nx-column-track-2: attr(data-nx-column-track-2 type(<number>)); }
+    [data-nx-column-track-3] { --nx-column-track-3: attr(data-nx-column-track-3 type(<number>)); }
+    [data-nx-column-track-4] { --nx-column-track-4: attr(data-nx-column-track-4 type(<number>)); }
     [data-nx-layout-gap] { --nx-layout-gap: attr(data-nx-layout-gap px, 16px); }
     .nx-article-column[data-nx-column-width] { --nx-column-share: calc(attr(data-nx-column-width type(<number>), 50) / 100); }
     .nx-article-button[data-nx-button-radius] { --nx-button-radius: attr(data-nx-button-radius px, 5px); }

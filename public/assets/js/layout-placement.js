@@ -15,9 +15,26 @@
     const selector = '.nx-article-columns, .nx-article-column, .nx-article-buttons, .nx-article-cover, ' +
         '.nx-article-button, [data-nx-layout-width]';
 
+
+    function updateSharedTracks(node) {
+        const children = [...node.children];
+        if (!children.some(child => child.hasAttribute('data-nx-column-area'))) return;
+        const columns = children.filter(child => child.matches('div.nx-article-column:not([data-nx-column-area])'));
+        const weights = columns.length >= 2 && columns.length <= 4 ? columns.map(column => {
+            const width = column.getAttribute('data-nx-column-width') || '';
+            return /^\d{1,3}$/.test(width) && Number(width) >= 1 && Number(width) <= 100
+                ? Number(width) / 100 : 1 / columns.length;
+        }) : [];
+        const total = Math.max(1, weights.reduce((sum, value) => sum + value, 0));
+        for (let index = 0; index < 4; index++) {
+            node.style.setProperty('--nx-column-track-' + (index + 1), weights[index] ? String(weights[index] / total) : '');
+        }
+    }
+
     window.nxApplyLayoutPlacement = scope => {
         if (!scope) return;
         for (const node of scope.querySelectorAll(selector)) {
+            if (node.classList.contains('nx-article-columns')) updateSharedTracks(node);
             for (const [attribute, property, min, max, format] of sizes) {
                 const text = node.getAttribute(attribute) || '';
                 const value = Number(text);
