@@ -77,7 +77,7 @@ function media_size_label(int $bytes): string
                 <input type="file" id="media_zip" name="media_zip" accept=".zip,application/zip" aria-describedby="media-zip-limits" required>
                 <small id="media-zip-limits">
                     ZIP内のフォルダ名で分類し、JPEG、PNG、GIF、WebPを登録します。対応外のファイルは除外します。<br>
-                    表示される画質を保ち、容量が小さくなる画像を軽量化します。<br>
+                    画像を検証して登録します。PNGは登録後に軽量化できます。<br>
                     ZIP直下の画像の保存先 <?= e($viewFolder > 0 ? $currentFolderName : '未分類') ?><br>
                     ZIP <?= e(media_size_label(MediaZipImport::MAX_ARCHIVE_BYTES)) ?>、画像 <?= number_format(MediaZipImport::MAX_IMAGES) ?> 枚まで。
                     展開後は1枚 <?= e(media_size_label(MediaZipImport::MAX_IMAGE_BYTES)) ?>、合計 <?= e(media_size_label(MediaZipImport::MAX_TOTAL_BYTES)) ?>まで。<br>
@@ -160,6 +160,17 @@ function media_size_label(int $bytes): string
                 <button type="submit" class="button secondary small" data-media-move disabled>移動</button>
                 <button type="submit" class="button danger small" data-media-bulk-delete disabled
                     formaction="<?= e(url('admin/media/bulk-delete')) ?>">選択した項目を削除</button>
+                <?php if ($mediaOptimizationAvailable): ?>
+                    <div class="media-optimize-controls">
+                        <button type="button" class="button secondary small" data-media-optimize
+                            aria-describedby="media-optimize-format" disabled>画質を保って軽量化</button>
+                        <small id="media-optimize-format">PNG対象</small>
+                    </div>
+                    <div class="media-optimize-progress" data-media-optimize-progress hidden>
+                        <progress value="0" max="1" aria-label="軽量化の進捗"></progress>
+                        <span role="status" data-media-optimize-status></span>
+                    </div>
+                <?php endif; ?>
             </form>
 
             <div class="media-grid">
@@ -170,6 +181,7 @@ function media_size_label(int $bytes): string
                     $url = media_file_url($media);
                     $isImage = ($media['file_type'] ?? '') === 'image';
                     $canEdit = $isImage && in_array($media['mime_type'] ?? '', Media::EDITABLE_IMAGE_TYPES, true);
+                    $canOptimize = $mediaOptimizationAvailable && $isImage && ($media['mime_type'] ?? '') === 'image/png';
                     $hasImageEditor = $hasImageEditor || $canEdit;
                     $modalId = 'media-modal-' . $id;
                     $deleteId = 'media-delete-' . $id;
@@ -177,7 +189,8 @@ function media_size_label(int $bytes): string
 
                     <div class="media-card" data-media-card data-media-title="<?= e($mediaTitle) ?>" draggable="true">
                         <div class="media-card-tools">
-                            <input type="checkbox" data-media-select value="<?= $id ?>" aria-label="<?= e($mediaTitle . 'を選択') ?>">
+                            <input type="checkbox" data-media-select value="<?= $id ?>" aria-label="<?= e($mediaTitle . 'を選択') ?>"
+                                <?php if ($canOptimize): ?>data-media-optimize-url="<?= e(url('admin/media/optimize/' . $id)) ?>"<?php endif; ?>>
                             <form id="<?= e($deleteId) ?>" action="<?= e(url('admin/media/delete/' . $id)) ?>" method="post"
                                 data-media-confirm="<?= e('「' . $mediaTitle . '」を削除しますか？ 記事などで使用中の場合は表示できなくなります。') ?>">
                                 <input type="hidden" name="_csrf_token" value="<?= e($csrf) ?>">
@@ -199,7 +212,7 @@ function media_size_label(int $bytes): string
                         <div class="media-card-body">
                             <strong><?= e($mediaTitle) ?></strong>
                             <small><?= e($media['mime_type'] ?? '') ?></small>
-                            <small><?= e(media_size_label((int)($media['file_size'] ?? 0))) ?></small>
+                            <small data-media-size><?= e(media_size_label((int)($media['file_size'] ?? 0))) ?></small>
                             <?php if ($viewFolder === null): ?>
                                 <small class="media-card-folder"><?= e($folderLabels[$media['folder_id'] ?? 0] ?? '未分類') ?></small>
                             <?php endif; ?>

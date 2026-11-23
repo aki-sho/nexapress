@@ -5,6 +5,7 @@ namespace app\Controllers\Admin;
 use app\Core\Auth;
 use app\Core\Controller;
 use app\Core\Csrf;
+use app\Core\MediaOptimization;
 use app\Core\MediaZipImport;
 use app\Models\Media;
 use InvalidArgumentException;
@@ -65,6 +66,7 @@ class MediaController extends Controller
             'notice' => $notice,
             'maxUploadSize' => $this->maxUploadSize,
             'zipImportAvailable' => MediaZipImport::available(),
+            'mediaOptimizationAvailable' => MediaOptimization::available(),
             'maxEditDimension' => self::MAX_EDIT_DIMENSION,
         ]);
     }
@@ -195,9 +197,6 @@ class MediaController extends Controller
             if ($result['skipped'] > 0) {
                 $message .= $result['skipped'] . '件の対応外ファイルを除外しました。';
             }
-            if ($result['optimized'] > 0) {
-                $message .= $result['optimized'] . '件の画像を画質を保ったまま軽量化しました。';
-            }
             if ($result['folders'] > 0) {
                 $folder = null;
             }
@@ -211,6 +210,24 @@ class MediaController extends Controller
             @unlink($path);
         }
         $this->returnToLibrary($folder, $message, $error);
+    }
+
+    public function optimize(int $id): void
+    {
+        Auth::requireLogin();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
+        session_write_close();
+
+        try {
+            $result = MediaOptimization::optimize($id);
+        } catch (InvalidArgumentException $exception) {
+            $this->editResponse(['error' => $exception->getMessage()], 422);
+            return;
+        } catch (\Throwable) {
+            $this->editResponse(['error' => '画像の軽量化を完了できませんでした。'], 500);
+            return;
+        }
+        $this->editResponse($result, 200);
     }
 
     public function saveEdit(int $id): void

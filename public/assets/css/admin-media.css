@@ -159,6 +159,20 @@
 
 .media-bulk-actions [data-media-count] { color: #526176; font-size: .875rem; }
 
+.media-optimize-controls,
+.media-optimize-progress:not([hidden]) {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+}
+
+.media-optimize-controls small,
+.media-optimize-progress { color: #526176; font-size: .875rem; }
+
+.media-optimize-progress { flex-basis: 100%; }
+.media-optimize-progress progress { width: 110px; max-width: 100%; }
+
 .media-select-all,
 .media-card-tools {
     display: flex;

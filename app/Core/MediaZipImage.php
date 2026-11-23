@@ -17,10 +17,15 @@ final class MediaZipImage
     {
         return match ($format) {
             'jpg' => self::jpeg($data),
-            'png' => self::png($data, $width, $height),
+            'png' => self::png($data, $width, $height, false),
             'webp' => self::webp($data, $width, $height),
             'gif' => self::gif($data, $width, $height),
         };
+    }
+
+    public static function optimizePng(string $data, int $width, int $height): string
+    {
+        return self::png($data, $width, $height, true);
     }
 
     private static function jpeg(string $data): string
@@ -118,7 +123,7 @@ final class MediaZipImage
         throw self::invalid();
     }
 
-    private static function png(string $data, int $width, int $height): string
+    private static function png(string $data, int $width, int $height, bool $optimize): string
     {
         if (!str_starts_with($data, self::PNG_SIGNATURE)) {
             throw self::invalid();
@@ -140,18 +145,39 @@ final class MediaZipImage
             $type = substr($data, $offset + 4, 4);
             $payload = substr($data, $offset + 8, $size);
             if (hash('crc32b', $type . $payload, true) !== substr($data, $offset + 8 + $size, 4) ||
-                ($offset === 8 && $type !== 'IHDR')) {
+                ($offset === 8 && ($type !== 'IHDR' || $size !== 13))) {
                 throw self::invalid();
             }
             $offset += $size + 12;
+            if ($optimize && $type === 'dSIG') {
+                return $data;
+            }
             if ($type === 'IDAT') {
+                if ($optimize && $after !== '') {
+                    throw self::invalid();
+                }
                 $compressed .= $payload;
                 continue;
             }
             if ($type === 'IEND' && $size === 0 && $compressed !== '') {
                 // Allow 16-bit RGBA samples and the filter bytes for all Adam7 passes.
-                $pixels = self::compressPng($compressed, $width * $height * 8 + $height * 2 + 8);
+                if ($optimize && $offset !== $length) {
+                    throw self::invalid();
+                }
+                $pixels = self::compressPng($compressed, $width * $height * 8 + $height * 2 + 8, $optimize);
+                if ($optimize && strlen($pixels) >= strlen($compressed)) {
+                    return $data;
+                }
                 return $before . self::pngChunk('IDAT', $pixels) . $after . self::pngChunk('IEND', '');
+            }
+            if ($optimize) {
+                // An existing image keeps all chunks other than the compressed pixel data.
+                if ($compressed === '') {
+                    $before .= self::pngChunk($type, $payload);
+                } else {
+                    $after .= self::pngChunk($type, $payload);
+                }
+                continue;
             }
             if (!isset($sizes[$type]) && $type !== 'iCCP' && $type !== 'eXIf') {
                 if ((ord($type[0]) & 0x20) === 0) {
@@ -185,15 +211,21 @@ final class MediaZipImage
         return pack('N', strlen($payload)) . $type . $payload . hash('crc32b', $type . $payload, true);
     }
 
-    private static function compressPng(string $compressed, int $limit): string
+    private static function compressPng(string $compressed, int $limit, bool $optimize): string
     {
         $inflate = inflate_init(ZLIB_ENCODING_DEFLATE);
-        $deflate = deflate_init(ZLIB_ENCODING_DEFLATE, ['level' => 9]);
-        $runLength = deflate_init(ZLIB_ENCODING_DEFLATE, ['level' => 1, 'strategy' => ZLIB_RLE]);
-        if ($inflate === false || $deflate === false || $runLength === false) {
+        if ($inflate === false) {
             throw self::invalid();
         }
-        $candidates = [[$deflate, ''], [$runLength, '']];
+        $candidates = [];
+        if ($optimize) {
+            $deflate = deflate_init(ZLIB_ENCODING_DEFLATE, ['level' => 6]);
+            $runLength = deflate_init(ZLIB_ENCODING_DEFLATE, ['level' => 1, 'strategy' => ZLIB_RLE]);
+            if ($deflate === false || $runLength === false) {
+                throw self::invalid();
+            }
+            $candidates = [[$deflate, ''], [$runLength, '']];
+        }
         $length = strlen($compressed);
         for ($offset = 0; $offset < $length; $offset += 2048) {
             $raw = @inflate_add($inflate, substr($compressed, $offset, 2048), ZLIB_NO_FLUSH);
@@ -235,7 +267,7 @@ final class MediaZipImage
             throw self::invalid();
         }
         self::checkProfile($profile);
-        return "I\0\0" . self::compressPng($encoded, self::PROFILE_LIMIT);
+        return "I\0\0" . self::compressPng($encoded, self::PROFILE_LIMIT, false);
     }
 
     private static function webp(string $data, int $width, int $height): string

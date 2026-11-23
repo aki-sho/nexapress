@@ -116,8 +116,9 @@ module.exports = async (page, base) => {
 
     await zipForm.locator('input[type="file"]').setInputFiles({name: 'images.zip', mimeType: 'application/zip', buffer: valid});
     await zipForm.getByRole('button', {name: 'ZIPを取り込む'}).click();
-    await page.getByRole('status').filter({hasText: '5件の画像をZIPから登録しました。2件の対応外ファイルを除外しました。'}).waitFor();
-    await page.getByRole('status').filter({hasText: '3件の画像を画質を保ったまま軽量化しました。'}).waitFor();
+    const notice = page.getByRole('status').filter({hasText: '5件の画像をZIPから登録しました。2件の対応外ファイルを除外しました。'});
+    await notice.waitFor();
+    assert.doesNotMatch(await notice.textContent(), /軽量化しました/);
     assert.equal(new URL(page.url()).searchParams.get('folder'), null);
     const folders = page.getByRole('navigation', {name: 'メディアのフォルダ'});
     assert.equal(await folders.getByRole('link', {name: '説明', exact: true}).count(), 0);
@@ -136,6 +137,18 @@ module.exports = async (page, base) => {
     const examples = [
         ['見本', gif], ['背景', webp], ['メタデータ付き', annotatedWebp], ['透過', expandedPng], ['メタデータ', jpeg],
     ];
+    async function decodedPixels(...files) {
+        return page.evaluate(async encoded => {
+            return Promise.all(encoded.map(async file => {
+                const bytes = Uint8Array.from(atob(file), char => char.charCodeAt(0));
+                const image = await createImageBitmap(new Blob([bytes]));
+                const canvas = new OffscreenCanvas(image.width, image.height);
+                const context = canvas.getContext('2d');
+                context.drawImage(image, 0, 0);
+                return [image.width, image.height, ...context.getImageData(0, 0, image.width, image.height).data];
+            }));
+        }, files.map(file => file.toString('base64')));
+    }
     for (const [name, original] of examples) {
         const image = new URL(uploads.get(name), base).href;
         assert.match(new URL(image).pathname, /\/uploads\/media\/zip_[0-9a-f]{32}\.(?:jpg|png|gif|webp)$/);
@@ -144,18 +157,9 @@ module.exports = async (page, base) => {
         const registered = await result.body();
         assert(!registered.includes(metadata));
         assert(registered.length <= original.length);
-        if (['透過', 'メタデータ', 'メタデータ付き'].includes(name)) assert(registered.length < original.length);
-        if (name === '背景') assert.deepEqual(registered, original);
-        const decoded = await page.evaluate(async files => {
-            return Promise.all(files.map(async file => {
-                const bytes = Uint8Array.from(atob(file), char => char.charCodeAt(0));
-                const image = await createImageBitmap(new Blob([bytes]));
-                const canvas = new OffscreenCanvas(image.width, image.height);
-                const context = canvas.getContext('2d');
-                context.drawImage(image, 0, 0);
-                return [image.width, image.height, ...context.getImageData(0, 0, image.width, image.height).data];
-            }));
-        }, [original.toString('base64'), registered.toString('base64')]);
+        if (['メタデータ', 'メタデータ付き'].includes(name)) assert(registered.length < original.length);
+        if (name === '背景' || name === '透過') assert.deepEqual(registered, original);
+        const decoded = await decodedPixels(original, registered);
         assert.deepEqual(decoded[0], decoded[1], name);
         if (name === 'メタデータ') assert.deepEqual(decoded[1].slice(0, 2), [3, 4]);
     }
@@ -169,6 +173,56 @@ module.exports = async (page, base) => {
         context.drawImage(image, 0, 0);
         return context.getImageData(0, 0, 1, 1).data[3] === 0;
     }));
+
+    const pngCard = cards.filter({has: page.getByText('透過', {exact: true})});
+    const jpegCard = cards.filter({has: page.getByText('メタデータ', {exact: true})});
+    const pngSelection = pngCard.locator('[data-media-select]');
+    const jpegSelection = jpegCard.locator('[data-media-select]');
+    const optimizeButton = page.getByRole('button', {name: '画質を保って軽量化', exact: true});
+    const optimizeEndpoint = base + '/admin/media/optimize/' + await pngSelection.inputValue();
+    const pngUrl = new URL(uploads.get('透過'), base).href;
+    const jpegUrl = new URL(uploads.get('メタデータ'), base).href;
+    const jpegBefore = await (await page.request.get(jpegUrl)).body();
+    assert.equal((await page.request.post(optimizeEndpoint, {form: {_csrf_token: 'invalid-token'}})).status(), 419);
+    await pngSelection.check();
+    await jpegSelection.check();
+
+    const optimizationRequests = [];
+    const trackOptimization = request => {
+        if (request.method() === 'POST' && new URL(request.url()).pathname.includes('/admin/media/optimize/')) {
+            optimizationRequests.push(request.url());
+        }
+    };
+    page.on('request', trackOptimization);
+    try {
+        const [response] = await Promise.all([
+            page.waitForResponse(response => response.url() === optimizeEndpoint && response.request().method() === 'POST'),
+            optimizeButton.click(),
+        ]);
+        assert.equal(response.status(), 200);
+        const {bytes, saved} = await response.json();
+        const optimized = await (await page.request.get(pngUrl)).body();
+        assert.equal(bytes, optimized.length);
+        assert.equal(saved, expandedPng.length - bytes);
+        assert(saved > 0);
+        const decoded = await decodedPixels(expandedPng, optimized);
+        assert.deepEqual(decoded[0], decoded[1]);
+        await page.waitForFunction(() => document.querySelector('[data-media-optimize-status]')
+            ?.textContent.startsWith('軽量化完了'));
+        assert.deepEqual(optimizationRequests, [optimizeEndpoint]);
+        assert.deepEqual(await (await page.request.get(jpegUrl)).body(), jpegBefore);
+
+        const repeat = await page.request.post(optimizeEndpoint, {form: {_csrf_token: token}});
+        assert.equal(repeat.status(), 200);
+        assert.deepEqual(await repeat.json(), {bytes, saved: 0});
+        assert.deepEqual(await (await page.request.get(pngUrl)).body(), optimized);
+
+        await page.goto(photoUrl);
+        assert.equal(await pngCard.locator('img').getAttribute('src'), uploads.get('透過'));
+        assert.equal(await pngCard.locator('[data-media-size]').textContent(), bytes + ' B');
+    } finally {
+        page.off('request', trackOptimization);
+    }
 
     const endpoint = base + '/admin/media/import-zip';
     const form = (data, csrf = token) => ({multipart: {
@@ -237,5 +291,5 @@ module.exports = async (page, base) => {
         assert(!html.includes('枚数超過'));
         assert(!html.includes('画素数超過'));
     }
-    console.log('PASS: ZIP lossless PNG, JPEG and WebP, folders, image dimension and pixel limits, and atomic rejection');
+    console.log('PASS: ZIP validation, deferred lossless PNG optimization at the same URL, folders, limits and atomic rejection');
 };

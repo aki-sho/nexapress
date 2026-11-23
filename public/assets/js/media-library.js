@@ -78,15 +78,20 @@
     const mediaIds = actions.elements.media_ids;
     const moveButton = actions.querySelector('[data-media-move]');
     const deleteButton = actions.querySelector('[data-media-bulk-delete]');
+    const optimizeButton = actions.querySelector('[data-media-optimize]');
     const checkedItems = () => checkboxes.filter(input => input.checked);
+    const canOptimize = input => Boolean(input.dataset.mediaOptimizeUrl);
+    let optimizing = false;
 
     function updateSelection() {
-        const count = checkedItems().length;
+        const checked = checkedItems();
+        const count = checked.length;
         selectAll.checked = count === checkboxes.length;
         selectAll.indeterminate = count > 0 && !selectAll.checked;
         selectedCount.textContent = count + '件選択';
-        moveButton.disabled = count === 0 || destination.value === '';
-        deleteButton.disabled = count === 0;
+        moveButton.disabled = optimizing || count === 0 || destination.value === '';
+        deleteButton.disabled = optimizing || count === 0;
+        if (optimizeButton) optimizeButton.disabled = optimizing || !checked.some(canOptimize);
     }
 
     selectAll.addEventListener('change', () => {
@@ -104,10 +109,98 @@
         mediaIds.value = JSON.stringify(items.map(input => Number(input.value)));
     }
 
+    function sizeLabel(bytes) {
+        if (bytes >= 1048576) return Math.round(bytes / 104857.6) / 10 + ' MB';
+        if (bytes >= 1024) return Math.round(bytes / 102.4) / 10 + ' KB';
+        return bytes + ' B';
+    }
+
+    optimizeButton?.addEventListener('click', async () => {
+        const items = checkedItems().filter(canOptimize);
+        if (optimizing || items.length === 0) return;
+
+        const optimizeProgress = actions.querySelector('[data-media-optimize-progress]');
+        const progress = optimizeProgress.querySelector('progress');
+        const optimizeStatus = actions.querySelector('[data-media-optimize-status]');
+        optimizing = true;
+        clearDrag();
+        updateSelection();
+        progress.max = items.length;
+        progress.value = 0;
+        optimizeProgress.hidden = false;
+
+        const body = new URLSearchParams({_csrf_token: actions.elements._csrf_token.value});
+        let optimized = 0;
+        let unchanged = 0;
+        let failed = 0;
+        let saved = 0;
+        let stopped = false;
+        let firstError = '';
+
+        function report(state) {
+            const counts = [
+                '軽量化 ' + optimized + '件',
+                '変更なし ' + unchanged + '件',
+                '失敗 ' + failed + '件',
+                '削減 ' + sizeLabel(saved),
+            ];
+            optimizeStatus.textContent = state + ' ' + progress.value + ' / ' + items.length +
+                '件。' + counts.join('・') + (firstError ? '。' + firstError : '');
+        }
+
+        report('軽量化中');
+        try {
+            for (const input of items) {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 45000);
+                try {
+                    const response = await fetch(input.dataset.mediaOptimizeUrl, {
+                        method: 'POST', body, redirect: 'manual', signal: controller.signal,
+                    });
+                    if (response.type === 'opaqueredirect' || [401, 403, 419].includes(response.status)) {
+                        stopped = true;
+                        firstError = 'ログイン状態を確認してください。';
+                        break;
+                    }
+
+                    const result = await response.json().catch(() => null);
+                    if (!response.ok || !Number.isSafeInteger(result?.bytes) || result.bytes < 1 ||
+                        !Number.isSafeInteger(result.saved) || result.saved < 0) {
+                        throw new Error(typeof result?.error === 'string' ? result.error : '画像を軽量化できませんでした。');
+                    }
+
+                    const card = input.closest('[data-media-card]');
+                    card.querySelector('[data-media-size]').textContent = sizeLabel(result.bytes);
+                    const dialog = document.getElementById(card.querySelector('[data-open-media-dialog]').dataset.openMediaDialog);
+                    const editButton = dialog?.querySelector('[data-open-image-editor]');
+                    if (editButton) editButton.dataset.imageBytes = result.bytes;
+                    if (result.saved > 0) {
+                        optimized++;
+                        saved += result.saved;
+                    } else {
+                        unchanged++;
+                    }
+                } catch (error) {
+                    failed++;
+                    firstError ||= controller.signal.aborted ? '画像の応答が時間内に返りませんでした。'
+                        : error instanceof TypeError ? '通信を確認してください。' : error.message;
+                } finally {
+                    clearTimeout(timeout);
+                }
+                progress.value++;
+                report('軽量化中');
+            }
+        } finally {
+            optimizing = false;
+            updateSelection();
+            report(stopped ? '軽量化を中断' : '軽量化完了');
+        }
+    });
+
     actions.addEventListener('submit', event => {
         const items = checkedItems();
         const deleting = event.submitter === deleteButton;
-        if (items.length === 0 || (!deleting && destination.value === '')) {
+        if (optimizing || items.length === 0 || (!deleting && destination.value === '')) {
             event.preventDefault();
             return;
         }
@@ -143,6 +236,10 @@
     document.addEventListener('dragstart', event => {
         const card = event.target.closest('[data-media-card]');
         if (!card || event.target !== card || !event.dataTransfer) return;
+        if (optimizing) {
+            event.preventDefault();
+            return;
+        }
 
         const input = card.querySelector('[data-media-select]');
         draggedItems = input.checked ? checkedItems() : [input];
@@ -168,7 +265,7 @@
 
     document.addEventListener('drop', event => {
         const folder = event.target.closest('[data-media-drop-folder]');
-        if (!draggedItems || !folder) return;
+        if (optimizing || !draggedItems || !folder) return;
 
         event.preventDefault();
         setMediaIds(draggedItems);

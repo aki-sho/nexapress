@@ -163,7 +163,7 @@ class Media
         return $stmt->fetchAll();
     }
 
-    public static function find(int $id): ?array
+    public static function find(int $id, bool $forUpdate = false): ?array
     {
         $pdo = Database::connect();
 
@@ -174,7 +174,7 @@ class Media
             FROM {$media}
             WHERE id = :id
             LIMIT 1
-        ");
+        " . ($forUpdate ? ' FOR UPDATE' : ''));
 
         $stmt->execute([
             ':id' => $id,
@@ -183,6 +183,13 @@ class Media
         $mediaItem = $stmt->fetch();
 
         return $mediaItem ?: null;
+    }
+
+    public static function updateFileSize(int $id, int $bytes): void
+    {
+        $media = Database::table('media');
+        $statement = Database::connect()->prepare("UPDATE {$media} SET file_size = ? WHERE id = ?");
+        $statement->execute([$bytes, $id]);
     }
 
     public static function create(

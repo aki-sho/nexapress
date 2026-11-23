@@ -33,7 +33,7 @@ final class MediaZipImport
             class_exists(\finfo::class) && extension_loaded('gd') && extension_loaded('zlib');
     }
 
-    /** @return array{imported: int, skipped: int, optimized: int, folders: int} */
+    /** @return array{imported: int, skipped: int, folders: int} */
     public static function import(string $path, int $userId, ?int $folderId): array
     {
         if (!self::available()) {
@@ -64,13 +64,8 @@ final class MediaZipImport
             $preparedImages = self::temporaryFile();
             $images = [];
             $pixelsRemaining = self::MAX_TOTAL_PIXELS;
-            $optimized = 0;
             foreach ($archive['entries'] as $entry) {
-                $image = self::prepareImage($zip, $entry, $fileInfo, $pixelsRemaining, $preparedImages);
-                $images[] = $image;
-                if ($image['bytes'] < $entry['size']) {
-                    $optimized++;
-                }
+                $images[] = self::prepareImage($zip, $entry, $fileInfo, $pixelsRemaining, $preparedImages);
             }
             if (!fflush($preparedImages) || !rewind($preparedImages)) {
                 throw new RuntimeException('Could not read the staged ZIP images.');
@@ -78,7 +73,7 @@ final class MediaZipImport
             $folders = self::register($images, $preparedImages, $userId, $folderId);
             return [
                 'imported' => count($images), 'skipped' => $archive['skipped'],
-                'optimized' => $optimized, 'folders' => $folders,
+                'folders' => $folders,
             ];
         } finally {
             $zip->close();
