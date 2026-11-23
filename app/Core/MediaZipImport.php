@@ -10,15 +10,15 @@ use ZipArchive;
 
 final class MediaZipImport
 {
-    public const MAX_ARCHIVE_BYTES = 26214400;
+    public const MAX_ARCHIVE_BYTES = 125 * 1024 * 1024;
     public const MAX_IMAGE_BYTES = 16777216;
-    public const MAX_TOTAL_BYTES = 67108864;
-    public const MAX_IMAGES = 200;
+    public const MAX_TOTAL_BYTES = 320 * 1024 * 1024;
+    public const MAX_IMAGES = 1_000;
     public const MAX_DIMENSION = 4096;
-    public const MAX_TOTAL_PIXELS = 100_000_000;
+    public const MAX_TOTAL_PIXELS = 500_000_000;
 
     private const MAX_ENTRIES = self::MAX_IMAGES * 2;
-    private const MAX_DIRECTORY_BYTES = 262144;
+    private const MAX_DIRECTORY_BYTES = 1_280 * 1024;
     private const INVALID_ZIP = 'ZIPを読み込めませんでした。ファイルを確認してください。';
     private const MIME_TYPES = [
         'jpg' => 'image/jpeg',
@@ -41,7 +41,9 @@ final class MediaZipImport
         }
         $size = @filesize($path);
         if ($size === false || $size < 1 || $size > self::MAX_ARCHIVE_BYTES) {
-            throw new InvalidArgumentException('25 MB以下のZIPを選んでください。');
+            throw new InvalidArgumentException(
+                (self::MAX_ARCHIVE_BYTES / (1024 * 1024)) . ' MB以下のZIPを選んでください。'
+            );
         }
         self::privatePath($path);
         $expectedEntries = self::preflight($path, $size);
@@ -51,31 +53,37 @@ final class MediaZipImport
             throw new InvalidArgumentException(self::INVALID_ZIP);
         }
 
-        $images = [];
+        $preparedImages = null;
         try {
             if ($zip->numFiles !== $expectedEntries) {
                 throw new InvalidArgumentException(self::INVALID_ZIP);
             }
             $archive = self::inspect($zip);
             $fileInfo = new \finfo(FILEINFO_MIME_TYPE);
+            // Keep one staging stream for the whole batch, even when it contains 1,000 images.
+            $preparedImages = self::temporaryFile();
+            $images = [];
             $pixelsRemaining = self::MAX_TOTAL_PIXELS;
             $optimized = 0;
             foreach ($archive['entries'] as $entry) {
-                $image = self::prepareImage($zip, $entry, $fileInfo, $pixelsRemaining);
+                $image = self::prepareImage($zip, $entry, $fileInfo, $pixelsRemaining, $preparedImages);
                 $images[] = $image;
                 if ($image['bytes'] < $entry['size']) {
                     $optimized++;
                 }
             }
-            $folders = self::register($images, $userId, $folderId);
+            if (!fflush($preparedImages) || !rewind($preparedImages)) {
+                throw new RuntimeException('Could not read the staged ZIP images.');
+            }
+            $folders = self::register($images, $preparedImages, $userId, $folderId);
             return [
                 'imported' => count($images), 'skipped' => $archive['skipped'],
                 'optimized' => $optimized, 'folders' => $folders,
             ];
         } finally {
             $zip->close();
-            foreach ($images as $image) {
-                fclose($image['stream']);
+            if ($preparedImages !== null) {
+                fclose($preparedImages);
             }
         }
     }
@@ -193,7 +201,7 @@ final class MediaZipImport
     }
 
     private static function prepareImage(
-        ZipArchive $zip, array $entry, \finfo $fileInfo, int &$pixelsRemaining
+        ZipArchive $zip, array $entry, \finfo $fileInfo, int &$pixelsRemaining, $preparedImages
     ): array {
         $source = self::temporaryFile();
         $output = null;
@@ -250,9 +258,10 @@ final class MediaZipImport
                 ($format !== 'gif' && (imagesx($image) !== $width || imagesy($image) !== $height))) {
                 throw new InvalidArgumentException('ZIP内の画像を読み込めません。WebPは静止画を使用してください。');
             }
-            $result = $entry + ['stream' => $output, 'bytes' => $outputSize, 'mime' => $mime];
-            $output = null;
-            return $result;
+            if (!rewind($output) || @stream_copy_to_stream($output, $preparedImages, $outputSize) !== $outputSize) {
+                throw new RuntimeException('Could not stage the validated ZIP image.');
+            }
+            return $entry + ['bytes' => $outputSize, 'mime' => $mime];
         } finally {
             fclose($source);
             if ($output !== null) {
@@ -313,7 +322,7 @@ final class MediaZipImport
         }
     }
 
-    private static function register(array $images, int $userId, ?int $folderId): int
+    private static function register(array $images, $preparedImages, int $userId, ?int $folderId): int
     {
         $directory = BASE_PATH . '/public/uploads/media';
         if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
@@ -348,8 +357,7 @@ final class MediaZipImport
                 }
                 $files[] = $path;
                 try {
-                    if (!rewind($image['stream']) ||
-                        @stream_copy_to_stream($image['stream'], $destination) !== $image['bytes'] ||
+                    if (@stream_copy_to_stream($preparedImages, $destination, $image['bytes']) !== $image['bytes'] ||
                         !@fflush($destination)) {
                         throw new RuntimeException('Could not write an imported media file.');
                     }

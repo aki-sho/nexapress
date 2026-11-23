@@ -79,7 +79,7 @@ function media_size_label(int $bytes): string
                     ZIP内のフォルダ名で分類し、JPEG、PNG、GIF、WebPを登録します。対応外のファイルは除外します。<br>
                     表示される画質を保ち、容量が小さくなる画像を軽量化します。<br>
                     ZIP直下の画像の保存先 <?= e($viewFolder > 0 ? $currentFolderName : '未分類') ?><br>
-                    ZIP <?= e(media_size_label(MediaZipImport::MAX_ARCHIVE_BYTES)) ?>、画像 <?= MediaZipImport::MAX_IMAGES ?> 枚まで。
+                    ZIP <?= e(media_size_label(MediaZipImport::MAX_ARCHIVE_BYTES)) ?>、画像 <?= number_format(MediaZipImport::MAX_IMAGES) ?> 枚まで。
                     展開後は1枚 <?= e(media_size_label(MediaZipImport::MAX_IMAGE_BYTES)) ?>、合計 <?= e(media_size_label(MediaZipImport::MAX_TOTAL_BYTES)) ?>まで。<br>
                     各辺 <?= number_format(MediaZipImport::MAX_DIMENSION) ?> px以下。画像の合計 <?= number_format(MediaZipImport::MAX_TOTAL_PIXELS) ?> 画素まで。<br>
                     GIFは先頭のコマ、WebPは静止画を登録します。
@@ -95,15 +95,37 @@ function media_size_label(int $bytes): string
 <div class="media-library">
     <aside class="media-folders">
         <h2>フォルダ</h2>
-        <nav aria-label="メディアのフォルダ">
-            <a class="media-folder-link" href="<?= e(url('admin/media')) ?>"
-                <?php if ($viewFolder === null): ?>aria-current="page"<?php endif; ?>>すべて</a>
-            <?php foreach ($folderLabels as $folderId => $folderName): ?>
-                <a class="media-folder-link" href="<?= e(url('admin/media?folder=' . $folderId)) ?>"
-                    <?php if ($viewFolder === $folderId): ?>aria-current="page"
-                    <?php else: ?>data-media-drop-folder="<?= (int)$folderId ?>"<?php endif; ?>><?= e($folderName) ?></a>
-            <?php endforeach; ?>
-        </nav>
+        <form action="<?= e(url('admin/media/folders/bulk-delete')) ?>" method="post"
+            <?php if ($folders !== []): ?>data-media-folder-actions<?php endif; ?>>
+            <?php if ($folders !== []): ?>
+                <input type="hidden" name="_csrf_token" value="<?= e($csrf) ?>">
+                <input type="hidden" name="view_folder" value="<?= e((string)$viewFolder) ?>">
+                <input type="hidden" name="folder_ids" value="[]">
+                <div class="media-folder-actions">
+                    <label class="media-select-all">
+                        <input type="checkbox" aria-label="フォルダを全選択" data-media-folder-select-all>全選択
+                    </label>
+                    <span data-media-folder-count aria-live="polite">0件選択</span>
+                    <button type="submit" class="button danger small" data-media-folder-delete disabled>フォルダを一括削除</button>
+                </div>
+            <?php endif; ?>
+            <nav aria-label="メディアのフォルダ">
+                <a class="media-folder-link" href="<?= e(url('admin/media')) ?>"
+                    <?php if ($viewFolder === null): ?>aria-current="page"<?php endif; ?>>すべて</a>
+                <a class="media-folder-link" href="<?= e(url('admin/media?folder=0')) ?>"
+                    <?php if ($viewFolder === 0): ?>aria-current="page"
+                    <?php else: ?>data-media-drop-folder="0"<?php endif; ?>>未分類</a>
+                <?php foreach ($folders as $folderId => $folderName): ?>
+                    <div class="media-folder-row">
+                        <input type="checkbox" data-media-folder-select value="<?= (int)$folderId ?>"
+                            aria-label="<?= e('フォルダ「' . $folderName . '」を選択') ?>">
+                        <a class="media-folder-link" href="<?= e(url('admin/media?folder=' . $folderId)) ?>"
+                            <?php if ($viewFolder === $folderId): ?>aria-current="page"
+                            <?php else: ?>data-media-drop-folder="<?= (int)$folderId ?>"<?php endif; ?>><?= e($folderName) ?></a>
+                    </div>
+                <?php endforeach; ?>
+            </nav>
+        </form>
     </aside>
 
     <section class="media-list" aria-labelledby="media-list-title">

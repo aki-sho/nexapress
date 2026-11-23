@@ -20,6 +20,54 @@
         }
     });
 
+    function selectionNames(items, getName) {
+        const names = items.slice(0, 8).map(getName);
+        if (items.length > names.length) {
+            names.push('ほか ' + (items.length - names.length) + '件');
+        }
+        return names.join('\n');
+    }
+
+    const folderActions = document.querySelector('[data-media-folder-actions]');
+    if (folderActions) {
+        const choices = Array.from(folderActions.querySelectorAll('[data-media-folder-select]'));
+        const selectAll = folderActions.querySelector('[data-media-folder-select-all]');
+        const selectedCount = folderActions.querySelector('[data-media-folder-count]');
+        const deleteButton = folderActions.querySelector('[data-media-folder-delete]');
+        const checkedFolders = () => choices.filter(input => input.checked);
+
+        function updateFolderSelection() {
+            const count = checkedFolders().length;
+            selectAll.checked = count === choices.length;
+            selectAll.indeterminate = count > 0 && !selectAll.checked;
+            selectedCount.textContent = count + '件選択';
+            deleteButton.disabled = count === 0;
+        }
+
+        selectAll.addEventListener('change', () => {
+            for (const input of choices) input.checked = selectAll.checked;
+            updateFolderSelection();
+        });
+        folderActions.querySelector('nav').addEventListener('change', updateFolderSelection);
+        window.addEventListener('pageshow', updateFolderSelection);
+        updateFolderSelection();
+
+        folderActions.addEventListener('submit', event => {
+            const checked = checkedFolders();
+            if (checked.length === 0) {
+                event.preventDefault();
+                return;
+            }
+            const names = selectionNames(checked, input => input.nextElementSibling.textContent.trim());
+            if (!window.confirm(checked.length + '件のフォルダを削除しますか？\n\n' + names +
+                '\n\n中のメディアは「未分類」に戻ります。')) {
+                event.preventDefault();
+                return;
+            }
+            folderActions.elements.folder_ids.value = JSON.stringify(checked.map(input => Number(input.value)));
+        });
+    }
+
     const actions = document.querySelector('[data-media-actions]');
     if (!actions) return;
 
@@ -65,11 +113,8 @@
         }
 
         if (deleting) {
-            const names = items.slice(0, 8).map(input => input.closest('[data-media-card]').dataset.mediaTitle);
-            if (items.length > names.length) {
-                names.push('ほか ' + (items.length - names.length) + '件');
-            }
-            const message = items.length + '件のメディアを削除しますか？\n\n' + names.join('\n')
+            const names = selectionNames(items, input => input.closest('[data-media-card]').dataset.mediaTitle);
+            const message = items.length + '件のメディアを削除しますか？\n\n' + names
                 + '\n\n記事などで使用中の場合は表示できなくなります。';
             if (!window.confirm(message)) {
                 event.preventDefault();

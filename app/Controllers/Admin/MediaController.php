@@ -104,6 +104,26 @@ class MediaController extends Controller
         $this->returnToLibrary(0, 'フォルダを削除しました。中のメディアは「未分類」に戻りました。');
     }
 
+    public function bulkDeleteFolders(): void
+    {
+        Auth::requireLogin();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
+
+        $viewFolder = $this->folderId($_POST['view_folder'] ?? null);
+        $ids = $this->selectedIds('folder_ids');
+        if ($ids === []) {
+            $this->returnToLibrary($viewFolder, '削除するフォルダを選んでください。', true);
+        }
+
+        $deleted = Media::deleteFolders($ids);
+        if ($deleted === 0) {
+            $this->returnToLibrary($viewFolder, '削除するフォルダが見つかりませんでした。', true);
+        }
+
+        $this->returnToLibrary(in_array($viewFolder, $ids, true) ? 0 : $viewFolder,
+            $deleted . '件のフォルダを削除しました。中のメディアは「未分類」に戻りました。');
+    }
+
     public function move(): void
     {
         Auth::requireLogin();
@@ -368,9 +388,9 @@ class MediaController extends Controller
             : '削除するメディアは見つかりませんでした。');
     }
 
-    private function selectedIds(): array
+    private function selectedIds(string $field = 'media_ids'): array
     {
-        $value = $_POST['media_ids'] ?? '';
+        $value = $_POST[$field] ?? '';
         $ids = is_string($value) ? json_decode($value, false, 2) : null;
         if (!is_array($ids)) {
             return [];

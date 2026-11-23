@@ -82,8 +82,10 @@ module.exports = async (page, base) => {
         assert.match(await zipForm.textContent(), /ZipArchive、Fileinfo、GD/);
         return;
     }
-    assert.match(await zipForm.textContent(), /画像\s*200\s*枚まで/);
-    assert.match(await zipForm.textContent(), /画像の合計\s*100,000,000\s*画素まで/);
+    const limits = await zipForm.textContent();
+    assert.match(limits, /ZIP\s*125 MB、画像\s*1,000\s*枚まで/);
+    assert.match(limits, /展開後は1枚\s*16 MB、合計\s*320 MBまで/);
+    assert.match(limits, /画像の合計\s*500,000,000\s*画素まで/);
     const options = await page.evaluate(() => {
         const canvas = document.createElement('canvas');
         canvas.width = 4;
@@ -190,17 +192,17 @@ module.exports = async (page, base) => {
 
     const atLimit = archive([
         ['上限確認/', Buffer.alloc(0), 0o040755],
-        ...Array.from({length: 200}, (_, index) => ['上限確認/' + index + '.png', png]),
+        ...Array.from({length: 1_000}, (_, index) => ['上限確認/' + index + '.png', png]),
         ['上限確認/説明.txt', Buffer.from('example note')],
     ]);
     const accepted = await page.request.post(endpoint, form(atLimit));
     assert(accepted.ok());
-    assert((await accepted.text()).includes('200件の画像をZIPから登録しました。1件の対応外ファイルを除外しました。'));
-    await page.goto(accepted.url());
+    assert((await accepted.text()).includes('1000件の画像をZIPから登録しました。1件の対応外ファイルを除外しました。'));
+    await page.goto(accepted.url(), {waitUntil: 'domcontentloaded'});
     const limitFolder = await folders.getByRole('link', {name: '上限確認', exact: true}).getAttribute('href');
     assert(limitFolder);
     await page.goto(new URL(limitFolder, base).href, {waitUntil: 'domcontentloaded'});
-    assert.equal(await cards.count(), 200);
+    assert.equal(await cards.count(), 1_000);
 
     const largeImages = await page.evaluate(() => {
         const canvas = document.createElement('canvas');
@@ -218,11 +220,11 @@ module.exports = async (page, base) => {
         [archive([['文章/説明書.txt', Buffer.from('example note')]]), '1件の対応外ファイルを除外しました。'],
         [archive([['作成失敗/valid.png', png], ['作成失敗/wrong.jpg', png]]), '画像形式が一致しない'],
         [archive([['valid.png', png], ['link.txt', Buffer.from('unresolved'), 0o120777]]), 'リンクや特殊ファイル'],
-        [archive(Array.from({length: 201}, (_, index) => ['枚数超過/' + index + '.png', png])), '画像は200枚まで'],
+        [archive(Array.from({length: 1_001}, (_, index) => ['枚数超過/' + index + '.png', png])), '画像は1000枚まで'],
         [archive([['幅超過.png', tooWide]]), '「幅超過.png」（4097 × 1 px）の寸法が上限を超えています。各辺4,096 pxまで'],
-        [archive(Array.from({length: 7}, (_, index) => ['画素数超過/' + index + '.jpg', largeJpeg])),
-            '合計画素数が上限の100,000,000画素'],
-        [archive(Array.from({length: 401}, (_, index) => [index + '.txt', Buffer.from('note')])), '項目数または目録の容量'],
+        [archive(Array.from({length: 32}, (_, index) => ['画素数超過/' + index + '.jpg', largeJpeg])),
+            '合計画素数が上限の500,000,000画素'],
+        [archive(Array.from({length: 2_001}, (_, index) => [index + '.txt', Buffer.from('note')])), '項目数または目録の容量'],
         [Buffer.from('This is a plain text file'), 'ZIPを読み込めません'],
     ];
     for (const [data, message] of cases) {

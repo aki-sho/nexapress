@@ -241,6 +241,47 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
     await expectNotice('1件のメディアを削除しました。');
     assert.equal(await card(note).count(), 0);
 
+    const firstFolder = '一括削除 A';
+    const secondFolder = '一括削除 B';
+    await createMediaFolder(page, firstFolder);
+    const secondFolderUrl = await createMediaFolder(page, secondFolder);
+    const folderActions = page.locator('[data-media-folder-actions]');
+    const folderAll = folderActions.getByRole('checkbox', {name: 'フォルダを全選択'});
+    const folderDelete = folderActions.getByRole('button', {name: 'フォルダを一括削除'});
+    const folderChoice = label => folderActions.getByRole('checkbox', {name: 'フォルダ「' + label + '」を選択', exact: true});
+    assert(await folderDelete.isDisabled());
+    await folderAll.check();
+    assert(await folderDelete.isEnabled());
+    assert.equal(await folderChoice('未分類').count(), 0);
+    assert.equal(await folderChoice('すべて').count(), 0);
+
+    for (const [title, target] of [[name, firstFolder], [editName, secondFolder]]) {
+        await mediaFolder(page, '未分類').click();
+        await card(title).getByRole('checkbox').check();
+        await page.getByRole('combobox', {name: '移動先のフォルダ'}).selectOption({label: target});
+        await page.getByRole('button', {name: '移動', exact: true}).click();
+        await expectNotice('1件のメディアを移動しました。');
+    }
+
+    await page.goto(secondFolderUrl);
+    assert.equal((await page.request.post(base + '/admin/media/folders/bulk-delete', {form: {}})).status(), 419);
+    await folderAll.check();
+    await folderChoice('移動先 & 確認').uncheck();
+    assert.equal(await folderAll.evaluate(input => input.indeterminate), true);
+    assert.equal(await folderActions.locator('[data-media-folder-count]').textContent(), '2件選択');
+    await confirmAction(folderDelete, [firstFolder, secondFolder, '未分類'], false);
+    assert(await mediaFolder(page, firstFolder).isVisible());
+    await confirmAction(folderDelete, [firstFolder, secondFolder, '未分類']);
+    await expectNotice('2件のフォルダを削除しました。中のメディアは「未分類」に戻りました。');
+    assert.equal(new URL(page.url()).searchParams.get('folder'), '0');
+    assert.equal(await mediaFolder(page, firstFolder).count(), 0);
+    assert.equal(await mediaFolder(page, secondFolder).count(), 0);
+    assert(await mediaFolder(page, '移動先 & 確認').isVisible());
+    assert.equal(await card(name).locator('img').getAttribute('src'), originalUrl);
+    assert.equal(await card(editName).locator('img').getAttribute('src'), editedUrl);
+    await assertFileStatus(originalUrl, 200);
+    await assertFileStatus(editedUrl, 200);
+
     await card(name).getByRole('checkbox').check();
     await card(editName).getByRole('checkbox').check();
     await confirmAction(page.getByRole('button', {name: '選択した項目を削除'}), ['2件', name, editName]);
@@ -249,7 +290,7 @@ async function checkMediaFolders(page, base, output, {folderUrl, name, originalU
     await card('既存メディア').waitFor();
     await assertFileStatus(originalUrl, 404);
     await assertFileStatus(editedUrl, 404);
-    console.log('PASS: media folders, checked and drag moves, stable URLs, folder and media deletion');
+    console.log('PASS: media folders, checked and drag moves, stable URLs, individual and bulk deletion');
 }
 
 (async () => {

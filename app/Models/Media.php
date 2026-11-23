@@ -59,10 +59,31 @@ class Media
 
     public static function deleteFolder(int $id): bool
     {
+        return self::deleteFolders([$id]) > 0;
+    }
+
+    /** Deletes folders. The foreign key clears folder_id on their media. */
+    public static function deleteFolders(array $ids): int
+    {
+        $pdo = Database::connect();
         $folders = Database::table('media_folders');
-        $stmt = Database::connect()->prepare("DELETE FROM {$folders} WHERE id = ?");
-        $stmt->execute([$id]);
-        return $stmt->rowCount() > 0;
+        $deleted = 0;
+        $pdo->beginTransaction();
+        try {
+            foreach (array_chunk($ids, 500) as $batch) {
+                $placeholders = implode(', ', array_fill(0, count($batch), '?'));
+                $stmt = $pdo->prepare("DELETE FROM {$folders} WHERE id IN ({$placeholders})");
+                $stmt->execute($batch);
+                $deleted += $stmt->rowCount();
+            }
+            $pdo->commit();
+        } catch (\Throwable $exception) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $exception;
+        }
+        return $deleted;
     }
 
     /** Returns null if the destination folder was deleted. */

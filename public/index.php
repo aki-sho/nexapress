@@ -346,6 +346,7 @@ $router->post('/admin/media/update/{id}', 'app\Controllers\Admin\MediaController
 $router->post('/admin/media/delete/{id}', 'app\Controllers\Admin\MediaController@delete');
 $router->post('/admin/media/folders/create', 'app\Controllers\Admin\MediaController@createFolder');
 $router->post('/admin/media/folders/delete/{id}', 'app\Controllers\Admin\MediaController@deleteFolder');
+$router->post('/admin/media/folders/bulk-delete', 'app\Controllers\Admin\MediaController@bulkDeleteFolders');
 $router->post('/admin/media/move', 'app\Controllers\Admin\MediaController@move');
 $router->post('/admin/media/bulk-delete', 'app\Controllers\Admin\MediaController@bulkDelete');
 
