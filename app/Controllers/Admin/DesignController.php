@@ -106,7 +106,7 @@ final class DesignController extends Controller
                 'home' => ($general['homepage_mode'] ?? '') === 'page' ? (int)($general['homepage_page_id'] ?? 0) : 0,
                 'widths' => PageLayout::WIDTHS, 'elements' => PageLayout::ELEMENTS,
                 'scopes' => PageLayout::SCOPES, 'sectionDefaults' => PageLayout::sectionDefaults(),
-                'images' => $legacyTarget === null ? [] : array_map(static fn(array $image): array => [
+                'images' => array_map(static fn(array $image): array => [
                     'id' => (int)$image['id'], 'label' => $image['title'],
                 ], Media::images()),
                 'sectionLimit' => PageLayout::MAX_SECTIONS, 'elementLimit' => PageLayout::MAX_ELEMENTS,

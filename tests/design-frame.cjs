@@ -30,7 +30,11 @@ module.exports = async function checkDesignFrames(page, base, output) {
     }
     async function open(pane) {
         await page.locator('[data-pane="' + pane + '"]').click();
-        group = page.locator('[data-chrome-details="' + pane + ':spacing"] + [data-chrome-details="' + pane + ':frame"]');
+        if (pane === 'columns') {
+            await page.locator('[data-setting="body-target"]').selectOption('');
+            await settled();
+        }
+        group = page.locator('[data-chrome-details="' + pane + ':frame"]');
         if (!(await group.evaluate(node => node.open))) await group.locator('summary').press('Enter');
     }
     const expectPreview = (selector, values) => page.waitForFunction(({selector, values}) => {
