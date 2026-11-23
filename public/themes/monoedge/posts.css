@@ -55,7 +55,8 @@
 }
 
 .post-content {
-    margin-top: 28px;
+    margin: 0;
+    padding: 0;
     color: #1f2937;
 }
 /* ========================================
