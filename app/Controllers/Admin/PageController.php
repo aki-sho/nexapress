@@ -9,6 +9,7 @@ use app\Core\Database;
 use app\Core\EditorPreview;
 use app\Core\PageValidator;
 use app\Core\RequestSize;
+use app\Models\ContentBulk;
 use app\Models\Page;
 use app\Models\PageRevision;
 use Throwable;
@@ -21,6 +22,14 @@ class PageController extends Controller
         $notice = $_SESSION['page_notice'] ?? null;
         unset($_SESSION['page_notice']);
         $this->view('admin/pages', ['pages' => Page::all($trash), 'trash' => $trash, 'notice' => $notice]);
+    }
+
+    public function bulk(): void
+    {
+        $trash = ($_GET['trash'] ?? '') === '1';
+        $result = ContentBulk::run('pages', $trash, $_POST);
+        $this->notice($result['message']);
+        redirect_to('admin/pages' . ($trash ? '?trash=1' : ''));
     }
 
     public function create(): void

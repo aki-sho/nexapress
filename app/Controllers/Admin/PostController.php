@@ -9,6 +9,7 @@ use app\Core\Database;
 use app\Core\PostValidator;
 use app\Core\RequestSize;
 use app\Models\Category;
+use app\Models\ContentBulk;
 use app\Models\Media;
 use app\Models\Post;
 use app\Models\PostRevision;
@@ -85,6 +86,22 @@ class PostController extends Controller
             'notice' =>
                 $this->pullNotice(),
         ]);
+    }
+
+    public function bulk(): void
+    {
+        $filters = $this->adminFilters();
+        $result = ContentBulk::run('posts', $filters['trash'], $_POST);
+        $this->setNotice($result['message'], $result['type']);
+        $query = http_build_query(array_filter([
+            'keyword' => $filters['keyword'],
+            'status' => $filters['status'],
+            'category_id' => $filters['category_id'],
+            'author_id' => $filters['author_id'],
+            'view' => $filters['trash'] ? 'trash' : '',
+            'page' => max(1, (int)($_GET['page'] ?? 1)),
+        ], static fn($value) => $value !== '' && $value !== 0));
+        redirect_to('admin/posts?' . $query);
     }
 
     /*
@@ -558,14 +575,9 @@ class PostController extends Controller
      */
     private function adminFilters(): array
     {
-        $status = strtolower(
-            trim(
-                (string)(
-                    $_GET['status']
-                    ?? ''
-                )
-            )
-        );
+        $statusInput = $_GET['status'] ?? '';
+        $status = is_string($statusInput) ? strtolower(trim($statusInput)) : '';
+        $keyword = $_GET['keyword'] ?? '';
 
         if (
             !in_array(
@@ -583,12 +595,7 @@ class PostController extends Controller
 
         return [
             'keyword' =>
-                trim(
-                    (string)(
-                        $_GET['keyword']
-                        ?? ''
-                    )
-                ),
+                is_string($keyword) ? trim($keyword) : '',
 
             'status' =>
                 $status,

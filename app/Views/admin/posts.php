@@ -59,7 +59,8 @@ $statusLabels = [
  */
 $buildListUrl = static function (
     array $overrides = [],
-    array $remove = []
+    array $remove = [],
+    string $route = 'admin/posts'
 ) use (
     $filters,
     $isTrash
@@ -138,7 +139,7 @@ $buildListUrl = static function (
         $params
     );
 
-    $baseUrl = url('admin/posts');
+    $baseUrl = url($route);
 
     return $query !== ''
         ? $baseUrl . '?' . $query
@@ -562,11 +563,32 @@ $postExcerpt = static function (
             </p>
         </div>
     <?php else: ?>
+        <?php
+        $bulkActions = \app\Models\ContentBulk::actions('posts', $isTrash);
+        $bulkSelectable = [];
+        if ($bulkActions) {
+            foreach ($posts as $row) {
+                if (\app\Core\Permission::canDeletePost($row)
+                    || (!$isTrash && \app\Core\Permission::canPublishPost($row))) {
+                    $bulkSelectable[(int)$row['id']] = true;
+                }
+            }
+        }
+        if ($bulkSelectable) {
+            $bulkActionUrl = $buildListUrl(['page' => $currentPage], [], 'admin/posts/bulk');
+            require __DIR__ . '/content-bulk-form.php';
+        }
+        ?>
         <!-- 投稿一覧 -->
         <div class="admin-table-wrap">
             <table class="admin-table post-admin-table">
                 <thead>
                     <tr>
+                        <?php if ($bulkSelectable): ?>
+                            <th scope="col" class="content-bulk-selection">
+                                <input type="checkbox" form="content-bulk" data-content-bulk-all aria-label="この一覧をすべて選択" hidden>
+                            </th>
+                        <?php endif; ?>
                         <th class="post-image-column">
                             画像
                         </th>
@@ -638,6 +660,14 @@ $postExcerpt = static function (
                         ?>
 
                         <tr>
+                            <?php if ($bulkSelectable): ?>
+                                <td class="content-bulk-selection">
+                                    <?php if (isset($bulkSelectable[$postId])): ?>
+                                        <input type="checkbox" form="content-bulk" name="selected_ids[]" value="<?= $postId ?>"
+                                            aria-label="<?= e((string)($post['title'] ?? '') . 'を選択') ?>">
+                                    <?php endif; ?>
+                                </td>
+                            <?php endif; ?>
                             <!-- アイキャッチ -->
                             <td>
                                 <?php if (
@@ -978,6 +1008,10 @@ $postExcerpt = static function (
                 </tbody>
             </table>
         </div>
+        <?php if ($bulkSelectable): ?>
+            <!-- Keep this after the row inputs so a truncated submission cannot apply only some selections. -->
+            <input type="hidden" name="selection_complete" form="content-bulk" value="1">
+        <?php endif; ?>
 
         <!-- ページ分割 -->
         <?php if ($totalPages > 1): ?>

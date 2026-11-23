@@ -7,11 +7,23 @@
         </div>
     </div>
     <?php if (!empty($notice)): ?><p role="status"><?= e($notice) ?></p><?php endif; ?>
-    <?php if (!$pages): ?><p>固定ページはありません。</p><?php else: ?>
+    <?php if (!$pages): ?><p><?= $trash ? 'ゴミ箱は空です。' : '固定ページはありません。' ?></p><?php else: ?>
+    <?php
+    $bulkActions = \app\Models\ContentBulk::actions('pages', $trash);
+    $bulkActionUrl = url('admin/pages/bulk' . ($trash ? '?trash=1' : ''));
+    require __DIR__ . '/content-bulk-form.php';
+    ?>
     <div class="admin-table-wrap"><table class="admin-table"><thead><tr>
+        <th scope="col" class="content-bulk-selection">
+            <input type="checkbox" form="content-bulk" data-content-bulk-all aria-label="この一覧をすべて選択" hidden>
+        </th>
         <th>タイトル</th><th>スラッグ</th><th>状態</th><th>投稿者</th><th>操作</th>
     </tr></thead><tbody>
     <?php foreach ($pages as $page): ?><tr>
+        <td class="content-bulk-selection">
+            <input type="checkbox" form="content-bulk" name="selected_ids[]" value="<?= (int)$page['id'] ?>"
+                aria-label="<?= e($page['title'] . 'を選択') ?>">
+        </td>
         <td><?= e($page['title']) ?></td><td><?= e($page['slug']) ?></td>
         <td><?= $page['status'] === 'published' ? '公開' : '下書き' ?></td><td><?= e($page['author_name'] ?? '') ?></td>
         <td><div class="core-actions">
@@ -29,5 +41,8 @@
         <?php endforeach; ?>
         </div></td>
     </tr><?php endforeach; ?>
-    </tbody></table></div><?php endif; ?>
+    </tbody></table></div>
+    <!-- Keep this after the row inputs so a truncated submission cannot apply only some selections. -->
+    <input type="hidden" name="selection_complete" form="content-bulk" value="1">
+    <?php endif; ?>
 </section>

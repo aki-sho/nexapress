@@ -276,6 +276,8 @@ $router->get(
 /*
  * 公開・下書き切り替え
  */
+$router->post('/admin/posts/bulk', 'app\\Controllers\\Admin\\PostController@bulk');
+
 $router->post(
     '/admin/posts/status/{id}',
     'app\Controllers\Admin\PostController@status'
@@ -327,6 +329,7 @@ $router->post('/admin/pages/store', 'app\Controllers\Admin\PageController@store'
 $router->get('/admin/pages/edit/{id}', 'app\Controllers\Admin\PageController@edit');
 $router->post('/admin/pages/update/{id}', 'app\Controllers\Admin\PageController@update');
 $router->post('/admin/pages/delete/{id}', 'app\Controllers\Admin\PageController@delete');
+$router->post('/admin/pages/bulk', 'app\\Controllers\\Admin\\PageController@bulk');
 $router->post('/admin/pages/status/{id}', 'app\Controllers\Admin\PageController@status');
 
 // テーマ管理

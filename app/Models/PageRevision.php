@@ -12,8 +12,28 @@ class PageRevision
         $stmt = Database::connect()->prepare("INSERT INTO {$table}
             (page_id, editor_user_id, title, slug, content, status) VALUES (?, ?, ?, ?, ?, ?)");
         $stmt->execute([$page['id'], $editor, $page['title'], $page['slug'], $page['content'], $page['status']]);
+        self::prune((int)$page['id']);
+    }
+
+    public static function captureCurrent(array $pageIds, int $editor): void
+    {
+        $in = implode(', ', array_fill(0, count($pageIds), '?'));
+        $table = Database::table('page_revisions');
+        $pages = Database::table('pages');
+        $stmt = Database::connect()->prepare("INSERT INTO {$table}
+            (page_id, editor_user_id, title, slug, content, status)
+            SELECT id, ?, title, slug, content, status FROM {$pages} WHERE id IN ({$in})");
+        $stmt->execute(array_merge([$editor], $pageIds));
+        foreach ($pageIds as $pageId) {
+            self::prune($pageId);
+        }
+    }
+
+    private static function prune(int $pageId): void
+    {
+        $table = Database::table('page_revisions');
         $ids = Database::connect()->prepare("SELECT id FROM {$table} WHERE page_id = ? ORDER BY id DESC LIMIT 50, 1000000");
-        $ids->execute([$page['id']]);
+        $ids->execute([$pageId]);
         foreach ($ids->fetchAll(\PDO::FETCH_COLUMN) as $id) {
             Database::connect()->prepare("DELETE FROM {$table} WHERE id = ?")->execute([$id]);
         }

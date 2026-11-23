@@ -208,7 +208,7 @@ class Permission
         string $methodName,
         array $params
     ): void {
-        if ($methodName === 'index') {
+        if ($methodName === 'index' || $methodName === 'bulk') {
             self::require('posts.view');
 
             return;
@@ -425,52 +425,33 @@ class Permission
         string $anyPermission,
         string $ownPermission
     ): void {
-        if (self::can($anyPermission)) {
-            return;
+        if (!self::hasPostPermission($post, $anyPermission, $ownPermission)) {
+            self::deny();
         }
-
-        $user = Auth::user();
-
-        $isOwner =
-            (int) ($post['user_id'] ?? 0)
-            ===
-            (int) ($user['id'] ?? 0);
-
-        if (
-            $isOwner &&
-            self::can($ownPermission)
-        ) {
-            return;
-        }
-
-        self::deny();
     }
 
-    /*
-    * 投稿公開権限を確認
-    */
-    private static function requirePostPublishPermission(
-        array $post
-    ): void {
-        if (self::can('posts.publish')) {
-            return;
+    private static function requirePostPublishPermission(array $post): void
+    {
+        if (!self::canPublishPost($post)) {
+            self::deny();
         }
+    }
 
-        $user = Auth::user();
+    public static function canPublishPost(array $post): bool
+    {
+        return self::hasPostPermission($post, 'posts.publish', 'posts.publish_own');
+    }
 
-        $isOwner =
-            (int) ($post['user_id'] ?? 0)
-            ===
-            (int) ($user['id'] ?? 0);
+    public static function canDeletePost(array $post): bool
+    {
+        return self::hasPostPermission($post, 'posts.delete_any', 'posts.delete_own');
+    }
 
-        if (
-            $isOwner &&
-            self::can('posts.publish_own')
-        ) {
-            return;
-        }
-
-        self::deny();
+    private static function hasPostPermission(array $post, string $anyPermission, string $ownPermission): bool
+    {
+        $userId = (int)(Auth::user()['id'] ?? 0);
+        return self::can($anyPermission) || ($userId > 0 && $userId === (int)($post['user_id'] ?? 0)
+            && self::can($ownPermission));
     }
 
     /*
