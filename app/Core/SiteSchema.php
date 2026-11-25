@@ -85,4 +85,17 @@ class SiteSchema
             FOREIGN KEY (post_id) REFERENCES {$posts}(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
+
+    public static function ensureCategoryPages(PDO $pdo): void
+    {
+        $table = Database::table('category_pages');
+        $categories = Database::table('categories');
+        $pdo->exec("CREATE TABLE IF NOT EXISTS {$table} (
+            category_id INT PRIMARY KEY,
+            content MEDIUMTEXT NOT NULL,
+            posts_mode VARCHAR(10) NOT NULL DEFAULT 'list',
+            show_title TINYINT NOT NULL DEFAULT 1,
+            FOREIGN KEY (category_id) REFERENCES {$categories}(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    }
 }

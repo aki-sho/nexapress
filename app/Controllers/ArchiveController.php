@@ -6,6 +6,7 @@ use app\Core\Controller;
 use app\Core\Installer;
 use app\Core\Paginator;
 use app\Models\Category;
+use app\Models\CategoryPage;
 use app\Models\Post;
 
 class ArchiveController extends Controller
@@ -39,6 +40,12 @@ class ArchiveController extends Controller
         if (!$category) {
             http_response_code(404);
             echo 'カテゴリが見つかりません。';
+            return;
+        }
+        $page = CategoryPage::find((int)$category['id']);
+        if ($page !== null) {
+            $requested = filter_var($_GET['page'] ?? 1, FILTER_VALIDATE_INT) ?: 1;
+            $this->view('category-archive', CategoryPage::archiveData($category, $page, $requested));
             return;
         }
         $this->listing((int)$category['id'], '', $category['name'], nx_public_archive_path('category', $slug));

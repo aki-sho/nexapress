@@ -2,12 +2,17 @@
 
 namespace app\Controllers\Admin;
 
+use app\Core\AdminTableSort;
 use app\Core\Auth;
 use app\Core\Controller;
 use app\Core\Csrf;
+use app\Core\EditorPreview;
 use app\Core\Permission;
 use app\Core\PostValidator;
+use app\Core\RequestSize;
 use app\Models\Category;
+use app\Models\CategoryPage;
+use InvalidArgumentException;
 use PDOException;
 
 class CategoryController extends Controller
@@ -104,22 +109,24 @@ class CategoryController extends Controller
     {
         Auth::requireLogin();
 
-        $categories = Category::all();
+        $sort = new AdminTableSort(Category::ADMIN_SORT_COLUMNS, $_GET);
 
         $this->view('admin/categories', [
-            'categories' => $categories,
+            'categories' => Category::all($sort),
+            'sort' => $sort,
         ]);
     }
 
     public function store(): void
     {
         Auth::requireLogin();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
 
         $name = trim($_POST['name'] ?? '');
         $slug = trim($_POST['slug'] ?? '');
 
         if ($name === '' || $slug === '') {
-            redirect_to('admin/categories');
+            $this->redirectToList();
         }
 
         Category::create([
@@ -127,7 +134,7 @@ class CategoryController extends Controller
             'slug' => $slug,
         ]);
 
-        redirect_to('admin/categories');
+        $this->redirectToList();
     }
 
     public function edit(int $id): void
@@ -141,23 +148,25 @@ class CategoryController extends Controller
             return;
         }
 
-        $categories = Category::all();
+        $sort = new AdminTableSort(Category::ADMIN_SORT_COLUMNS, $_GET);
 
         $this->view('admin/categories', [
             'category' => $category,
-            'categories' => $categories,
+            'categories' => Category::all($sort),
+            'sort' => $sort,
         ]);
     }
 
     public function update(int $id): void
     {
         Auth::requireLogin();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
 
         $name = trim($_POST['name'] ?? '');
         $slug = trim($_POST['slug'] ?? '');
 
         if ($name === '' || $slug === '') {
-            redirect_to('admin/categories/edit/' . $id);
+            redirect_to('admin/categories/edit/' . $id . $this->sortQuery());
         }
 
         Category::update($id, [
@@ -165,15 +174,98 @@ class CategoryController extends Controller
             'slug' => $slug,
         ]);
 
-        redirect_to('admin/categories');
+        $this->redirectToList();
     }
 
     public function delete(int $id): void
     {
         Auth::requireLogin();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
 
         Category::delete($id);
+        do_action('category_deleted', $id);
 
-        redirect_to('admin/categories');
+        $this->redirectToList();
+    }
+
+    public function editPublicPage(string $id): void
+    {
+        $category = $this->categoryForPage($id);
+        if ($category !== null) {
+            $page = CategoryPage::find((int)$category['id']) ?? CategoryPage::DEFAULTS;
+            $this->publicPageForm($category, $page);
+        }
+    }
+
+    public function savePublicPage(string $id): void
+    {
+        RequestSize::requirePostWithinLimit();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
+        $category = $this->categoryForPage($id);
+        if ($category === null) {
+            return;
+        }
+        try {
+            $page = CategoryPage::fromInput($_POST);
+            CategoryPage::save((int)$category['id'], $page);
+        } catch (InvalidArgumentException $exception) {
+            http_response_code(422);
+            $this->publicPageForm($category, $_POST, $exception->getMessage());
+            return;
+        } catch (PDOException $exception) {
+            http_response_code(500);
+            $this->publicPageForm($category, $_POST, '公開ページを保存できませんでした。もう一度お試しください。');
+            return;
+        }
+        do_action('category_saved', (int)$category['id']);
+        nx_editor_saved();
+        $_SESSION['category_page_notice'] = 'カテゴリの公開ページを保存しました。';
+        redirect_to('admin/categories/page/' . $category['id'] . $this->sortQuery());
+    }
+
+    public function publicPagePreview(string $id): void
+    {
+        RequestSize::requirePostWithinLimit();
+        Csrf::requireValid($_POST['_csrf_token'] ?? null);
+        $category = $this->categoryForPage($id);
+        if ($category !== null) {
+            EditorPreview::renderCategory($category, $_POST);
+        }
+    }
+
+    private function categoryForPage(string $id): ?array
+    {
+        $id = filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $category = $id === false ? null : Category::find($id);
+        if ($category === null) {
+            http_response_code(404);
+            echo 'カテゴリが見つかりません。';
+        }
+        return $category;
+    }
+
+    private function publicPageForm(array $category, array $page, ?string $error = null): void
+    {
+        $notice = $_SESSION['category_page_notice'] ?? null;
+        unset($_SESSION['category_page_notice']);
+        $this->view('admin/category-page-form', [
+            'category' => $category,
+            'categoryPage' => $page,
+            'error' => $error,
+            'notice' => $notice,
+            'sortQuery' => $this->sortQuery(),
+        ]);
+    }
+
+    private function sortQuery(): string
+    {
+        $sort = new AdminTableSort(Category::ADMIN_SORT_COLUMNS, $_GET);
+        $parameters = $sort->parameters();
+        return $parameters ? '?' . http_build_query($parameters) : '';
+    }
+
+    private function redirectToList(): void
+    {
+        redirect_to('admin/categories' . $this->sortQuery());
     }
 }

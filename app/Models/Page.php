@@ -3,17 +3,27 @@
 namespace app\Models;
 
 use app\Core\Database;
+use app\Core\AdminTableSort;
 
 class Page
 {
-    public static function all(bool $trash = false): array
+    public const ADMIN_SORT_COLUMNS = [
+        'title' => 'p.title',
+        'slug' => 'p.slug',
+        'status' => 'p.status',
+        'author' => 'u.name',
+        'public_url' => "CASE WHEN p.status = 'published' THEN p.slug END",
+    ];
+
+    public static function all(bool $trash = false, ?AdminTableSort $sort = null): array
     {
         $pages = Database::table('pages');
         $users = Database::table('users');
         $condition = $trash ? 'IS NOT NULL' : 'IS NULL';
+        $order = $sort?->orderBy('p.created_at DESC') ?? 'p.created_at DESC';
         return Database::connect()->query("SELECT p.*, u.name AS author_name FROM {$pages} p
             LEFT JOIN {$users} u ON p.user_id = u.id
-            WHERE p.deleted_at {$condition} ORDER BY p.created_at DESC, p.id DESC")->fetchAll();
+            WHERE p.deleted_at {$condition} ORDER BY {$order}, p.id DESC")->fetchAll();
     }
 
     public static function published(): array

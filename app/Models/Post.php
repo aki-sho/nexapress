@@ -2,6 +2,7 @@
 
 namespace app\Models;
 
+use app\Core\AdminTableSort;
 use app\Core\Database;
 use PDO;
 
@@ -164,6 +165,17 @@ class Post
         return (int)$stmt->fetchColumn();
     }
 
+    public static function adminSort(array $query, bool $trash): AdminTableSort
+    {
+        return new AdminTableSort([
+            'title' => 'p.title',
+            'status' => 'p.status',
+            'category' => 'c.name',
+            'author' => 'u.name',
+            'date' => $trash ? 'p.deleted_at' : 'p.created_at',
+        ], $query, 'date');
+    }
+
     /*
      * 管理画面：
      * 検索・絞り込み・ページ分割
@@ -171,7 +183,8 @@ class Post
     public static function adminPage(
         array $filters,
         int $page,
-        int $perPage
+        int $perPage,
+        ?AdminTableSort $sort = null
     ): array {
         $page = max(1, $page);
 
@@ -195,10 +208,8 @@ class Post
          * 通常一覧は作成日、
          * ゴミ箱は削除日で並べる
          */
-        $orderColumn =
-            !empty($filters['trash'])
-                ? 'p.deleted_at'
-                : 'p.created_at';
+        $sort ??= self::adminSort([], !empty($filters['trash']));
+        $order = $sort->orderBy('p.created_at DESC');
 
         $pdo = Database::connect();
 
@@ -206,7 +217,7 @@ class Post
             self::selectSql() . "
                 {$where}
                 ORDER BY
-                    {$orderColumn} DESC,
+                    {$order},
                     p.id DESC
                 LIMIT :limit
                 OFFSET :offset

@@ -2,6 +2,7 @@
 
 namespace app\Controllers\Admin;
 
+use app\Core\AdminTableSort;
 use app\Core\Auth;
 use app\Core\Controller;
 use app\Core\Csrf;
@@ -23,7 +24,8 @@ class PageController extends Controller
         $trash = ($_GET['trash'] ?? '') === '1';
         $notice = $_SESSION['page_notice'] ?? null;
         unset($_SESSION['page_notice']);
-        $this->view('admin/pages', ['pages' => Page::all($trash), 'trash' => $trash, 'notice' => $notice]);
+        $sort = new AdminTableSort(Page::ADMIN_SORT_COLUMNS, $_GET);
+        $this->view('admin/pages', ['pages' => Page::all($trash, $sort), 'trash' => $trash, 'notice' => $notice, 'sort' => $sort]);
     }
 
     public function bulk(): void
@@ -31,7 +33,7 @@ class PageController extends Controller
         $trash = ($_GET['trash'] ?? '') === '1';
         $result = ContentBulk::run('pages', $trash, $_POST);
         $this->notice($result['message']);
-        redirect_to('admin/pages' . ($trash ? '?trash=1' : ''));
+        $this->redirectToList($trash);
     }
 
     public function create(): void
@@ -199,7 +201,14 @@ class PageController extends Controller
         }
         Page::$method($id);
         $this->notice($message);
-        redirect_to('admin/pages' . ($trash ? '?trash=1' : ''));
+        $this->redirectToList($trash);
+    }
+
+    private function redirectToList(bool $trash): void
+    {
+        $sort = new AdminTableSort(Page::ADMIN_SORT_COLUMNS, $_GET);
+        $parameters = ($trash ? ['trash' => '1'] : []) + $sort->parameters();
+        redirect_to('admin/pages' . ($parameters ? '?' . http_build_query($parameters) : ''));
     }
 
     private function page(int $id, bool $trash = false): ?array

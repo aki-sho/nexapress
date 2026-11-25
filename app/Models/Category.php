@@ -3,9 +3,17 @@
 namespace app\Models;
 
 use app\Core\Database;
+use app\Core\AdminTableSort;
 
 class Category
 {
+    public const ADMIN_SORT_COLUMNS = [
+        'id' => 'id',
+        'name' => 'name',
+        'slug' => 'slug',
+        'public_url' => 'slug',
+    ];
+
     public static function findByName(string $name): ?array
     {
         $stmt = Database::connect()->prepare('SELECT * FROM ' . Database::table('categories') . ' WHERE name = ? ORDER BY id LIMIT 1');
@@ -20,17 +28,18 @@ class Category
         return $stmt->fetch() ?: null;
     }
 
-    public static function all(): array
+    public static function all(?AdminTableSort $sort = null): array
     {
         $pdo = Database::connect();
 
         $categories =
             Database::table('categories');
 
+        $order = $sort?->orderBy('created_at DESC') ?? 'created_at DESC';
         $stmt = $pdo->query("
             SELECT *
             FROM {$categories}
-            ORDER BY created_at DESC
+            ORDER BY {$order}, id DESC
         ");
 
         return $stmt->fetchAll();

@@ -1,4 +1,10 @@
-<?php $title = $trash ? '固定ページのゴミ箱' : '固定ページ一覧'; $token = \app\Core\Csrf::token(); ?>
+<?php
+$title = $trash ? '固定ページのゴミ箱' : '固定ページ一覧';
+$token = \app\Core\Csrf::token();
+$listFilters = $trash ? ['trash' => '1'] : [];
+$listParameters = $listFilters + $sort->parameters();
+$listQuery = $listParameters ? '?' . http_build_query($listParameters) : '';
+?>
 <section class="admin-page">
     <div class="admin-page-header"><h1><?= e($title) ?></h1>
         <div class="admin-header-actions">
@@ -10,16 +16,23 @@
     <?php if (!$pages): ?><p><?= $trash ? 'ゴミ箱は空です。' : '固定ページはありません。' ?></p><?php else: ?>
     <?php
     $bulkActions = \app\Models\ContentBulk::actions('pages', $trash);
-    $bulkActionUrl = url('admin/pages/bulk' . ($trash ? '?trash=1' : ''));
+    $bulkActionUrl = url('admin/pages/bulk') . $listQuery;
     require __DIR__ . '/content-bulk-form.php';
     ?>
     <div class="admin-table-wrap"><table class="admin-table"><thead><tr>
         <th scope="col" class="content-bulk-selection">
             <input type="checkbox" form="content-bulk" data-content-bulk-all aria-label="この一覧をすべて選択" hidden>
         </th>
-        <th>タイトル</th><th>スラッグ</th><th>状態</th><th>投稿者</th>
-        <?php if (!$trash): ?><th scope="col">公開ページ</th><?php endif; ?>
-        <th>操作</th>
+        <?php
+        $columns = ['title' => 'タイトル', 'slug' => 'スラッグ', 'status' => '状態', 'author' => '投稿者'];
+        if (!$trash) {
+            $columns['public_url'] = '公開ページ';
+        }
+        foreach ($columns as $key => $label) {
+            $sort->heading($key, $label, 'admin/pages', $listFilters);
+        }
+        ?>
+        <th scope="col">操作</th>
     </tr></thead><tbody>
     <?php foreach ($pages as $page): ?><tr>
         <td class="content-bulk-selection">
@@ -46,7 +59,7 @@
         <?php endif; ?>
         <?php foreach ($trash ? ['restore' => '下書きに復元', 'destroy' => '完全に削除'] :
             ['status' => $page['status'] === 'published' ? '下書きにする' : '公開する', 'delete' => 'ゴミ箱へ'] as $method => $label): ?>
-            <form action="<?= e(url('admin/pages/' . $method . '/' . $page['id'])) ?>" method="post">
+            <form action="<?= e(url('admin/pages/' . $method . '/' . $page['id']) . $listQuery) ?>" method="post">
                 <input type="hidden" name="_csrf_token" value="<?= e($token) ?>">
                 <button type="submit" class="button small secondary" <?= $method === 'destroy' ? 'onclick="return confirm(\'完全に削除します。元に戻せません。\')"' : '' ?>><?= e($label) ?></button>
             </form>

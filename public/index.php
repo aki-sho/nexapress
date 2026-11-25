@@ -321,6 +321,9 @@ $router->post('/admin/categories/inline', 'app\Controllers\Admin\CategoryControl
 $router->get('/admin/categories/edit/{id}', 'app\Controllers\Admin\CategoryController@edit');
 $router->post('/admin/categories/update/{id}', 'app\Controllers\Admin\CategoryController@update');
 $router->post('/admin/categories/delete/{id}', 'app\Controllers\Admin\CategoryController@delete');
+$router->get('/admin/categories/page/{id}', 'app\Controllers\Admin\CategoryController@editPublicPage');
+$router->post('/admin/categories/page/{id}', 'app\Controllers\Admin\CategoryController@savePublicPage');
+$router->post('/admin/categories/editor-preview/{id}', 'app\Controllers\Admin\CategoryController@publicPagePreview');
 
 // 固定ページ管理
 $router->get('/admin/pages', 'app\Controllers\Admin\PageController@index');

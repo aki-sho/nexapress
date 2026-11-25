@@ -140,7 +140,8 @@ class Extension
         if (class_exists($cache, false) && is_callable([$cache, 'clear'])) {
             foreach (['navigation_saved', 'post_saved', 'post_trashed', 'post_restored',
                 'page_saved', 'page_trashed', 'page_restored',
-                'page_deleted', 'site_settings_saved', 'profile_saved', 'extension_updated', 'design_published'] as $event) {
+                'page_deleted', 'category_saved', 'category_deleted', 'site_settings_saved',
+                'profile_saved', 'extension_updated', 'design_published'] as $event) {
                 Hook::addAction($event, static function () use ($cache): void { $cache::clear(); });
             }
         }

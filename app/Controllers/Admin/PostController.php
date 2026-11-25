@@ -3,6 +3,7 @@
 namespace app\Controllers\Admin;
 
 use app\Core\Auth;
+use app\Core\AdminTableSort;
 use app\Core\Controller;
 use app\Core\Csrf;
 use app\Core\Database;
@@ -31,6 +32,7 @@ class PostController extends Controller
         Auth::requireLogin();
 
         $filters = $this->adminFilters();
+        $sort = Post::adminSort($_GET, $filters['trash']);
 
         $perPage = 20;
 
@@ -56,7 +58,8 @@ class PostController extends Controller
         $posts = Post::adminPage(
             $filters,
             $currentPage,
-            $perPage
+            $perPage,
+            $sort
         );
 
         $this->view('admin/posts', [
@@ -70,6 +73,9 @@ class PostController extends Controller
 
             'filters' =>
                 $filters,
+
+            'sort' => $sort,
+            'listParameters' => $this->listParameters($filters, $sort),
 
             'pagination' => [
                 'current_page' =>
@@ -95,15 +101,7 @@ class PostController extends Controller
         $filters = $this->adminFilters();
         $result = ContentBulk::run('posts', $filters['trash'], $_POST);
         $this->setNotice($result['message'], $result['type']);
-        $query = http_build_query(array_filter([
-            'keyword' => $filters['keyword'],
-            'status' => $filters['status'],
-            'category_id' => $filters['category_id'],
-            'author_id' => $filters['author_id'],
-            'view' => $filters['trash'] ? 'trash' : '',
-            'page' => max(1, (int)($_GET['page'] ?? 1)),
-        ], static fn($value) => $value !== '' && $value !== 0));
-        redirect_to('admin/posts?' . $query);
+        $this->redirectToList($filters['trash']);
     }
 
     /*
@@ -725,11 +723,25 @@ class PostController extends Controller
     private function redirectToList(
         bool $trash = false
     ): void {
-        redirect_to(
-            $trash
-                ? 'admin/posts?view=trash'
-                : 'admin/posts'
-        );
+        $filters = $this->adminFilters();
+        $filters['trash'] = $trash;
+        $parameters = $this->listParameters($filters, Post::adminSort($_GET, $trash));
+        $page = filter_var($_GET['page'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 2]]);
+        if ($page !== false) {
+            $parameters['page'] = $page;
+        }
+        redirect_to('admin/posts' . ($parameters ? '?' . http_build_query($parameters) : ''));
+    }
+
+    private function listParameters(array $filters, AdminTableSort $sort): array
+    {
+        return array_filter([
+            'keyword' => $filters['keyword'],
+            'status' => $filters['status'],
+            'category_id' => $filters['category_id'],
+            'author_id' => $filters['author_id'],
+            'view' => $filters['trash'] ? 'trash' : '',
+        ], static fn($value) => $value !== '' && $value !== 0) + $sort->parameters();
     }
 
     /*

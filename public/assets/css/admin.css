@@ -549,6 +549,9 @@
 }
 
 .admin-table .admin-public-link { overflow-wrap: anywhere; }
+.admin-table .admin-sort-link { color: inherit; display: inline-flex; align-items: baseline; gap: .35em; }
+.admin-sort-link span { color: #475569; }
+.admin-table [aria-sort] .admin-sort-link span { color: #1d4ed8; }
 
 .content-bulk-actions {
     display: flex;

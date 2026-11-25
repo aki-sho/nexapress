@@ -107,7 +107,7 @@ class View
             if ($layoutKind === 'page' && $viewPath === $themeViewPath && ($pageDesign['showHomeLink'] ?? true) === false) {
                 $content = self::withoutPageHomeLink($content);
             }
-            if (EditorPreview::active()) {
+            if (EditorPreview::active() && $layoutKind !== null) {
                 $content = EditorPreview::addMissingFields(
                     $content, $layoutDocument, ($editorDisplay ?? null) === null
                 );

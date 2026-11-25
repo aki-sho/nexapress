@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('form[data-editor-kind]').forEach(form => {
         const key = `nx-editor:${config.userId}:${config.base}:${form.dataset.editorKind}:${form.dataset.editorId || 0}`;
         const names = ['title', 'slug', 'content', 'excerpt', 'status', 'category_id', 'featured_media_id',
-            'page_display[title]', 'page_display[created_at]', 'page_display[home_link]', 'page_display[width]', 'page_display[sections]'];
+            'page_display[title]', 'page_display[created_at]', 'page_display[home_link]', 'page_display[width]', 'page_display[sections]',
+            'posts_mode', 'show_title'];
         const snapshot = () => {
             const data = {};
             const formData = new FormData(form);

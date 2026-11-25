@@ -20,6 +20,7 @@ if (!\app\Core\Installer::configureDatabase($db) || !\app\Core\Installer::instal
     throw new RuntimeException('Fresh install failed.');
 }
 if (!\app\Core\Installer::isInstalled() || \app\Models\Navigation::all() !== [] ||
+    \app\Models\CategoryPage::find(1) !== null ||
     \app\Models\Page::all() !== [] || \app\Models\PageRevision::allForPage(1) !== [] ||
     \app\Core\Design::snapshot('default')['layout']['columns'] !== 'none' ||
     \app\Core\PageLayout::settings(1) !== ['enabled' => false, 'width' => 'inherit', 'sections' => []] ||

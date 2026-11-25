@@ -3,6 +3,7 @@
 namespace app\Core;
 
 use app\Models\Category;
+use app\Models\CategoryPage;
 use app\Models\Media;
 
 final class EditorPreview
@@ -23,9 +24,7 @@ final class EditorPreview
 
     public static function render(string $kind, array $document, array $input): void
     {
-        header('Cache-Control: no-store, private');
-        header('X-Robots-Tag: noindex, nofollow');
-        header('Content-Type: text/html; charset=UTF-8');
+        self::headers();
         $title = $input['title'] ?? '';
         $content = $input['content'] ?? '';
         if (!is_string($title) || nx_text_length($title) > 255 || !is_string($content)) {
@@ -63,11 +62,36 @@ final class EditorPreview
                 && (int)($settings['homepage_page_id'] ?? 0) === (int)$document['id'];
         }
 
+        self::renderView($kind . '-detail', [
+            $kind => $document, 'isHomepage' => $homepage ?? false, 'editorDisplay' => $editorDisplay,
+        ]);
+    }
+
+    public static function renderCategory(array $category, array $input): void
+    {
+        self::headers();
+        try {
+            $page = CategoryPage::fromInput($input);
+        } catch (\InvalidArgumentException $exception) {
+            http_response_code(422);
+            echo e($exception->getMessage());
+            return;
+        }
+        self::renderView('category-archive', CategoryPage::archiveData($category, $page));
+    }
+
+    private static function headers(): void
+    {
+        header('Cache-Control: no-store, private');
+        header('X-Robots-Tag: noindex, nofollow');
+        header('Content-Type: text/html; charset=UTF-8');
+    }
+
+    private static function renderView(string $view, array $data): void
+    {
         self::$active = true;
         try {
-            View::render($kind . '-detail', [
-                $kind => $document, 'isHomepage' => $homepage ?? false, 'editorDisplay' => $editorDisplay,
-            ]);
+            View::render($view, $data);
         } finally {
             self::$active = false;
         }

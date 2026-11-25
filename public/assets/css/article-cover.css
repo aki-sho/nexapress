@@ -159,7 +159,7 @@
 
     /* Page width is the limit. A single full-width column can extend to the screen edges. */
     .site-main[data-content-width="full"]:not(.nx-design-main, [data-nx-layout-width]:not([data-nx-layout-width="100"]))
-        :is(.post-detail, .nx-page-section[data-full-width-section] .nx-page-section-column)
+        :is(.post-detail, .nx-page-section[data-full-width-section] .nx-page-section-column, .nx-category-archive)
         > .post-content > :is(.nx-cover-width-wide, .nx-cover-width-full) {
         --nx-cover-viewport-aligned: 1;
         width: var(--nx-cover-width);

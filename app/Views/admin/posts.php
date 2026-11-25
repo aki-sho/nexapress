@@ -62,58 +62,9 @@ $buildListUrl = static function (
     array $remove = [],
     string $route = 'admin/posts'
 ) use (
-    $filters,
-    $isTrash
+    $listParameters
 ): string {
-    $params = [];
-
-    $keyword = trim(
-        (string)(
-            $filters['keyword']
-            ?? ''
-        )
-    );
-
-    if ($keyword !== '') {
-        $params['keyword'] =
-            $keyword;
-    }
-
-    $status = trim(
-        (string)(
-            $filters['status']
-            ?? ''
-        )
-    );
-
-    if ($status !== '') {
-        $params['status'] =
-            $status;
-    }
-
-    $categoryId = (int)(
-        $filters['category_id']
-        ?? 0
-    );
-
-    if ($categoryId > 0) {
-        $params['category_id'] =
-            $categoryId;
-    }
-
-    $authorId = (int)(
-        $filters['author_id']
-        ?? 0
-    );
-
-    if ($authorId > 0) {
-        $params['author_id'] =
-            $authorId;
-    }
-
-    if ($isTrash) {
-        $params['view'] = 'trash';
-    }
+    $params = $listParameters;
 
     foreach (
         $overrides
@@ -341,6 +292,9 @@ $postExcerpt = static function (
                 value="trash"
             >
         <?php endif; ?>
+        <?php foreach ($sort->parameters() as $name => $value): ?>
+            <input type="hidden" name="<?= e($name) ?>" value="<?= e($value) ?>">
+        <?php endforeach; ?>
 
         <div class="post-filter-grid">
             <!-- キーワード -->
@@ -514,11 +468,7 @@ $postExcerpt = static function (
 
             <a
                 class="button secondary"
-                href="<?= $isTrash
-                    ? url(
-                        'admin/posts'
-                    ) . '?view=trash'
-                    : url('admin/posts') ?>"
+                href="<?= e($buildListUrl([], ['keyword', 'status', 'category_id', 'author_id'])) ?>"
             >
                 条件をリセット
             </a>
@@ -593,27 +543,18 @@ $postExcerpt = static function (
                             画像
                         </th>
 
-                        <th>
-                            投稿
-                        </th>
-
-                        <th>
-                            状態
-                        </th>
-
-                        <th>
-                            カテゴリ
-                        </th>
-
-                        <th>
-                            投稿者
-                        </th>
-
-                        <th>
-                            <?= $isTrash
-                                ? '削除日時'
-                                : '作成日時' ?>
-                        </th>
+                        <?php
+                        $columns = [
+                            'title' => '投稿',
+                            'status' => '状態',
+                            'category' => 'カテゴリ',
+                            'author' => '投稿者',
+                            'date' => $isTrash ? '削除日時' : '作成日時',
+                        ];
+                        foreach ($columns as $key => $label) {
+                            $sort->heading($key, $label, 'admin/posts', $listParameters);
+                        }
+                        ?>
 
                         <th class="post-actions-column">
                             操作
@@ -816,11 +757,7 @@ $postExcerpt = static function (
                                         <!-- 復元 -->
                                         <form
                                             method="post"
-                                            action="<?= url(
-                                                'admin/posts/'
-                                                . 'restore/'
-                                                . $postId
-                                            ) ?>"
+                                            action="<?= e($buildListUrl(['page' => $currentPage], [], 'admin/posts/restore/' . $postId)) ?>"
                                         >
                                             <input
                                                 type="hidden"
@@ -844,11 +781,7 @@ $postExcerpt = static function (
                                         <!-- 完全削除 -->
                                         <form
                                             method="post"
-                                            action="<?= url(
-                                                'admin/posts/'
-                                                . 'destroy/'
-                                                . $postId
-                                            ) ?>"
+                                            action="<?= e($buildListUrl(['page' => $currentPage], [], 'admin/posts/destroy/' . $postId)) ?>"
                                         >
                                             <input
                                                 type="hidden"
@@ -937,11 +870,7 @@ $postExcerpt = static function (
                                         <!-- 公開状態変更 -->
                                         <form
                                             method="post"
-                                            action="<?= url(
-                                                'admin/posts/'
-                                                . 'status/'
-                                                . $postId
-                                            ) ?>"
+                                            action="<?= e($buildListUrl(['page' => $currentPage], [], 'admin/posts/status/' . $postId)) ?>"
                                         >
                                             <input
                                                 type="hidden"
@@ -968,11 +897,7 @@ $postExcerpt = static function (
                                         <!-- ゴミ箱へ移動 -->
                                         <form
                                             method="post"
-                                            action="<?= url(
-                                                'admin/posts/'
-                                                . 'delete/'
-                                                . $postId
-                                            ) ?>"
+                                            action="<?= e($buildListUrl(['page' => $currentPage], [], 'admin/posts/delete/' . $postId)) ?>"
                                         >
                                             <input
                                                 type="hidden"
