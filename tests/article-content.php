@@ -43,4 +43,14 @@ $display = \app\Core\HtmlSanitizer::sanitize($sharedColumns, true);
 $check(str_contains($display, 'data-nx-column-track-1="0.45000000"')
     && str_contains($display, 'data-nx-column-track-2="0.40000000"'), 'Public rendering used the wrong column weights.');
 
-echo "Article content checks passed.\n";
+$check(ArticleContent::characterCount('<p>こんにちは</p>') === 5, 'Japanese body count includes markup or bytes.');
+$check(ArticleContent::characterCount('<p title="対象外">日本語<strong>ABC</strong>😀&amp;</p><img src="/a.webp" alt="対象外">') === 8,
+    'Nested text, entities, emoji or image attributes were counted incorrectly.');
+$check(ArticleContent::characterCount('<p>&lt;p&gt;</p>') === 3, 'Escaped text was mistaken for markup.');
+$check(ArticleContent::characterCount('<p>A B</p>') === 3, 'An authored text space was discarded.');
+$check(ArticleContent::characterCount("<p>A\nB</p>") === 3, 'An authored text newline was discarded.');
+$check(ArticleContent::characterCount('<p>本文</p><!-- comment --><script>alert(1)</script><style>body{}</style>') === 2,
+    'Comments or executable content were counted as article text.');
+$check(ArticleContent::characterCount('<p><br></p><img src="/a.webp" alt="対象外">') === 0, 'An image-only or empty body has a nonzero text count.');
+
+echo "Article content checks passed (including character counts).\n";
