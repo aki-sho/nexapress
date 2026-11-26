@@ -12,6 +12,25 @@ final class CategoryPage
     public const POST_MODES = ['list' => '一覧', 'cards' => 'カード', 'hidden' => '非表示'];
     public const DEFAULTS = ['content' => '', 'posts_mode' => 'list', 'show_title' => '1'];
 
+    public static function characterCounts(array $categoryIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $categoryIds), static fn(int $id): bool => $id > 0)));
+        if (!$ids) {
+            return [];
+        }
+        $counts = [];
+        $table = Database::table('category_pages');
+        foreach (array_chunk($ids, 500) as $chunk) {
+            $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+            $stmt = Database::connect()->prepare("SELECT category_id, content FROM {$table} WHERE category_id IN ({$placeholders})");
+            $stmt->execute($chunk);
+            foreach ($stmt->fetchAll() as $page) {
+                $counts[(int)$page['category_id']] = ArticleContent::characterCount((string)$page['content']);
+            }
+        }
+        return $counts;
+    }
+
     public static function find(int $categoryId): ?array
     {
         $table = Database::table('category_pages');

@@ -32,6 +32,7 @@ $listQuery = $listParameters ? '?' . http_build_query($listParameters) : '';
             $sort->heading($key, $label, 'admin/pages', $listFilters);
         }
         ?>
+        <th scope="col" class="content-character-count" title="HTMLタグ・属性を除いた本文の文字数（空白・改行を含む）">文字数</th>
         <th scope="col">操作</th>
     </tr></thead><tbody>
     <?php foreach ($pages as $page): ?><tr>
@@ -51,6 +52,7 @@ $listQuery = $listParameters ? '?' . http_build_query($listParameters) : '';
                 <?php endif; ?>
             </td>
         <?php endif; ?>
+        <td class="content-character-count" data-content-character-count><?= number_format(\app\Core\ArticleContent::characterCount((string)($page['content'] ?? ''))) ?></td>
         <td><div class="core-actions">
         <?php if (!$trash): ?>
             <a href="<?= e(url('admin/pages/edit/' . $page['id'])) ?>">編集</a>

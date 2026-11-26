@@ -51,13 +51,14 @@ $token = \app\Core\Csrf::token();
                     $sort->heading($key, $label, $listRoute);
                 }
                 ?>
+                <th scope="col" class="content-character-count" title="カテゴリ公開ページの本文の文字数。HTMLタグ・属性を除き、空白・改行を含みます。">文字数</th>
                 <th scope="col">操作</th>
             </tr>
         </thead>
         <tbody>
             <?php if (empty($categories)): ?>
                 <tr>
-                    <td colspan="5">カテゴリはまだありません。</td>
+                    <td colspan="6">カテゴリはまだありません。</td>
                 </tr>
             <?php else: ?>
                 <?php foreach ($categories as $item): ?>
@@ -67,6 +68,7 @@ $token = \app\Core\Csrf::token();
                         <td><?= e($item['name']) ?></td>
                         <td><?= e($item['slug']) ?></td>
                         <td><a class="admin-public-link" href="<?= e($publicUrl) ?>" target="_blank" rel="noopener"><?= e($publicUrl) ?></a></td>
+                        <td class="content-character-count" data-content-character-count><?= number_format($characterCounts[(int)$item['id']] ?? 0) ?></td>
                         <td><div class="core-actions">
                             <a class="button secondary" href="<?= e(url('admin/categories/edit/' . $item['id']) . $sortQuery) ?>">編集</a>
                             <a class="button secondary" href="<?= e(url('admin/categories/page/' . $item['id']) . $sortQuery) ?>">公開ページを編集</a>

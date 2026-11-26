@@ -111,8 +111,10 @@ class CategoryController extends Controller
 
         $sort = new AdminTableSort(Category::ADMIN_SORT_COLUMNS, $_GET);
 
+        $categories = Category::all($sort);
         $this->view('admin/categories', [
-            'categories' => Category::all($sort),
+            'categories' => $categories,
+            'characterCounts' => CategoryPage::characterCounts(array_column($categories, 'id')),
             'sort' => $sort,
         ]);
     }
@@ -150,9 +152,11 @@ class CategoryController extends Controller
 
         $sort = new AdminTableSort(Category::ADMIN_SORT_COLUMNS, $_GET);
 
+        $categories = Category::all($sort);
         $this->view('admin/categories', [
             'category' => $category,
-            'categories' => Category::all($sort),
+            'categories' => $categories,
+            'characterCounts' => CategoryPage::characterCounts(array_column($categories, 'id')),
             'sort' => $sort,
         ]);
     }

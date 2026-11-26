@@ -556,6 +556,7 @@ $postExcerpt = static function (
                         }
                         ?>
 
+                        <th scope="col" class="content-character-count" title="HTMLタグ・属性を除いた本文の文字数（空白・改行を含む）">文字数</th>
                         <th class="post-actions-column">
                             操作
                         </th>
@@ -751,6 +752,7 @@ $postExcerpt = static function (
                             </td>
 
                             <!-- 操作 -->
+                            <td class="content-character-count" data-content-character-count><?= number_format(\app\Core\ArticleContent::characterCount((string)($post['content'] ?? ''))) ?></td>
                             <td>
                                 <?php if ($isTrash): ?>
                                     <div class="post-row-actions">

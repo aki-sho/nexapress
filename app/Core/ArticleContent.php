@@ -8,6 +8,16 @@ final class ArticleContent
 {
     public const MAX_BYTES = 6553500;
 
+    /** Count saved body text, not HTML, attributes or executable content. */
+    public static function characterCount(string $content): int
+    {
+        $text = html_entity_decode(strip_tags(HtmlSanitizer::sanitize($content)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if (function_exists('mb_strlen')) {
+            return mb_strlen($text, 'UTF-8');
+        }
+        return preg_match_all('/./us', $text) ?: 0;
+    }
+
     // Limit the work done by the HTML parser as well as the stored size.
     private const MAX_MARKUP_DELIMITERS = 50000;
     private const MAX_TAG_BYTES = 65535;
